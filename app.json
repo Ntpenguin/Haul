@@ -1,0 +1,50 @@
+{
+  "expo": {
+    "name": "Fast Fix Work",
+    "slug": "fast-fix-work",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": true,
+    "scheme": "fastfixwork",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#FAF7F2"
+    },
+    "ios": {
+      "supportsTablet": false,
+      "bundleIdentifier": "com.fastfixwork.app",
+      "infoPlist": {
+        "NSCameraUsageDescription": "Used to upload photos of your move items and identity documents.",
+        "NSPhotoLibraryUsageDescription": "Used to select photos of your move items and identity documents.",
+        "NSLocationWhenInUseUsageDescription": "Used to share your location with customers during a job.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "Used to share your location with customers even when the app is in the background.",
+        "UIBackgroundModes": ["location"]
+      }
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#FAF7F2"
+      },
+      "package": "com.fastfixwork.app"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      "expo-image-picker",
+      "expo-notifications",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow Fast Fix Work to use your location to share your position with customers during a job.",
+          "locationAlwaysPermission": "Allow Fast Fix Work to use your location in the background to share your position with customers during a job.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
+        }
+      ]
+    ]
+  }
+}

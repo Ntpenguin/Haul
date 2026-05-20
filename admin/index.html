@@ -1,0 +1,656 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fast Fix Work — Admin Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+  :root {
+    --bg: #FAF7F2; --card: #FFFFFF; --surface: #F2EEE7;
+    --line: rgba(26,23,20,0.08); --line2: rgba(26,23,20,0.14);
+    --ink: #1A1714; --ink2: #534C44; --ink3: #8B8379; --ink4: #B8B0A4;
+    --accent: #C98B3F; --accent-deep: #8B5E2B; --accent-soft: #F5EDE0;
+    --success: #4A8066; --success-soft: #E5F0EA;
+    --warning: #C98B3F; --warning-soft: #F5EDE0;
+    --error: #C84B3A; --error-soft: #FDECEA;
+    --radius: 14px;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--ink); }
+
+  /* Login */
+  #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+  .login-box { background: var(--card); border-radius: 20px; padding: 40px; max-width: 400px; width: 100%; box-shadow: 0 4px 24px rgba(26,23,20,0.08); }
+  .login-box h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; letter-spacing: -0.5px; }
+  .login-box p { font-size: 14px; color: var(--ink3); margin-bottom: 24px; }
+  .login-box label { display: block; font-size: 11px; font-weight: 700; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .login-box input { width: 100%; height: 48px; padding: 0 14px; border: 1.5px solid var(--line2); border-radius: 10px; font-size: 15px; color: var(--ink); background: var(--bg); margin-bottom: 16px; outline: none; }
+  .login-box input:focus { border-color: var(--accent); }
+  .login-box button { width: 100%; height: 50px; border: none; border-radius: 12px; background: var(--accent); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .login-box button:hover { opacity: 0.9; }
+  .login-error { font-size: 13px; color: var(--error); margin-bottom: 12px; font-weight: 500; }
+
+  /* Layout */
+  #app { display: none; }
+  .topbar { background: var(--card); border-bottom: 1px solid var(--line); padding: 16px 28px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 10; }
+  .topbar h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .topbar-right span { font-size: 13px; color: var(--ink3); }
+  .btn-sm { height: 34px; padding: 0 14px; border: 1px solid var(--line2); border-radius: 8px; background: var(--card); font-size: 13px; font-weight: 600; color: var(--ink2); cursor: pointer; }
+  .btn-sm:hover { background: var(--surface); }
+
+  .layout { display: flex; min-height: calc(100vh - 65px); }
+  .sidebar { width: 220px; background: var(--card); border-right: 1px solid var(--line); padding: 16px 0; flex-shrink: 0; }
+  .sidebar a { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 14px; font-weight: 500; color: var(--ink2); text-decoration: none; cursor: pointer; }
+  .sidebar a:hover { background: var(--surface); }
+  .sidebar a.active { background: var(--accent-soft); color: var(--accent-deep); font-weight: 700; }
+  .sidebar .nav-icon { width: 20px; text-align: center; font-size: 16px; }
+
+  .main { flex: 1; padding: 28px; overflow-x: auto; }
+  .page-title { font-size: 22px; font-weight: 700; letter-spacing: -0.4px; margin-bottom: 6px; }
+  .page-sub { font-size: 14px; color: var(--ink3); margin-bottom: 24px; }
+
+  /* Stats */
+  .stats-row { display: flex; gap: 14px; margin-bottom: 28px; flex-wrap: wrap; }
+  .stat-card { background: var(--card); border-radius: var(--radius); padding: 18px 22px; flex: 1; min-width: 160px; box-shadow: 0 2px 12px rgba(26,23,20,0.04); border: 1px solid var(--line); }
+  .stat-label { font-size: 11px; font-weight: 700; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .stat-value { font-size: 28px; font-weight: 700; letter-spacing: -1px; }
+  .stat-value.accent { color: var(--accent); }
+  .stat-value.success { color: var(--success); }
+  .stat-value.warning { color: var(--warning); }
+
+  /* Tables */
+  .table-wrap { background: var(--card); border-radius: var(--radius); border: 1px solid var(--line); overflow: hidden; box-shadow: 0 2px 12px rgba(26,23,20,0.04); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead th { background: var(--surface); padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  tbody td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tbody tr:hover { background: var(--accent-soft); }
+  tbody tr:last-child td { border-bottom: none; }
+
+  .badge { display: inline-block; padding: 3px 10px; border-radius: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; }
+  .badge-posted { background: var(--accent-soft); color: var(--accent-deep); }
+  .badge-matched, .badge-in_progress { background: #E3EEF5; color: #2E5470; }
+  .badge-completed { background: var(--success-soft); color: var(--success); }
+  .badge-cancelled, .badge-rejected, .badge-failed { background: var(--error-soft); color: var(--error); }
+  .badge-draft, .badge-pending { background: var(--surface); color: var(--ink3); }
+  .badge-approved { background: var(--success-soft); color: var(--success); }
+  .badge-customer { background: var(--accent-soft); color: var(--accent-deep); }
+  .badge-mover { background: #E5F0EA; color: #2E5C47; }
+  .badge-both { background: #E3EEF5; color: #2E5470; }
+  .badge-accepted { background: var(--success-soft); color: var(--success); }
+  .badge-declined, .badge-withdrawn { background: var(--error-soft); color: var(--error); }
+
+  .photo-thumb { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; cursor: pointer; }
+  .photo-thumb:hover { opacity: 0.8; }
+  .empty { text-align: center; padding: 40px; color: var(--ink3); font-size: 14px; }
+  .loading { text-align: center; padding: 40px; color: var(--ink4); }
+  .refresh-btn { margin-bottom: 16px; }
+  .detail-link { color: var(--accent-deep); font-weight: 600; cursor: pointer; text-decoration: underline; }
+
+  /* Modal */
+  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(26,23,20,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
+  .modal { background: var(--card); border-radius: 20px; padding: 28px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 16px 48px rgba(26,23,20,0.2); }
+  .modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 16px; letter-spacing: -0.3px; }
+  .modal-row { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .modal-label { font-size: 12px; font-weight: 700; color: var(--ink3); text-transform: uppercase; width: 130px; flex-shrink: 0; padding-top: 2px; }
+  .modal-value { font-size: 14px; color: var(--ink); flex: 1; word-break: break-word; }
+  .modal-close { position: absolute; top: 16px; right: 16px; width: 32px; height: 32px; border-radius: 16px; border: none; background: var(--surface); cursor: pointer; font-size: 16px; color: var(--ink2); }
+  .modal-photos { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 8px; }
+  .modal-photos img { width: 100px; height: 100px; border-radius: 10px; object-fit: cover; }
+
+  /* Calendar */
+  .cal-header { display: flex; align-items: center; gap: 16px; margin-bottom: 20px; }
+  .cal-header button { width: 36px; height: 36px; border-radius: 10px; border: 1px solid var(--line2); background: var(--card); cursor: pointer; font-size: 16px; color: var(--ink2); display: flex; align-items: center; justify-content: center; }
+  .cal-header button:hover { background: var(--surface); }
+  .cal-month { font-size: 18px; font-weight: 700; min-width: 180px; text-align: center; }
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--card); box-shadow: 0 2px 12px rgba(26,23,20,0.04); }
+  .cal-day-label { padding: 10px 6px; text-align: center; font-size: 11px; font-weight: 700; color: var(--ink3); text-transform: uppercase; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .cal-cell { min-height: 110px; padding: 6px; border-right: 1px solid var(--line); border-bottom: 1px solid var(--line); vertical-align: top; position: relative; }
+  .cal-cell:nth-child(7n) { border-right: none; }
+  .cal-cell.other-month { background: var(--surface); opacity: 0.5; }
+  .cal-cell.today { background: var(--accent-soft); }
+  .cal-date { font-size: 12px; font-weight: 700; color: var(--ink3); margin-bottom: 4px; }
+  .cal-cell.today .cal-date { color: var(--accent-deep); }
+  .cal-gig { padding: 4px 6px; margin-bottom: 3px; border-radius: 6px; font-size: 11px; font-weight: 600; cursor: pointer; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cal-gig:hover { opacity: 0.8; }
+  .cal-gig.status-posted { background: var(--accent-soft); color: var(--accent-deep); border-left: 3px solid var(--accent); }
+  .cal-gig.status-matched, .cal-gig.status-in_progress { background: #E3EEF5; color: #2E5470; border-left: 3px solid #4A7FA0; }
+  .cal-gig.status-completed { background: var(--success-soft); color: var(--success); border-left: 3px solid var(--success); }
+  .cal-gig.status-cancelled { background: var(--error-soft); color: var(--error); border-left: 3px solid var(--error); }
+  .cal-gig.status-draft { background: var(--surface); color: var(--ink3); border-left: 3px solid var(--ink4); }
+  .cal-gig.asap-gig { background: var(--warning-soft); color: var(--accent-deep); border-left: 3px solid var(--warning); }
+  .cal-more { font-size: 10px; color: var(--ink3); font-weight: 600; padding: 2px 6px; cursor: pointer; }
+  .cal-more:hover { color: var(--accent-deep); }
+  .cal-legend { display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
+  .cal-legend-item { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--ink2); }
+  .cal-legend-dot { width: 10px; height: 10px; border-radius: 3px; }
+  .cal-asap-section { margin-top: 24px; }
+  .cal-asap-section h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
+
+  @media (max-width: 768px) {
+    .sidebar { display: none; }
+    .main { padding: 16px; }
+    .stats-row { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<!-- Login -->
+<div id="login-screen">
+  <div class="login-box">
+    <h1>Admin Dashboard</h1>
+    <p>Fast Fix Work — sign in with your admin account</p>
+    <div id="login-error" class="login-error" style="display:none"></div>
+    <label>Email</label>
+    <input type="email" id="login-email" placeholder="admin@fastfixwork.com">
+    <label>Password</label>
+    <input type="password" id="login-password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <button onclick="doLogin()">Sign in</button>
+  </div>
+</div>
+
+<!-- App -->
+<div id="app">
+  <div class="topbar">
+    <h1>Fast Fix Work Admin</h1>
+    <div class="topbar-right">
+      <span id="admin-email"></span>
+      <button class="btn-sm" onclick="doLogout()">Sign out</button>
+    </div>
+  </div>
+  <div class="layout">
+    <div class="sidebar">
+      <a class="active" onclick="showPage('overview')"><span class="nav-icon">&#9632;</span> Overview</a>
+      <a onclick="showPage('users')"><span class="nav-icon">&#9775;</span> Users</a>
+      <a onclick="showPage('movers')"><span class="nav-icon">&#9883;</span> Movers</a>
+      <a onclick="showPage('gigs')"><span class="nav-icon">&#9733;</span> Gigs</a>
+      <a onclick="showPage('applications')"><span class="nav-icon">&#9997;</span> Applications</a>
+      <a onclick="showPage('photos')"><span class="nav-icon">&#9998;</span> Photos</a>
+      <a onclick="showPage('calendar')"><span class="nav-icon">&#9776;</span> Calendar</a>
+    </div>
+    <div class="main" id="main-content"></div>
+  </div>
+</div>
+
+<!-- Modal container -->
+<div id="modal-container"></div>
+
+<script>
+const SUPABASE_URL = 'https://joiukvttuamaanrgzfrz.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvaXVrdnR0dWFtYWFucmd6ZnJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNTY5ODksImV4cCI6MjA5NDYzMjk4OX0.TcpzGaMihyKUZNtuRncasXImyv6bb0De1lf_wQa61Ew';
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+let cache = { profiles: [], moverProfiles: [], gigs: [], applications: [], photos: [] };
+
+// ─── Auth ────────────────────────────────────
+async function doLogin() {
+  const email = document.getElementById('login-email').value.trim();
+  const pw = document.getElementById('login-password').value;
+  const errEl = document.getElementById('login-error');
+  errEl.style.display = 'none';
+  if (!email || !pw) { errEl.textContent = 'Enter email and password'; errEl.style.display = 'block'; return; }
+  const { error } = await sb.auth.signInWithPassword({ email, password: pw });
+  if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
+  await initApp();
+}
+
+async function doLogout() {
+  await sb.auth.signOut();
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('login-screen').style.display = 'flex';
+}
+
+async function initApp() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return;
+  document.getElementById('login-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('admin-email').textContent = session.user.email;
+  await loadAll();
+  showPage('overview');
+}
+
+// ─── Data Loading ────────────────────────────
+async function loadAll() {
+  const [profiles, moverProfiles, gigs, applications, photos] = await Promise.all([
+    sb.from('profiles').select('*').order('created_at', { ascending: false }),
+    sb.from('mover_profiles').select('*').order('created_at', { ascending: false }),
+    sb.from('gigs').select('*').order('created_at', { ascending: false }),
+    sb.from('gig_applications').select('*').order('created_at', { ascending: false }),
+    sb.from('gig_photos').select('*').order('created_at', { ascending: false }),
+  ]);
+  cache.profiles = profiles.data || [];
+  cache.moverProfiles = moverProfiles.data || [];
+  cache.gigs = gigs.data || [];
+  cache.applications = applications.data || [];
+  cache.photos = photos.data || [];
+}
+
+// ─── Navigation ──────────────────────────────
+function showPage(page) {
+  document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
+  const links = document.querySelectorAll('.sidebar a');
+  const pages = ['overview','users','movers','gigs','applications','photos','calendar'];
+  const idx = pages.indexOf(page);
+  if (idx >= 0 && links[idx]) links[idx].classList.add('active');
+
+  const main = document.getElementById('main-content');
+  switch(page) {
+    case 'overview': main.innerHTML = renderOverview(); break;
+    case 'users': main.innerHTML = renderUsers(); break;
+    case 'movers': main.innerHTML = renderMovers(); break;
+    case 'gigs': main.innerHTML = renderGigs(); break;
+    case 'applications': main.innerHTML = renderApplications(); break;
+    case 'photos': main.innerHTML = renderPhotos(); break;
+    case 'calendar': main.innerHTML = renderCalendar(); break;
+  }
+}
+
+// ─── Helpers ─────────────────────────────────
+function fmt(d) { return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'; }
+function badge(val) { return `<span class="badge badge-${(val||'').replace(/\s/g,'_')}">${val || '—'}</span>`; }
+function dollars(cents) { return cents != null ? '$' + (cents / 100).toFixed(2) : '—'; }
+function truncate(s, n) { if (!s) return '—'; return s.length > n ? s.slice(0, n) + '...' : s; }
+function profileName(id) { const p = cache.profiles.find(p => p.id === id); return p ? (p.full_name || p.email || id.slice(0,8)) : id ? id.slice(0,8) : '—'; }
+
+// ─── Overview ────────────────────────────────
+function renderOverview() {
+  const totalUsers = cache.profiles.length;
+  const movers = cache.profiles.filter(p => p.role === 'mover' || p.role === 'both').length;
+  const customers = cache.profiles.filter(p => p.role === 'customer').length;
+  const totalGigs = cache.gigs.length;
+  const posted = cache.gigs.filter(g => g.status === 'posted').length;
+  const completed = cache.gigs.filter(g => g.status === 'completed').length;
+  const totalApps = cache.applications.length;
+  const totalPhotos = cache.photos.length;
+  const revenue = cache.gigs.filter(g => g.status === 'completed').reduce((s, g) => s + (g.final_price_cents || g.quoted_price_cents || 0), 0);
+
+  const recentGigs = cache.gigs.slice(0, 5);
+
+  return `
+    <h2 class="page-title">Overview</h2>
+    <p class="page-sub">Platform snapshot</p>
+    <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('overview'))">Refresh</button>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Total Users</div><div class="stat-value">${totalUsers}</div></div>
+      <div class="stat-card"><div class="stat-label">Customers</div><div class="stat-value accent">${customers}</div></div>
+      <div class="stat-card"><div class="stat-label">Workers</div><div class="stat-value success">${movers}</div></div>
+      <div class="stat-card"><div class="stat-label">Total Gigs</div><div class="stat-value">${totalGigs}</div></div>
+      <div class="stat-card"><div class="stat-label">Active (Posted)</div><div class="stat-value warning">${posted}</div></div>
+      <div class="stat-card"><div class="stat-label">Completed</div><div class="stat-value success">${completed}</div></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Applications</div><div class="stat-value">${totalApps}</div></div>
+      <div class="stat-card"><div class="stat-label">Photos Uploaded</div><div class="stat-value">${totalPhotos}</div></div>
+      <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value accent">${dollars(revenue)}</div></div>
+    </div>
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:12px">Recent Gigs</h3>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>From</th><th>To</th><th>Customer</th><th>Status</th><th>Price</th><th>Created</th></tr></thead>
+        <tbody>
+          ${recentGigs.length ? recentGigs.map(g => `
+            <tr onclick="showGigModal('${g.id}')" style="cursor:pointer">
+              <td>${truncate(g.from_address, 30)}</td>
+              <td>${truncate(g.to_address, 30)}</td>
+              <td>${profileName(g.customer_id)}</td>
+              <td>${badge(g.status)}</td>
+              <td>${dollars(g.quoted_price_cents)}</td>
+              <td>${fmt(g.created_at)}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="6" class="empty">No gigs yet</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─── Users ───────────────────────────────────
+function renderUsers() {
+  return `
+    <h2 class="page-title">Users</h2>
+    <p class="page-sub">${cache.profiles.length} registered users</p>
+    <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('users'))">Refresh</button>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Email</th><th>Phone</th><th>Role</th><th>Rating</th><th>Gigs</th><th>Joined</th></tr></thead>
+        <tbody>
+          ${cache.profiles.length ? cache.profiles.map(p => `
+            <tr>
+              <td><strong>${p.full_name || '—'}</strong></td>
+              <td>${p.email || '—'}</td>
+              <td>${p.phone || '—'}</td>
+              <td>${badge(p.role)}</td>
+              <td>${p.rating || '—'}</td>
+              <td>${p.total_gigs || 0}</td>
+              <td>${fmt(p.created_at)}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="7" class="empty">No users yet</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─── Movers ──────────────────────────────────
+function renderMovers() {
+  return `
+    <h2 class="page-title">Workers</h2>
+    <p class="page-sub">${cache.moverProfiles.length} worker profiles</p>
+    <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('movers'))">Refresh</button>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Name</th><th>Status</th><th>Vehicle</th><th>Service ZIPs</th><th>Bio</th><th>BG Check</th><th>Created</th></tr></thead>
+        <tbody>
+          ${cache.moverProfiles.length ? cache.moverProfiles.map(m => `
+            <tr>
+              <td><strong>${profileName(m.id)}</strong></td>
+              <td>${badge(m.status)}</td>
+              <td>${m.vehicle_type || '—'}</td>
+              <td>${(m.service_area_zip || []).join(', ') || '—'}</td>
+              <td>${truncate(m.bio, 50)}</td>
+              <td>${badge(m.background_check_status)}</td>
+              <td>${fmt(m.created_at)}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="7" class="empty">No worker profiles yet</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─── Gigs ────────────────────────────────────
+function renderGigs() {
+  return `
+    <h2 class="page-title">Gigs</h2>
+    <p class="page-sub">${cache.gigs.length} total gigs</p>
+    <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('gigs'))">Refresh</button>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>From</th><th>To</th><th>Customer</th><th>Worker</th><th>Status</th><th>Size</th><th>Crew</th><th>Price</th><th>When</th><th>Created</th></tr></thead>
+        <tbody>
+          ${cache.gigs.length ? cache.gigs.map(g => `
+            <tr onclick="showGigModal('${g.id}')" style="cursor:pointer">
+              <td>${truncate(g.from_address, 25)}</td>
+              <td>${truncate(g.to_address, 25)}</td>
+              <td>${profileName(g.customer_id)}</td>
+              <td>${g.mover_id ? profileName(g.mover_id) : '—'}</td>
+              <td>${badge(g.status)}</td>
+              <td>${g.home_size || '—'}</td>
+              <td>${g.crew_size || '—'}</td>
+              <td>${dollars(g.quoted_price_cents)}</td>
+              <td>${g.scheduled_for ? fmt(g.scheduled_for) : 'ASAP'}</td>
+              <td>${fmt(g.created_at)}</td>
+            </tr>
+          `).join('') : '<tr><td colspan="10" class="empty">No gigs yet</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─── Applications ────────────────────────────
+function renderApplications() {
+  return `
+    <h2 class="page-title">Applications</h2>
+    <p class="page-sub">${cache.applications.length} total applications</p>
+    <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('applications'))">Refresh</button>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Gig (From)</th><th>Worker</th><th>Status</th><th>Message</th><th>Quote</th><th>Applied</th></tr></thead>
+        <tbody>
+          ${cache.applications.length ? cache.applications.map(a => {
+            const gig = cache.gigs.find(g => g.id === a.gig_id);
+            return `
+              <tr>
+                <td>${gig ? truncate(gig.from_address, 30) : a.gig_id.slice(0,8)}</td>
+                <td>${profileName(a.mover_id)}</td>
+                <td>${badge(a.status)}</td>
+                <td>${truncate(a.message, 50)}</td>
+                <td>${a.quoted_price_cents ? dollars(a.quoted_price_cents) : '—'}</td>
+                <td>${fmt(a.created_at)}</td>
+              </tr>
+            `;
+          }).join('') : '<tr><td colspan="6" class="empty">No applications yet</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─── Photos ──────────────────────────────────
+function renderPhotos() {
+  return `
+    <h2 class="page-title">Gig Photos</h2>
+    <p class="page-sub">${cache.photos.length} uploaded photos</p>
+    <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('photos'))">Refresh</button>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>Preview</th><th>Gig (From)</th><th>Label</th><th>Uploaded</th></tr></thead>
+        <tbody>
+          ${cache.photos.length ? cache.photos.map(p => {
+            const gig = cache.gigs.find(g => g.id === p.gig_id);
+            return `
+              <tr>
+                <td><img class="photo-thumb" src="${p.url}" onclick="window.open('${p.url}','_blank')" alt="photo"></td>
+                <td>${gig ? truncate(gig.from_address, 35) : p.gig_id.slice(0,8)}</td>
+                <td>${p.label || '—'}</td>
+                <td>${fmt(p.created_at)}</td>
+              </tr>
+            `;
+          }).join('') : '<tr><td colspan="4" class="empty">No photos yet</td></tr>'}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
+// ─── Calendar ────────────────────────────────
+let calYear = new Date().getFullYear();
+let calMonth = new Date().getMonth();
+
+function renderCalendar() {
+  const monthNames = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+  const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+
+  // Build calendar grid
+  const firstDay = new Date(calYear, calMonth, 1).getDay();
+  const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
+  const daysInPrev = new Date(calYear, calMonth, 0).getDate();
+  const today = new Date();
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+
+  // Group gigs by date
+  const scheduledGigs = cache.gigs.filter(g => g.scheduled_for);
+  const asapGigs = cache.gigs.filter(g => !g.scheduled_for);
+  const gigsByDate = {};
+  scheduledGigs.forEach(g => {
+    const d = new Date(g.scheduled_for);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (!gigsByDate[key]) gigsByDate[key] = [];
+    gigsByDate[key].push(g);
+  });
+  // Also group by created_at for ASAP gigs
+  asapGigs.forEach(g => {
+    const d = new Date(g.created_at);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    if (!gigsByDate[key]) gigsByDate[key] = [];
+    gigsByDate[key].push({ ...g, _isAsap: true });
+  });
+
+  // Sort gigs within each date by time
+  Object.values(gigsByDate).forEach(arr => arr.sort((a, b) => {
+    const ta = new Date(a.scheduled_for || a.created_at).getTime();
+    const tb = new Date(b.scheduled_for || b.created_at).getTime();
+    return ta - tb;
+  }));
+
+  // Build cells
+  let cells = '';
+
+  // Previous month fill
+  for (let i = firstDay - 1; i >= 0; i--) {
+    const day = daysInPrev - i;
+    cells += `<div class="cal-cell other-month"><div class="cal-date">${day}</div></div>`;
+  }
+
+  // Current month
+  for (let d = 1; d <= daysInMonth; d++) {
+    const dateStr = `${calYear}-${String(calMonth+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+    const isToday = dateStr === todayStr;
+    const dayGigs = gigsByDate[dateStr] || [];
+    const maxShow = 3;
+
+    let gigsHtml = '';
+    dayGigs.slice(0, maxShow).forEach(g => {
+      const cls = g._isAsap ? 'asap-gig' : `status-${g.status}`;
+      const time = g.scheduled_for ? new Date(g.scheduled_for).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'ASAP';
+      const label = `${time} ${truncate(g.from_address, 15)}`;
+      gigsHtml += `<div class="cal-gig ${cls}" onclick="showGigModal('${g.id}')" title="${g.from_address} → ${g.to_address}\n${dollars(g.quoted_price_cents)} | ${g.status}">${label}</div>`;
+    });
+    if (dayGigs.length > maxShow) {
+      gigsHtml += `<div class="cal-more">+${dayGigs.length - maxShow} more</div>`;
+    }
+
+    cells += `<div class="cal-cell${isToday ? ' today' : ''}"><div class="cal-date">${d}</div>${gigsHtml}</div>`;
+  }
+
+  // Next month fill
+  const totalCells = firstDay + daysInMonth;
+  const remaining = (7 - (totalCells % 7)) % 7;
+  for (let i = 1; i <= remaining; i++) {
+    cells += `<div class="cal-cell other-month"><div class="cal-date">${i}</div></div>`;
+  }
+
+  // Upcoming gigs list (sorted chronologically)
+  const upcoming = [...cache.gigs]
+    .filter(g => g.status !== 'cancelled' && g.status !== 'completed')
+    .sort((a, b) => {
+      const ta = new Date(a.scheduled_for || a.created_at).getTime();
+      const tb = new Date(b.scheduled_for || b.created_at).getTime();
+      return ta - tb;
+    })
+    .slice(0, 10);
+
+  return `
+    <h2 class="page-title">Calendar</h2>
+    <p class="page-sub">Gigs laid out by scheduled date. ASAP gigs shown by creation date.</p>
+    <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('calendar'))">Refresh</button>
+
+    <div class="cal-header">
+      <button onclick="calPrev()">&larr;</button>
+      <div class="cal-month">${monthNames[calMonth]} ${calYear}</div>
+      <button onclick="calNext()">&rarr;</button>
+      <button class="btn-sm" onclick="calToday()">Today</button>
+    </div>
+
+    <div class="cal-grid">
+      ${dayNames.map(d => `<div class="cal-day-label">${d}</div>`).join('')}
+      ${cells}
+    </div>
+
+    <div class="cal-legend">
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--accent)"></div> Posted</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#4A7FA0"></div> Matched / In Progress</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--success)"></div> Completed</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--error)"></div> Cancelled</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--warning)"></div> ASAP</div>
+    </div>
+
+    <div class="cal-asap-section">
+      <h3>Upcoming Gigs (chronological)</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date/Time</th><th>Type</th><th>From</th><th>To</th><th>Customer</th><th>Status</th><th>Price</th></tr></thead>
+          <tbody>
+            ${upcoming.length ? upcoming.map(g => `
+              <tr onclick="showGigModal('${g.id}')" style="cursor:pointer">
+                <td>${g.scheduled_for ? fmt(g.scheduled_for) : fmt(g.created_at)}</td>
+                <td>${g.scheduled_for ? '<span style="color:var(--ink3);font-size:11px">Scheduled</span>' : '<span style="color:var(--warning);font-weight:700;font-size:11px">ASAP</span>'}</td>
+                <td>${truncate(g.from_address, 25)}</td>
+                <td>${truncate(g.to_address, 25)}</td>
+                <td>${profileName(g.customer_id)}</td>
+                <td>${badge(g.status)}</td>
+                <td>${dollars(g.quoted_price_cents)}</td>
+              </tr>
+            `).join('') : '<tr><td colspan="7" class="empty">No upcoming gigs</td></tr>'}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  `;
+}
+
+function calPrev() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } showPage('calendar'); }
+function calNext() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } showPage('calendar'); }
+function calToday() { const t = new Date(); calYear = t.getFullYear(); calMonth = t.getMonth(); showPage('calendar'); }
+
+// ─── Gig Detail Modal ────────────────────────
+function showGigModal(id) {
+  const g = cache.gigs.find(x => x.id === id);
+  if (!g) return;
+  const gigPhotos = cache.photos.filter(p => p.gig_id === id);
+  const gigApps = cache.applications.filter(a => a.gig_id === id);
+
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()" style="position:relative">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>Gig Details</h2>
+        <div class="modal-row"><div class="modal-label">Status</div><div class="modal-value">${badge(g.status)}</div></div>
+        <div class="modal-row"><div class="modal-label">Customer</div><div class="modal-value">${profileName(g.customer_id)}</div></div>
+        <div class="modal-row"><div class="modal-label">Worker</div><div class="modal-value">${g.mover_id ? profileName(g.mover_id) : 'None assigned'}</div></div>
+        <div class="modal-row"><div class="modal-label">From</div><div class="modal-value">${g.from_address}</div></div>
+        <div class="modal-row"><div class="modal-label">To</div><div class="modal-value">${g.to_address}</div></div>
+        <div class="modal-row"><div class="modal-label">Distance</div><div class="modal-value">${g.distance_miles ? g.distance_miles + ' mi' : '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Home Size</div><div class="modal-value">${g.home_size || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Crew</div><div class="modal-value">${g.crew_size || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Truck</div><div class="modal-value">${g.truck_size || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Stairs</div><div class="modal-value">${g.stairs_from || 0} from, ${g.stairs_to || 0} to</div></div>
+        <div class="modal-row"><div class="modal-label">Elevator</div><div class="modal-value">From: ${g.elevator_from ? 'Yes' : 'No'}, To: ${g.elevator_to ? 'Yes' : 'No'}</div></div>
+        <div class="modal-row"><div class="modal-label">Heavy Items</div><div class="modal-value">${(g.heavy_items || []).join(', ') || 'None'}</div></div>
+        <div class="modal-row"><div class="modal-label">Quoted Price</div><div class="modal-value">${dollars(g.quoted_price_cents)}</div></div>
+        <div class="modal-row"><div class="modal-label">Final Price</div><div class="modal-value">${dollars(g.final_price_cents)}</div></div>
+        <div class="modal-row"><div class="modal-label">Scheduled</div><div class="modal-value">${g.scheduled_for ? fmt(g.scheduled_for) : 'ASAP'}</div></div>
+        <div class="modal-row"><div class="modal-label">Notes</div><div class="modal-value">${g.customer_notes || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Created</div><div class="modal-value">${fmt(g.created_at)}</div></div>
+        ${gigPhotos.length ? `
+          <div style="margin-top:16px">
+            <div class="modal-label" style="margin-bottom:8px">Photos (${gigPhotos.length})</div>
+            <div class="modal-photos">${gigPhotos.map(p => `<img src="${p.url}" onclick="window.open('${p.url}','_blank')" alt="${p.label || 'photo'}">`).join('')}</div>
+          </div>
+        ` : ''}
+        ${gigApps.length ? `
+          <div style="margin-top:16px">
+            <div class="modal-label" style="margin-bottom:8px">Applications (${gigApps.length})</div>
+            ${gigApps.map(a => `
+              <div style="padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center">
+                <strong>${profileName(a.mover_id)}</strong>
+                ${badge(a.status)}
+                <span style="color:var(--ink3);font-size:12px">${truncate(a.message, 40)}</span>
+              </div>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function closeModal(e) {
+  if (!e || e.target.classList.contains('modal-overlay')) {
+    document.getElementById('modal-container').innerHTML = '';
+  }
+}
+
+// ─── Init ────────────────────────────────────
+(async () => {
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await initApp();
+})();
+</script>
+</body>
+</html>
