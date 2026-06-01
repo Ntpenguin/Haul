@@ -495,7 +495,6 @@ function showWorkerModal(id) {
   const m = cache.moverProfiles.find(x => x.id === id);
   const profile = cache.profiles.find(p => p.id === id) || {};
   if (!m) return;
-  const skills = (m.skills || []).map(s => `<span class="skill-tag">${esc(s.replace(/-/g,' '))}</span>`).join('') || '—';
   document.getElementById('modal-container').innerHTML = `
     <div class="modal-overlay" onclick="closeModal(event)">
       <div class="modal" onclick="event.stopPropagation()" style="position:relative">
@@ -517,7 +516,15 @@ function showWorkerModal(id) {
         </div></div>
         <div class="modal-row"><div class="modal-label">Service ZIPs</div><div class="modal-value">${esc((m.service_area_zip || []).join(', ')) || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Rating</div><div class="modal-value">${profile.rating ? '⭐ ' + profile.rating : '—'} · ${profile.total_gigs || 0} jobs</div></div>
-        <div class="modal-row"><div class="modal-label">Skills</div><div class="modal-value">${skills}</div></div>
+        <div class="modal-row"><div class="modal-label">Skills</div><div class="modal-value">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+            ${(m.skills || []).map(s => `<span class="skill-tag" style="display:inline-flex;align-items:center;gap:5px">${esc(s.replace(/-/g,' '))}<span onclick="removeMoverSkill('${id}','${escAttr(s)}')" title="Remove" style="cursor:pointer;font-weight:700;color:var(--ink3)">×</span></span>`).join('') || '<span style="color:var(--ink3);font-size:13px">No skills yet</span>'}
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px">
+            <input id="skill-input-${id}" type="text" placeholder="Add a skill (e.g. piano, packing)" onkeydown="if(event.key==='Enter'){event.preventDefault();addMoverSkill('${id}')}" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid var(--line);font-size:13px">
+            <button class="btn-sm" onclick="addMoverSkill('${id}')">Add</button>
+          </div>
+        </div></div>
         <div class="modal-row"><div class="modal-label">BG Check</div><div class="modal-value">${badge(m.background_check_status)}</div></div>
         <div class="modal-row"><div class="modal-label">Joined</div><div class="modal-value">${fmt(m.created_at)}</div></div>
         ${m.bio ? `<div class="modal-row"><div class="modal-label">Bio</div><div class="modal-value">${esc(m.bio)}</div></div>` : ''}
@@ -994,6 +1001,32 @@ async function setMoverLevel(id, level) {
   const { error } = await sb.from('mover_profiles').update({ max_difficulty: parseInt(level, 10) }).eq('id', id);
   if (error) { alert('Error updating skill level: ' + error.message); return; }
   await loadAll();
+}
+
+// Add a skill to a worker (normalized to lowercase-hyphenated, e.g. "Heavy Lifting" -> "heavy-lifting").
+async function addMoverSkill(id) {
+  const input = document.getElementById('skill-input-' + id);
+  if (!input) return;
+  const skill = (input.value || '').trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+  if (!skill) return;
+  const m = cache.moverProfiles.find(x => x.id === id);
+  const current = (m && m.skills) || [];
+  if (current.includes(skill)) { input.value = ''; return; }
+  const next = [...current, skill];
+  const { error } = await sb.from('mover_profiles').update({ skills: next }).eq('id', id);
+  if (error) { alert('Error adding skill: ' + error.message); return; }
+  if (m) m.skills = next;
+  showWorkerModal(id);
+}
+
+// Remove a skill from a worker.
+async function removeMoverSkill(id, skill) {
+  const m = cache.moverProfiles.find(x => x.id === id);
+  const next = ((m && m.skills) || []).filter(s => s !== skill);
+  const { error } = await sb.from('mover_profiles').update({ skills: next }).eq('id', id);
+  if (error) { alert('Error removing skill: ' + error.message); return; }
+  if (m) m.skills = next;
+  showWorkerModal(id);
 }
 
 // Admin assigns a mover to a gig by accepting their application. Backed by the
