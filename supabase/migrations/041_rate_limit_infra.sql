@@ -56,5 +56,8 @@ END;
 $func$;
 
 -- Only the edge functions (service role) should call this; not the public roles.
-REVOKE ALL ON FUNCTION check_rate_limit(text, text, int, int) FROM PUBLIC;
+-- NOTE: Supabase's default privileges GRANT EXECUTE on new functions directly to
+-- anon + authenticated, so REVOKE ... FROM PUBLIC alone is NOT enough — those
+-- direct grants survive it. Revoke from anon + authenticated explicitly.
+REVOKE ALL ON FUNCTION check_rate_limit(text, text, int, int) FROM PUBLIC, anon, authenticated;
 GRANT EXECUTE ON FUNCTION check_rate_limit(text, text, int, int) TO service_role;
