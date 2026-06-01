@@ -10,6 +10,7 @@ import { useGigs } from '../../../hooks/useGigs';
 import { useAuthStore } from '../../../stores/auth';
 import { supabase } from '../../../lib/supabase';
 import { formatCents, moverPayoutCents, surchargesFromGig } from '../../../lib/pricing';
+import { difficultyLabel } from '../../../lib/difficulty';
 import * as Location from 'expo-location';
 import { LOCATION_TASK } from '../../../lib/locationTask';
 import { sendToUser } from '../../../lib/notifications';
@@ -406,6 +407,8 @@ export default function MoverGigDetail() {
           <Text style={{ fontSize: 13, fontWeight: '700', color: colors.ink3, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 8 }}>Details</Text>
           <Card style={{ marginBottom: 14 }}>
             {gig.home_size && <DetailRow icon="home-outline" label="Size" value={gig.home_size} />}
+            {gig.difficulty != null && <DetailRow icon="speedometer-outline" label="Difficulty" value={`${difficultyLabel(gig.difficulty)} (${gig.difficulty}/5)`} />}
+            {gig.estimated_duration_hours != null && <DetailRow icon="time-outline" label="Est. duration" value={`~${gig.estimated_duration_hours} hrs`} />}
             <DetailRow
               icon="people-outline"
               label="Crew"

@@ -509,6 +509,12 @@ function showWorkerModal(id) {
         <div class="modal-row"><div class="modal-label">Address</div><div class="modal-value">${esc(m.address) || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Vehicle</div><div class="modal-value">${esc(m.vehicle_make_model || m.vehicle_type) || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Experience</div><div class="modal-value">${m.years_experience != null ? m.years_experience + ' years' : '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Skill level</div><div class="modal-value">
+          <select onchange="setMoverLevel('${id}', this.value)" style="padding:4px 8px;border-radius:6px;border:1px solid var(--line);font-size:13px">
+            ${[1,2,3,4,5].map(n => `<option value="${n}"${(m.max_difficulty||1)===n?' selected':''}>${n} — ${['Easy','Light','Moderate','Heavy','Expert'][n-1]}</option>`).join('')}
+          </select>
+          <span style="color:var(--ink3);font-size:12px;margin-left:6px">max job difficulty they can be assigned</span>
+        </div></div>
         <div class="modal-row"><div class="modal-label">Service ZIPs</div><div class="modal-value">${esc((m.service_area_zip || []).join(', ')) || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Rating</div><div class="modal-value">${profile.rating ? '⭐ ' + profile.rating : '—'} · ${profile.total_gigs || 0} jobs</div></div>
         <div class="modal-row"><div class="modal-label">Skills</div><div class="modal-value">${skills}</div></div>
@@ -909,6 +915,8 @@ function showGigModal(id) {
         <div class="modal-row"><div class="modal-label">To</div><div class="modal-value">${esc(g.to_address)}</div></div>
         <div class="modal-row"><div class="modal-label">Distance</div><div class="modal-value">${g.distance_miles ? g.distance_miles + ' mi' : '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Home Size</div><div class="modal-value">${esc(g.home_size) || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Difficulty</div><div class="modal-value">${g.difficulty != null ? g.difficulty + '/5 — ' + (['Easy','Light','Moderate','Heavy','Expert'][g.difficulty-1] || '') : '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Est. Duration</div><div class="modal-value">${g.estimated_duration_hours != null ? '~' + g.estimated_duration_hours + ' hrs' : '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Crew</div><div class="modal-value">${g.crew_size || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Truck</div><div class="modal-value">${esc(g.truck_size) || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Stairs</div><div class="modal-value">${g.stairs_from || 0} from, ${g.stairs_to || 0} to</div></div>
@@ -977,6 +985,15 @@ async function completeGig(id) {
   closeModal();
   await loadAll();
   showPage('gigs');
+}
+
+// Override a mover's skill level (max job difficulty they can be assigned).
+// Auto-seeded from years_experience on signup (migration 042); this lets the
+// admin bump it up or down.
+async function setMoverLevel(id, level) {
+  const { error } = await sb.from('mover_profiles').update({ max_difficulty: parseInt(level, 10) }).eq('id', id);
+  if (error) { alert('Error updating skill level: ' + error.message); return; }
+  await loadAll();
 }
 
 // Admin assigns a mover to a gig by accepting their application. Backed by the

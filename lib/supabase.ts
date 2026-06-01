@@ -88,6 +88,7 @@ export interface MoverProfile {
   bio: string | null;
   selfie_url: string | null;
   years_experience: number | null;
+  max_difficulty: number;
   skills: string[];
   address: string | null;
   account_type: 'independent' | 'business' | null;
@@ -125,6 +126,7 @@ export interface Gig {
   has_fragile_items: boolean;
   scheduled_for: string | null;
   estimated_duration_hours: number | null;
+  difficulty: number | null;
   pricing_model: 'flat' | 'hourly';
   quoted_price_cents: number | null;
   final_price_cents: number | null;

@@ -42,6 +42,15 @@ function buildScheduledFor(dateStr?: string | null, timeStr?: string | null): st
   }
 }
 
+// Haversine miles between two lat/lng points (lead-gig distance → difficulty/duration).
+function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 3959;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
 serve(async (req) => {
   const sig = req.headers.get('stripe-signature');
   if (!sig) {
@@ -78,7 +87,7 @@ serve(async (req) => {
       // leads become gigs / appear on the calendar). Keep the lead row forever.
       const { data: quote } = await supabase
         .from('quote_requests')
-        .select('id, gig_id, name, email, phone, lead_number, preferred_date, preferred_time, pickup_address, dropoff_address, service_type, items_size, items_list, deposit_cents, estimated_price_cents, stairs_pickup, stairs_dropoff, flights_pickup, flights_dropoff, staging, packing_service, other_notes')
+        .select('id, gig_id, name, email, phone, lead_number, preferred_date, preferred_time, pickup_address, dropoff_address, service_type, items_size, items_list, deposit_cents, estimated_price_cents, stairs_pickup, stairs_dropoff, flights_pickup, flights_dropoff, staging, packing_service, other_notes, special_items, answers')
         .eq('stripe_payment_intent_id', intent.id)
         .single();
 
@@ -99,6 +108,18 @@ serve(async (req) => {
         const hasStairsPU = quote.stairs_pickup === 'Stairs' || quote.stairs_pickup === 'Both';
         const hasStairsDO = quote.stairs_dropoff === 'Stairs' || quote.stairs_dropoff === 'Both';
 
+        // Distance (drives difficulty + duration): haversine of the saved address
+        // coords; treat a manual "Long distance" pick as >= 50 mi if coords are absent.
+        const addr = (quote.answers as any)?.addresses || {};
+        const pu = addr.pickup, dr = addr.dropoff;
+        let distanceMiles: number | null = null;
+        if (pu?.lat != null && pu?.lng != null && dr?.lat != null && dr?.lng != null) {
+          distanceMiles = Math.round(haversineMiles(pu.lat, pu.lng, dr.lat, dr.lng));
+        }
+        if (quote.service_type === 'Long distance' && (distanceMiles == null || distanceMiles < 50)) {
+          distanceMiles = 50;
+        }
+
         const { data: newGig, error: gigErr } = await supabase
           .from('gigs')
           .insert({
@@ -108,6 +129,8 @@ serve(async (req) => {
             from_address: quote.pickup_address || 'Address to confirm',
             to_address: quote.dropoff_address || 'Address to confirm',
             home_size: quote.items_size,
+            distance_miles: distanceMiles,
+            heavy_items: quote.special_items || [],
             scheduled_for: buildScheduledFor(quote.preferred_date, quote.preferred_time),
             stairs_from: hasStairsPU ? (quote.flights_pickup || 1) : 0,
             stairs_to: hasStairsDO ? (quote.flights_dropoff || 1) : 0,

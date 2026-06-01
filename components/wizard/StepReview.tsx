@@ -4,7 +4,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Card } from '../primitives';
 import { colors, radii } from '../../lib/theme';
 import { useGigDraftStore } from '../../stores/gigDraft';
-import { priceFor, formatCents } from '../../lib/pricing';
+import { priceFor, formatCents, estimatedDurationHours } from '../../lib/pricing';
+import { difficultyFor, difficultyLabel } from '../../lib/difficulty';
 
 export function StepReview() {
   const { draft } = useGigDraftStore();
@@ -23,6 +24,17 @@ export function StepReview() {
     staging: draft.staging,
     packing: draft.packing_service,
   }, 'flat');
+
+  const difficulty = difficultyFor({
+    home_size: draft.home_size,
+    stairs_from: draft.stairs_from,
+    stairs_to: draft.stairs_to,
+    heavy_items: draft.heavy_items,
+    distance_miles: draft.distance_miles,
+    staging: draft.staging,
+    packing_service: draft.packing_service,
+  });
+  const durationHrs = estimatedDurationHours(draft.home_size, draft.distance_miles);
 
   const sizeLabel: Record<string, string> = {
     'few-items': 'Just a few items', studio: 'Studio', '1br': '1 bedroom',
@@ -67,7 +79,9 @@ export function StepReview() {
           <SummaryRow icon="car-outline" label="Truck" value={truckLabel[draft.truck_size]} />
           <SummaryRow icon="calendar-outline" label="When" value={draft.scheduled_for ? new Date(draft.scheduled_for).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'ASAP'} />
           {draft.heavy_items.length > 0 && <SummaryRow icon="barbell-outline" label="Heavy items" value={`${draft.heavy_items.length} flagged`} />}
-          <SummaryRow icon="trending-up-outline" label="Stairs" value={`${draft.stairs_from + draft.stairs_to} flights total`} last />
+          <SummaryRow icon="trending-up-outline" label="Stairs" value={`${draft.stairs_from + draft.stairs_to} flights total`} />
+          <SummaryRow icon="speedometer-outline" label="Difficulty" value={`${difficultyLabel(difficulty)} (${difficulty}/5)`} />
+          <SummaryRow icon="time-outline" label="Est. duration" value={`~${durationHrs} hrs`} last />
         </Card>
 
         {/* Price breakdown */}

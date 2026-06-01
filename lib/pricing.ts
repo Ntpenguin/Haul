@@ -237,6 +237,16 @@ export function priceFor(data: GigPricingData, model: PricingModel = 'flat'): Pr
   };
 }
 
+// Estimated job duration in hours — size-based labor time plus one-way loaded
+// drive time (distance ÷ ~45 mph). Mirrors compute_gig_duration_hours() in
+// supabase/migrations/042 (the DB value is authoritative; this is for the wizard).
+export const DRIVE_MPH = 45;
+export function estimatedDurationHours(homeSize: string | null | undefined, distanceMiles?: number | null): number {
+  const base = ESTIMATED_HOURS[homeSize ?? ''] ?? 3;
+  const drive = distanceMiles ? distanceMiles / DRIVE_MPH : 0;
+  return Math.round((base + drive) * 10) / 10;
+}
+
 // Calculate total surcharges from a gig's data
 export function surchargesFromGig(gig: {
   stairs_from: number;

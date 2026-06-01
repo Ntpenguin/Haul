@@ -7,6 +7,7 @@ import { colors } from '../../../lib/theme';
 import { useGigs } from '../../../hooks/useGigs';
 import { usePayments } from '../../../hooks/usePayments';
 import { formatCents } from '../../../lib/pricing';
+import { difficultyLabel } from '../../../lib/difficulty';
 import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../stores/auth';
 import { StaticMap } from '../../../components/StaticMap';
@@ -300,6 +301,8 @@ function GigDetail({ gigId }: { gigId: string }) {
           {/* Details */}
           <Card style={{ padding: 16, marginBottom: 12 }}>
             <DetailRow label="Size" value={gig.home_size || '-'} />
+            {gig.difficulty != null && <DetailRow label="Difficulty" value={`${difficultyLabel(gig.difficulty)} (${gig.difficulty}/5)`} />}
+            {gig.estimated_duration_hours != null && <DetailRow label="Est. duration" value={`~${gig.estimated_duration_hours} hrs`} />}
             <DetailRow label="Crew" value={`${gig.crew_size || '-'} people`} />
             <DetailRow label="Truck" value={gig.truck_size || '-'} />
             <DetailRow label="Stairs (from)" value={`${gig.stairs_from} flights`} />
