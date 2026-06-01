@@ -114,10 +114,11 @@ export default function MoverGigDetail() {
   }, [id]);
 
   function toggleChecklistItem(itemId: string, field: string) {
+    const defaults = { wrapped: false, padded: false, assembled: false, disassembled: false, waived: false, junkRemoved: false };
     setChecklist(prev => ({
       ...prev,
       [itemId]: {
-        wrapped: false, padded: false, assembled: false, disassembled: false, waived: false, junkRemoved: false,
+        ...defaults,
         ...prev[itemId],
         [field]: !(prev[itemId]?.[field as keyof typeof prev[typeof itemId]] ?? false),
       },

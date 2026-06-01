@@ -162,7 +162,7 @@ function heavyItemCost(item: string): number {
   return HEAVY_ITEM_PRICES[item] ?? HEAVY_ITEM_SURCHARGE_CENTS;
 }
 
-function distanceSurcharge(distanceMiles?: number): number {
+function distanceSurcharge(distanceMiles?: number | null): number {
   if (!distanceMiles || distanceMiles <= DISTANCE_FREE_MILES) return 0;
   return Math.round((distanceMiles - DISTANCE_FREE_MILES) * DISTANCE_PER_MILE_CENTS);
 }
@@ -245,7 +245,7 @@ export function surchargesFromGig(gig: {
   elevator_to?: boolean;
   long_carry?: boolean;
   heavy_items?: string[];
-  distance_miles?: number;
+  distance_miles?: number | null;
 }): { stairsCents: number; longCarryCents: number; heavyItemsCents: number; distanceCents: number; totalCents: number } {
   // Stairs charged per flight, no elevator discount (matches intake form).
   const flights = Math.max(0, (gig.stairs_from || 0) + (gig.stairs_to || 0));

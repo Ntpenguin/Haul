@@ -58,7 +58,7 @@ export interface GigDraft {
   item_description: string;
 
   // Category + voice-parsed fields
-  gig_category: 'moving' | 'cleaning' | 'landscaping' | 'auto';
+  gig_category: 'moving' | 'cleaning' | 'landscaping' | 'auto' | 'organizing' | 'can-to-curb' | 'junk-removal';
   gig_title: string;
   gig_description: string;
 }

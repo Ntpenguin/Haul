@@ -1,6 +1,6 @@
 // Photo upload hook — compress + upload to Supabase Storage
 
-import { ImageManipulator } from 'expo-image-manipulator';
+import { ImageManipulator, SaveFormat } from 'expo-image-manipulator';
 // SDK 54 moved the classic uploadAsync / FileSystemUploadType API to the legacy
 // entry point; the new top-level API is class-based (File/Directory/Paths).
 import * as FileSystem from 'expo-file-system/legacy';
@@ -44,8 +44,10 @@ export function useUploadPhoto() {
     try {
       const image = ImageManipulator.manipulate(uri);
       image.resize({ width: APP_CONFIG.photo.maxDimension });
-      const result = await image.renderAsync();
-      finalUri = result.uri;
+      // SDK 54: renderAsync() returns an ImageRef; saveAsync() writes it and returns { uri }.
+      const ref = await image.renderAsync();
+      const saved = await ref.saveAsync({ compress: APP_CONFIG.photo.jpegQuality, format: SaveFormat.JPEG });
+      finalUri = saved.uri;
     } catch (e) {
       console.warn('Image manipulation failed, uploading original:', e);
     }

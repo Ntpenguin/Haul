@@ -5,7 +5,7 @@ import { colors } from '../../lib/theme';
 type TagColor = 'neutral' | 'accent' | 'good' | 'warn';
 
 interface TagProps {
-  children: string;
+  children: React.ReactNode;
   color?: TagColor;
 }
 

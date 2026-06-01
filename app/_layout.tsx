@@ -16,8 +16,8 @@ export default function RootLayout() {
   useAuth();
   const profile = useAuthStore((s) => s.profile);
   const router = useRouter();
-  const notifListener = useRef<Notifications.Subscription>();
-  const responseListener = useRef<Notifications.Subscription>();
+  const notifListener = useRef<Notifications.Subscription | null>(null);
+  const responseListener = useRef<Notifications.Subscription | null>(null);
 
   // Register push token when user signs in
   useEffect(() => {
