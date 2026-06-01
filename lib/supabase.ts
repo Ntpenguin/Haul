@@ -93,6 +93,7 @@ export interface MoverProfile {
   address: string | null;
   account_type: 'independent' | 'business' | null;
   business_name: string | null;
+  business_id: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -203,5 +204,26 @@ export interface Notification {
   payload: Record<string, any>;
   read_at: string | null;
   sent_via: string[];
+  created_at: string;
+}
+
+export interface Business {
+  id: string;
+  name: string;
+  contact_email: string | null;
+  contact_phone: string | null;
+  notes: string | null;
+  created_at: string;
+}
+
+export interface FleetVehicle {
+  id: string;
+  business_id: string;
+  vehicle_type: string | null;
+  make: string | null;
+  model: string | null;
+  year: number | null;
+  license_plate: string | null;
+  assigned_mover_id: string | null;
   created_at: string;
 }

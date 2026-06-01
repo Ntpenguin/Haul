@@ -290,7 +290,7 @@ async function initApp() {
 
 // ─── Data Loading ────────────────────────────
 async function loadAll() {
-  const [profiles, moverProfiles, gigs, applications, photos, leads, blockedSlots] = await Promise.all([
+  const [profiles, moverProfiles, gigs, applications, photos, leads, blockedSlots, businesses, fleetVehicles] = await Promise.all([
     sb.from('profiles').select('*').order('created_at', { ascending: false }),
     sb.from('mover_profiles').select('*').order('created_at', { ascending: false }),
     sb.from('gigs').select('*').order('created_at', { ascending: false }),
@@ -298,6 +298,8 @@ async function loadAll() {
     sb.from('gig_photos').select('*').order('created_at', { ascending: false }),
     sb.from('quote_requests').select('*').order('created_at', { ascending: false }),
     sb.from('blocked_slots').select('*').order('blocked_date', { ascending: true }),
+    sb.from('businesses').select('*').order('created_at', { ascending: false }),
+    sb.from('fleet_vehicles').select('*').order('created_at', { ascending: false }),
   ]);
   cache.profiles = profiles.data || [];
   cache.moverProfiles = moverProfiles.data || [];
@@ -306,6 +308,8 @@ async function loadAll() {
   cache.photos = photos.data || [];
   cache.leads = leads.data || [];
   cache.blockedSlots = blockedSlots.data || [];
+  cache.businesses = businesses.data || [];
+  cache.fleetVehicles = fleetVehicles.data || [];
 }
 
 // ─── Navigation ──────────────────────────────
@@ -468,10 +472,10 @@ function workerCard(m) {
 }
 
 function renderMovers() {
-  const workers = cache.moverProfiles.filter(m => m.account_type !== 'business');
+  const workers = cache.moverProfiles;
   const pending = workers.filter(m => m.status === 'pending').length;
   return `
-    <h2 class="page-title">Independent Workers</h2>
+    <h2 class="page-title">Workers</h2>
     <p class="page-sub">${workers.length} workers · ${pending} pending approval</p>
     <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('movers'))">Refresh</button>
     ${workers.length ? `<div class="worker-grid">${workers.map(workerCard).join('')}</div>`
@@ -479,16 +483,223 @@ function renderMovers() {
   `;
 }
 
+// ─── Businesses (employer orgs with workers + fleet) ──────────────
+const VEHICLE_TYPES = ['Pickup truck','Cargo van','Sprinter / high-roof van','Box truck','Trailer','SUV','Other'];
+const VEHICLE_MAKES = {
+  'Ford': ['F-150','F-250','F-350','Ranger','Transit','Transit Connect','E-350'],
+  'RAM': ['1500','2500','3500','ProMaster','ProMaster City'],
+  'Chevrolet': ['Silverado 1500','Silverado 2500HD','Colorado','Express 2500','Express 3500'],
+  'GMC': ['Sierra 1500','Sierra 2500HD','Savana'],
+  'Toyota': ['Tacoma','Tundra'],
+  'Nissan': ['Frontier','Titan','NV200','NV2500','NV3500'],
+  'Mercedes-Benz': ['Sprinter','Metris'],
+  'Isuzu': ['NPR','NPR-HD','NQR'],
+  'Hino': ['155','195','268'],
+  'Freightliner': ['M2 106'],
+  'U-Haul (rental)': ["10' truck","15' truck","17' truck","20' truck","26' truck","Cargo van","Pickup"],
+  'Penske (rental)': ["12' truck","16' truck","22' truck","26' truck","Cargo van"],
+  'Budget (rental)': ["12' truck","16' truck","26' truck","Cargo van"],
+  'Other': [],
+};
+
 function renderBusinesses() {
-  const businesses = cache.moverProfiles.filter(m => m.account_type === 'business');
-  const pending = businesses.filter(m => m.status === 'pending').length;
+  const businesses = cache.businesses || [];
   return `
     <h2 class="page-title">Businesses</h2>
-    <p class="page-sub">${businesses.length} business accounts · ${pending} pending approval</p>
+    <p class="page-sub">${businesses.length} business${businesses.length === 1 ? '' : 'es'} · assign workers & manage fleets</p>
+    <button class="btn-sm" onclick="showCreateBusiness()" style="margin-right:8px">+ Create business</button>
     <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('businesses'))">Refresh</button>
-    ${businesses.length ? `<div class="worker-grid">${businesses.map(workerCard).join('')}</div>`
-      : '<div class="empty">No business profiles yet</div>'}
+    ${businesses.length ? `<div class="worker-grid">${businesses.map(businessCard).join('')}</div>`
+      : '<div class="empty">No businesses yet — click “Create business”.</div>'}
   `;
+}
+
+function businessCard(b) {
+  const workers = (cache.moverProfiles || []).filter(m => m.business_id === b.id);
+  const fleet = (cache.fleetVehicles || []).filter(v => v.business_id === b.id);
+  return `
+    <div class="worker-card" onclick="showBusinessModal('${b.id}')" style="animation:cardIn 0.36s cubic-bezier(0.16,1,0.3,1) both">
+      <div class="worker-card-header">
+        <div class="worker-avatar-placeholder">🏢</div>
+        <div style="flex:1;min-width:0">
+          <div class="worker-name">${esc(b.name)}</div>
+          <div class="worker-meta">${workers.length} worker${workers.length === 1 ? '' : 's'} · ${fleet.length} vehicle${fleet.length === 1 ? '' : 's'}</div>
+        </div>
+      </div>
+      <div class="worker-info-row"><span class="worker-info-label">Contact</span><span>${esc(b.contact_email) || esc(b.contact_phone) || '—'}</span></div>
+      <div class="worker-info-row"><span class="worker-info-label">Added</span><span>${fmt(b.created_at)}</span></div>
+    </div>
+  `;
+}
+
+function fillFleetModels() {
+  const make = document.getElementById('fleet-make');
+  const list = document.getElementById('fleet-model-list');
+  const other = document.getElementById('fleet-make-other');
+  if (!make || !list) return;
+  const models = VEHICLE_MAKES[make.value] || [];
+  list.innerHTML = models.map(m => `<option value="${escAttr(m)}">`).join('');
+  if (other) other.style.display = (make.value === 'Other') ? 'inline-block' : 'none';
+}
+
+function showCreateBusiness() {
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()" style="position:relative">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>Create business</h2>
+        <div style="display:flex;flex-direction:column;gap:10px;margin-top:12px">
+          <input id="biz-name" placeholder="Business name *" style="padding:9px 11px;border-radius:8px;border:1px solid var(--line)">
+          <input id="biz-email" placeholder="Contact email" style="padding:9px 11px;border-radius:8px;border:1px solid var(--line)">
+          <input id="biz-phone" placeholder="Contact phone" style="padding:9px 11px;border-radius:8px;border:1px solid var(--line)">
+          <textarea id="biz-notes" placeholder="Notes (optional)" rows="2" style="padding:9px 11px;border-radius:8px;border:1px solid var(--line);font-family:inherit"></textarea>
+          <button class="btn-sm" onclick="createBusiness()" style="align-self:flex-start">Create</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function createBusiness() {
+  const name = (document.getElementById('biz-name').value || '').trim();
+  if (!name) { alert('Business name is required.'); return; }
+  const { data, error } = await sb.from('businesses').insert({
+    name,
+    contact_email: (document.getElementById('biz-email').value || '').trim() || null,
+    contact_phone: (document.getElementById('biz-phone').value || '').trim() || null,
+    notes: (document.getElementById('biz-notes').value || '').trim() || null,
+  }).select('id').single();
+  if (error) { alert('Error creating business: ' + error.message); return; }
+  await loadAll();
+  showBusinessModal(data.id);
+}
+
+function showBusinessModal(id) {
+  const b = (cache.businesses || []).find(x => x.id === id);
+  if (!b) return;
+  const nameOf = (mid) => { const p = cache.profiles.find(x => x.id === mid); return (p && p.full_name) || '—'; };
+  const workers = (cache.moverProfiles || []).filter(m => m.business_id === id);
+  const fleet = (cache.fleetVehicles || []).filter(v => v.business_id === id);
+  const available = (cache.moverProfiles || []).filter(m => !m.business_id);
+
+  const rosterHtml = workers.length ? workers.map(m => `
+    <div class="modal-row" style="align-items:center;gap:8px">
+      <div class="modal-value" style="flex:1">${esc(nameOf(m.id))} <span style="color:var(--ink3);font-size:12px">· ${esc(m.vehicle_make_model || m.vehicle_type || 'no vehicle')}</span></div>
+      <button class="btn-sm" onclick="removeWorkerFromBusiness('${id}','${m.id}')">Remove</button>
+    </div>`).join('') : '<div style="color:var(--ink3);font-size:13px;padding:4px 0">No workers assigned yet.</div>';
+
+  const addWorkerHtml = available.length ? `
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <select id="add-worker-select" style="flex:1;padding:6px 8px;border-radius:6px;border:1px solid var(--line);font-size:13px">
+        ${available.map(m => `<option value="${m.id}">${esc(nameOf(m.id))}</option>`).join('')}
+      </select>
+      <button class="btn-sm" onclick="assignWorkerToBusiness('${id}')">Add worker</button>
+    </div>` : '<div style="color:var(--ink3);font-size:12px;margin-top:6px">No unassigned workers available.</div>';
+
+  const driverOptions = (mid) => `<option value=""${!mid ? ' selected' : ''}>Unassigned</option>` +
+    workers.map(m => `<option value="${m.id}"${mid === m.id ? ' selected' : ''}>${esc(nameOf(m.id))}</option>`).join('');
+
+  const fleetHtml = fleet.length ? fleet.map(v => `
+    <div class="modal-row" style="align-items:center;gap:8px">
+      <div class="modal-value" style="flex:1">${esc([v.year, v.make, v.model].filter(Boolean).join(' ')) || 'Vehicle'}${v.vehicle_type ? ` <span style="color:var(--ink3);font-size:12px">· ${esc(v.vehicle_type)}</span>` : ''}${v.license_plate ? ` <span style="color:var(--ink3);font-size:12px">· ${esc(v.license_plate)}</span>` : ''}</div>
+      <select onchange="assignVehicleToWorker('${v.id}', this.value, '${id}')" title="Assign driver" style="padding:5px 8px;border-radius:6px;border:1px solid var(--line);font-size:12px">${driverOptions(v.assigned_mover_id)}</select>
+      <button class="btn-sm" onclick="removeFleetVehicle('${v.id}','${id}')">✕</button>
+    </div>`).join('') : '<div style="color:var(--ink3);font-size:13px;padding:4px 0">No vehicles in the fleet yet.</div>';
+
+  const firstMakeModels = VEHICLE_MAKES[Object.keys(VEHICLE_MAKES)[0]] || [];
+
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()" style="position:relative">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>🏢 ${esc(b.name)}</h2>
+        <div class="modal-row"><div class="modal-label">Contact email</div><div class="modal-value">${esc(b.contact_email) || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Contact phone</div><div class="modal-value">${esc(b.contact_phone) || '—'}</div></div>
+        ${b.notes ? `<div class="modal-row"><div class="modal-label">Notes</div><div class="modal-value">${esc(b.notes)}</div></div>` : ''}
+
+        <h3 style="margin:18px 0 6px;font-size:15px;color:var(--ink)">Workers (${workers.length})</h3>
+        ${rosterHtml}
+        ${addWorkerHtml}
+
+        <h3 style="margin:22px 0 6px;font-size:15px;color:var(--ink)">Fleet (${fleet.length})</h3>
+        ${fleetHtml}
+        <div style="border-top:1px solid var(--line);margin-top:12px;padding-top:12px">
+          <div style="font-size:12px;font-weight:600;color:var(--ink3);margin-bottom:6px">Add a vehicle</div>
+          <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
+            <select id="fleet-type" style="padding:6px 8px;border-radius:6px;border:1px solid var(--line);font-size:13px">${VEHICLE_TYPES.map(t => `<option>${t}</option>`).join('')}</select>
+            <select id="fleet-make" onchange="fillFleetModels()" style="padding:6px 8px;border-radius:6px;border:1px solid var(--line);font-size:13px">${Object.keys(VEHICLE_MAKES).map(mk => `<option>${mk}</option>`).join('')}</select>
+            <input id="fleet-make-other" placeholder="Make" style="display:none;width:110px;padding:6px 8px;border-radius:6px;border:1px solid var(--line);font-size:13px">
+            <input id="fleet-model" list="fleet-model-list" placeholder="Model" style="width:130px;padding:6px 8px;border-radius:6px;border:1px solid var(--line);font-size:13px">
+            <datalist id="fleet-model-list">${firstMakeModels.map(m => `<option value="${escAttr(m)}">`).join('')}</datalist>
+            <input id="fleet-year" type="number" placeholder="Year" style="width:74px;padding:6px 8px;border-radius:6px;border:1px solid var(--line);font-size:13px">
+            <input id="fleet-plate" placeholder="Plate" style="width:92px;padding:6px 8px;border-radius:6px;border:1px solid var(--line);font-size:13px">
+            <button class="btn-sm" onclick="addFleetVehicle('${id}')">+ Add</button>
+          </div>
+        </div>
+
+        <div style="margin-top:22px">
+          <button class="btn-sm" onclick="deleteBusiness('${id}')" style="background:var(--error-soft);color:var(--error);border-color:var(--error)">Delete business</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function assignWorkerToBusiness(businessId) {
+  const sel = document.getElementById('add-worker-select');
+  if (!sel || !sel.value) return;
+  const { error } = await sb.from('mover_profiles').update({ business_id: businessId }).eq('id', sel.value);
+  if (error) { alert('Error assigning worker: ' + error.message); return; }
+  await loadAll();
+  showBusinessModal(businessId);
+}
+
+async function removeWorkerFromBusiness(businessId, moverId) {
+  const { error } = await sb.from('mover_profiles').update({ business_id: null }).eq('id', moverId);
+  if (error) { alert('Error removing worker: ' + error.message); return; }
+  await loadAll();
+  showBusinessModal(businessId);
+}
+
+async function addFleetVehicle(businessId) {
+  const makeSel = document.getElementById('fleet-make');
+  const make = makeSel.value === 'Other' ? (document.getElementById('fleet-make-other').value || '').trim() : makeSel.value;
+  const model = (document.getElementById('fleet-model').value || '').trim();
+  const yearRaw = (document.getElementById('fleet-year').value || '').trim();
+  const plate = (document.getElementById('fleet-plate').value || '').trim();
+  if (!make && !model) { alert('Enter at least a make or model.'); return; }
+  const { error } = await sb.from('fleet_vehicles').insert({
+    business_id: businessId,
+    vehicle_type: document.getElementById('fleet-type').value || null,
+    make: make || null, model: model || null,
+    year: yearRaw ? parseInt(yearRaw, 10) : null,
+    license_plate: plate || null,
+  });
+  if (error) { alert('Error adding vehicle: ' + error.message); return; }
+  await loadAll();
+  showBusinessModal(businessId);
+}
+
+async function removeFleetVehicle(vehicleId, businessId) {
+  if (!confirm('Remove this vehicle from the fleet?')) return;
+  const { error } = await sb.from('fleet_vehicles').delete().eq('id', vehicleId);
+  if (error) { alert('Error removing vehicle: ' + error.message); return; }
+  await loadAll();
+  showBusinessModal(businessId);
+}
+
+async function assignVehicleToWorker(vehicleId, moverId, businessId) {
+  const { error } = await sb.from('fleet_vehicles').update({ assigned_mover_id: moverId || null }).eq('id', vehicleId);
+  if (error) { alert('Error assigning driver: ' + error.message); return; }
+  await loadAll();
+  showBusinessModal(businessId);
+}
+
+async function deleteBusiness(id) {
+  if (!confirm('Delete this business? Its fleet vehicles are removed and its workers become unassigned.')) return;
+  const { error } = await sb.from('businesses').delete().eq('id', id);
+  if (error) { alert('Error deleting business: ' + error.message); return; }
+  closeModal();
+  await loadAll();
+  showPage('businesses');
 }
 
 function showWorkerModal(id) {
