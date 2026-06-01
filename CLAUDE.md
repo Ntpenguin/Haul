@@ -106,9 +106,7 @@ No tests. No linter. TypeScript via Expo transpilation only.
 |------|---------|
 | `components/StaticMap.tsx` | Leaflet map via WebView, Esri satellite tiles, OSRM route. Accepts optional `moverLat`/`moverLng` — updates live marker via `injectJavaScript` without reload. |
 | `components/ChatScreen.tsx` | Chat UI, locked until deposit paid (checks gig status + payments table) |
-| `components/AddressAutocomplete.tsx` | Nominatim address search |
-| `components/VoiceScheduleInput.tsx` | Unused — voice recording modal (gutted; keyboard dictation used instead) |
-| `components/primitives/` | Button, Card, Chip, Avatar, Tag, Stepper, Toggle, StarRow |
+| `components/AddressAutocomplete.tsx` | Nominatim address search || `components/primitives/` | Button, Card, Chip, Avatar, Tag, Stepper, Toggle, StarRow |
 
 ### Hooks
 | File | Purpose |
@@ -134,9 +132,7 @@ No tests. No linter. TypeScript via Expo transpilation only.
 | `supabase/functions/notify-mover-approved/` | DB webhook → sends Expo push notification when mover status → 'approved' |
 | `supabase/functions/stripe-webhook/` | Stripe webhook — verifies signature, updates `payments` + `gigs` server-side on `payment_intent.succeeded`. Requires `STRIPE_WEBHOOK_SECRET` secret + endpoint configured in Stripe dashboard. |
 | `supabase/migrations/008_realtime_gigs.sql` | Enables Supabase Realtime on `gigs` and `gig_applications` tables |
-| `supabase/migrations/009_gig_categories.sql` | Adds `gig_category`, `gig_title`, `gig_description` to gigs; `category_colors` jsonb to profiles |
-| `supabase/functions/parse-schedule-voice/` | Unused — Whisper+Claude voice parser (replaced by keyboard dictation) |
-| `landing/index.html` | Static marketing landing page (NOT served by Expo) |
+| `supabase/migrations/009_gig_categories.sql` | Adds `gig_category`, `gig_title`, `gig_description` to gigs; `category_colors` jsonb to profiles || `landing/index.html` | Static marketing landing page (NOT served by Expo) |
 | `admin/index.html` | Standalone admin dashboard — run with `npx serve admin -p 3001` |
 
 ## DB Tables & FK Order
