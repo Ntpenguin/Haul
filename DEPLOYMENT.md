@@ -63,13 +63,13 @@ npm run submit:android    # eas submit --profile production --platform android
 - ⚠️ **App Review note for background location (paste into App Store Connect → App Review notes):**
   > Movers (service providers) optionally enable live location sharing while en route to and during a customer's scheduled move so the customer can see their arrival in real time. Location is shared only for an active, accepted job, only after the mover taps "I'm on my way," and stops when the job ends. Customers never share background location.
 - 🟡 Test background location on a real **development/EAS build** (it cannot run in Expo Go and is not testable from this machine). Verify the foreground-service notification shows on Android and the blue bar shows on iOS.
-- 🟡 **Privacy policy + support URLs must be publicly reachable.** The app ships in-app `privacy-policy.tsx` and `terms.tsx`, but the stores require hosted URLs. Host them at e.g. `https://fastfixwork.com/privacy` and `https://fastfixwork.com/terms`.
+- ✅ **Hosted privacy + terms pages created** — `landing/privacy.html` + `landing/terms.html` (ported from the in-app `privacy-policy.tsx` / `terms.tsx`). 🟡 Upload to SiteGround so `https://fastfixwork.com/privacy.html` and `/terms.html` are publicly reachable, then use those URLs in both store listings.
 - 🟡 **Apple Privacy "Nutrition Labels"** and **Google Play "Data safety"** form: declare collection of Location, Photos, Contact info (name/email/phone), and that data is used for app functionality. Match what the code actually collects.
 
 ## 5. Account deletion — ✅ required by both stores
 
 - ✅ In-app account deletion exists: `hooks/useAuth.ts → deleteAccount()` calls the `delete-account` edge function, available from both customer and mover settings. (Apple 5.1.1(v) requires in-app deletion; Google requires an in-app + web deletion path.)
-- 🟡 Provide a **web** account-deletion route too (Google now expects a URL), e.g. a page on fastfixwork.com.
+- ✅ **Web account-deletion page created** — `landing/delete-account.html` (in-app steps + email-request fallback + what's deleted/retained). 🟡 Upload to SiteGround → `https://fastfixwork.com/delete-account.html`; use this URL in the Play Console "Data deletion" field.
 
 ## 6. Store listing assets — 🟡 all require you
 
@@ -106,3 +106,50 @@ npm run submit:android    # eas submit --profile production --platform android
 6. Create the App Store Connect + Play Console listings (assets, privacy forms, App Review note from §4).
 7. `npm run submit:ios` / `npm run submit:android`.
 8. Submit for review.
+
+## 10. Store requirements audit — 2026 (Apple App Store + Google Play)
+
+Legend: ✅ implemented in code/config · 🟡 your action (account / store console / asset) · ⚠️ verify on a real build
+
+### A. Both stores
+- ✅ In-app account deletion (Apple Guideline 5.1.1(v); Google) — `delete-account` edge fn + Settings button (customer + mover).
+- ✅ Web account-deletion URL (Google requires one) — `landing/delete-account.html`.
+- ✅ Hosted Privacy Policy — `landing/privacy.html`.
+- ✅ Hosted Terms / services agreement — `landing/terms.html`.
+- ✅ Permission usage strings — camera, photo library, location (iOS `infoPlist`; Android `permissions`).
+- ✅ Payments use Stripe for a **real-world service** (moving) consumed off-app → allowed, IAP not required (Apple 3.1.3 / Google Payments policy). Do not add digital goods/credits.
+- 🟡 Data-collection disclosure forms (Apple Privacy "Nutrition Labels" + Google "Data safety") — fill using §10.D.
+- 🟡 Content / age rating questionnaire (Apple age rating; Google IARC).
+- 🟡 Store listing assets — icon ✅ (1024×1024, no alpha, verified); 🟡 screenshots, descriptions, support/marketing URLs, category.
+
+### B. Apple App Store
+- 🟡 Apple Developer Program membership ($99/yr).
+- ✅ Bundle id `com.fastfixwork.app`, `buildNumber`.
+- ✅ Export-compliance: `ITSAppUsesNonExemptEncryption=false` (`ios.config.usesNonExemptEncryption`).
+- ✅ **Privacy Manifest** (`PrivacyInfo.xcprivacy`, required since May 2024) — `app.json → ios.privacyManifests` declares required-reason APIs: UserDefaults `CA92.1`, FileTimestamp `C617.1`, SystemBootTime `35F9.1`, DiskSpace `E174.1` (the standard React Native/Expo set). Expo emits the manifest at prebuild.
+- ✅ Background location: `UIBackgroundModes:[location]` + usage strings. ⚠️ Paste the App Review note from §4; expect a reviewer question.
+- 🟡 App Store Connect record + screenshots (6.7" / 6.5"), review notes, age rating.
+- ⚠️ Test via TestFlight (no iOS Simulator on Windows).
+
+### C. Google Play
+- 🟡 Play Console account ($25 one-time).
+- ✅ Package `com.fastfixwork.app`, `versionCode`; AAB via EAS `production` profile.
+- ⚠️ **Target API level**: Expo SDK 54 targets **API 35 (Android 15)** → meets the current requirement. **From Aug 31, 2026** new submissions need **API 36 (Android 16)** — bump the Expo SDK (or set `expo-build-properties` `android.targetSdkVersion`) before then.
+- ✅ Android 14+ `FOREGROUND_SERVICE_LOCATION` permission + foreground-service type (declared; background task wired).
+- 🟡 **Background location declaration**: Play requires a written justification + a short demo video for `ACCESS_BACKGROUND_LOCATION` in the app-content "Sensitive permissions" form.
+- 🟡 Data safety form, content rating (IARC), target-audience, feature graphic (1024×500), full/short description.
+
+### D. Data Safety / Privacy Nutrition Label answers (match what the code collects)
+All "collected", linked to the user, used for **App functionality** (+ Account management where noted), **not sold**, encrypted in transit, deletion available (in-app + web):
+- **Name, email, phone** — account / account management.
+- **Precise + approximate location** — movers only, while en route after tapping "I'm on my way"; shared with the matched customer in-app only.
+- **Photos** — move items + optional profile photo.
+- **Messages** — in-app customer↔mover chat.
+- **Purchase history** — transaction amounts/status only (no card numbers; Stripe handles cards).
+- **Reviews/ratings**, **app interactions**, **push token / device identifiers** (notifications).
+
+### E. Verified this session
+- ✅ App typecheck clean (`npx tsc --noEmit`, 0 errors).
+- ✅ End-to-end flow (account creation → mover approval → gig post → apply → match/assign → pay → complete; lead-gig + admin-assign RPC + non-admin denial + cleanup): **18/18** via `scripts/e2e-flow.mjs`.
+- ✅ Icons 1024×1024, no alpha (iOS-safe).
+- 🟡 Not testable from this machine (Windows / headless): payment sheet, background location, and the app UI on-device — verify on an EAS dev build before submitting.
