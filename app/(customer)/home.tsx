@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl } from 'react-native';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Animated, RefreshControl } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, Avatar, Tag } from '../../components/primitives';
+import { Card, Avatar, Tag, GigCardSkeleton } from '../../components/primitives';
 import { colors, radii, shadows, spacing } from '../../lib/theme';
 import { useGigs } from '../../hooks/useGigs';
 import { useAuth } from '../../hooks/useAuth';
@@ -21,33 +21,6 @@ export default function CustomerHome() {
 
   useFocusEffect(useCallback(() => { setRefreshKey(k => k + 1); }, []));
 
-  // Real-time: gig status changes for this customer
-  useEffect(() => {
-    if (!profile?.id) return;
-
-    const channel = supabase
-      .channel(`customer-home-${profile.id}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'gigs',
-        filter: `customer_id=eq.${profile.id}`,
-      }, (payload) => {
-        const updated = payload.new as Gig;
-        setGigs(prev => prev.map(g => g.id === updated.id ? updated : g));
-      })
-      .on('postgres_changes', {
-        event: 'INSERT',
-        schema: 'public',
-        table: 'gig_applications',
-      }, () => {
-        // Refresh when a mover applies to any gig
-        loadGigs();
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [profile?.id]);
 
   // Redirect to welcome on sign out
   useEffect(() => {
@@ -106,6 +79,12 @@ export default function CustomerHome() {
           <Text style={{ fontSize: 12, fontWeight: '900', color: '#fff', letterSpacing: -0.5 }}>FFX</Text>
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <TouchableOpacity
+            onPress={() => router.push('/(customer)/inbox')}
+            style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
+          >
+            <Ionicons name="chatbubbles-outline" size={18} color={colors.ink2} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => router.push('/(customer)/settings')}>
             <Avatar initials={initials} uri={profile?.avatar_url || undefined} size={36} />
           </TouchableOpacity>
@@ -160,14 +139,19 @@ export default function CustomerHome() {
 
       {/* Active jobs */}
       {loading ? (
-        <View style={{ paddingHorizontal: 20 }}>
-          <ActivityIndicator color={colors.accent.base} style={{ marginVertical: 20 }} />
+        <View style={{ paddingHorizontal: 20, gap: 10 }}>
+          <GigCardSkeleton />
+          <GigCardSkeleton />
         </View>
       ) : gigs.length === 0 ? (
         <View style={{ paddingHorizontal: 20 }}>
-          <Card style={{ padding: 20, alignItems: 'center' }}>
-            <Text style={{ fontSize: 15, color: colors.ink3, textAlign: 'center' }}>
-              No gigs yet. Tap "Start" above to post your first one.
+          <Card style={{ padding: 28, alignItems: 'center', gap: 10 }}>
+            <View style={{ width: 56, height: 56, borderRadius: 28, backgroundColor: colors.accent.soft, alignItems: 'center', justifyContent: 'center' }}>
+              <Ionicons name="cube-outline" size={28} color={colors.accent.base} />
+            </View>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: colors.ink, letterSpacing: -0.3 }}>No moves yet</Text>
+            <Text style={{ fontSize: 14, color: colors.ink3, textAlign: 'center', lineHeight: 20 }}>
+              Post your first job above and we'll match you with a vetted mover.
             </Text>
           </Card>
         </View>
@@ -179,12 +163,8 @@ export default function CustomerHome() {
                 Active jobs
               </Text>
               <View style={{ gap: 10 }}>
-                {gigs.filter(g => ['posted', 'matched', 'in_progress'].includes(g.status)).map((gig) => (
-                  <TouchableOpacity
-                    key={gig.id}
-                    activeOpacity={0.85}
-                    onPress={() => router.push({ pathname: '/(customer)/gig/[id]', params: { id: gig.id } })}
-                  >
+                {gigs.filter(g => ['posted', 'matched', 'in_progress'].includes(g.status)).map((gig, i) => (
+                  <AnimatedGigRow key={gig.id} index={i} onPress={() => router.push({ pathname: '/(customer)/gig/[id]', params: { id: gig.id } })}>
                     <RecentGigCard
                       from={gig.from_address}
                       to={gig.to_address}
@@ -192,7 +172,7 @@ export default function CustomerHome() {
                       price={gig.quoted_price_cents}
                       live={gig.status === 'posted'}
                     />
-                  </TouchableOpacity>
+                  </AnimatedGigRow>
                 ))}
               </View>
             </View>
@@ -204,12 +184,8 @@ export default function CustomerHome() {
                 Previous jobs
               </Text>
               <View style={{ gap: 10 }}>
-                {gigs.filter(g => ['completed', 'cancelled'].includes(g.status)).map((gig) => (
-                  <TouchableOpacity
-                    key={gig.id}
-                    activeOpacity={0.85}
-                    onPress={() => router.push({ pathname: '/(customer)/gig/[id]', params: { id: gig.id } })}
-                  >
+                {gigs.filter(g => ['completed', 'cancelled'].includes(g.status)).map((gig, i) => (
+                  <AnimatedGigRow key={gig.id} index={i} onPress={() => router.push({ pathname: '/(customer)/gig/[id]', params: { id: gig.id } })}>
                     <RecentGigCard
                       from={gig.from_address}
                       to={gig.to_address}
@@ -217,7 +193,7 @@ export default function CustomerHome() {
                       price={gig.quoted_price_cents}
                       live={false}
                     />
-                  </TouchableOpacity>
+                  </AnimatedGigRow>
                 ))}
               </View>
             </View>
@@ -288,11 +264,44 @@ export default function CustomerHome() {
   );
 }
 
+/** Staggered slide-up + fade entrance with spring press feedback */
+function AnimatedGigRow({ children, index, onPress }: { children: React.ReactNode; index: number; onPress: () => void }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  const scale = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    Animated.spring(anim, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 14,
+      bounciness: 6,
+      delay: index * 60,
+    }).start();
+  }, []);
+
+  const onPressIn = () => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 0 }).start();
+  const onPressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
+
+  return (
+    <Animated.View style={{
+      opacity: anim,
+      transform: [
+        { translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [16, 0] }) },
+        { scale },
+      ],
+    }}>
+      <TouchableOpacity activeOpacity={1} onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut}>
+        {children}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+}
+
 function gigStatusLabel(gig: Gig): string {
   switch (gig.status) {
     case 'posted': return 'Looking for workers';
-    case 'matched': return 'Matched — deposit needed';
-    case 'in_progress': return 'Deposit paid — in progress';
+    case 'matched': return 'Matched — payment needed';
+    case 'in_progress': return 'Paid — in progress';
     case 'completed': return 'Completed';
     case 'cancelled': return 'Cancelled';
     default: return gig.status;
@@ -333,13 +342,20 @@ function RecentGigCard({ from, to, status, price, live }: { from: string; to: st
 }
 
 function QuickCard({ icon, title, sub }: { icon: string; title: string; sub: string }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn = () => Animated.spring(scale, { toValue: 0.95, useNativeDriver: true, speed: 50, bounciness: 0 }).start();
+  const onPressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
   return (
-    <Card style={{ width: '48%', padding: 14 }}>
-      <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.accent.soft, alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-        <Ionicons name={icon as any} size={22} color={colors.accent.deep} />
-      </View>
-      <Text style={{ fontSize: 15, fontWeight: '700', color: colors.ink, letterSpacing: -0.2 }}>{title}</Text>
-      <Text style={{ fontSize: 12, color: colors.ink3, marginTop: 2 }}>{sub}</Text>
-    </Card>
+    <TouchableOpacity activeOpacity={1} onPressIn={onPressIn} onPressOut={onPressOut} style={{ width: '48%' }}>
+      <Animated.View style={{ transform: [{ scale }] }}>
+        <Card style={{ padding: 14 }}>
+          <View style={{ width: 40, height: 40, borderRadius: 12, backgroundColor: colors.accent.soft, alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
+            <Ionicons name={icon as any} size={22} color={colors.accent.deep} />
+          </View>
+          <Text style={{ fontSize: 15, fontWeight: '700', color: colors.ink, letterSpacing: -0.2 }}>{title}</Text>
+          <Text style={{ fontSize: 12, color: colors.ink3, marginTop: 2 }}>{sub}</Text>
+        </Card>
+      </Animated.View>
+    </TouchableOpacity>
   );
 }

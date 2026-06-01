@@ -6,3 +6,4 @@ export { Tag } from './Tag';
 export { Stepper } from './Stepper';
 export { Toggle } from './Toggle';
 export { StarRow } from './StarRow';
+export { Skeleton, GigCardSkeleton } from './Skeleton';

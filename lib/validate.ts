@@ -24,5 +24,21 @@ export function isValidPhone(phone: string): boolean {
 }
 
 export function isValidPassword(password: string): boolean {
-  return password.length >= 6;
+  return (
+    password.length >= 8 &&
+    /[A-Z]/.test(password) &&
+    /[a-z]/.test(password) &&
+    /[0-9]/.test(password) &&
+    /[^A-Za-z0-9]/.test(password)
+  );
+}
+
+export function passwordRequirements(password: string) {
+  return {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    digit: /[0-9]/.test(password),
+    symbol: /[^A-Za-z0-9]/.test(password),
+  };
 }

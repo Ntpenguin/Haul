@@ -13,12 +13,19 @@ export function usePayments() {
    * Pay for a gig — creates a PaymentIntent server-side, then presents the Stripe payment sheet.
    * Returns true if payment succeeded, false otherwise.
    */
-  async function payForGig(gigId: string, amountCents: number): Promise<boolean> {
+  async function payForGig(gigId: string): Promise<boolean> {
     if (!profile) throw new Error('Must be signed in');
 
-    // 1. Create PaymentIntent via Supabase Edge Function
-    const { data, error } = await supabase.functions.invoke('create-payment-intent', {
-      body: { gig_id: gigId, amount_cents: amountCents },
+    // 1. Create PaymentIntent via Supabase Edge Function (price comes from DB).
+    // Test builds (EXPO_PUBLIC_STRIPE_MODE=test, set only in the development EAS
+    // environment) call the isolated test function so a pk_test app pairs with a
+    // sk_test backend. Prod/preview builds have no such var → live function.
+    const fnName =
+      process.env.EXPO_PUBLIC_STRIPE_MODE === 'test'
+        ? 'create-payment-intent-test'
+        : 'create-payment-intent';
+    const { data, error } = await supabase.functions.invoke(fnName, {
+      body: { gig_id: gigId },
     });
 
     if (error || !data?.clientSecret) {

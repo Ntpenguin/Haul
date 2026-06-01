@@ -5,13 +5,24 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## Commands
 
 ```bash
-npx expo start          # Dev server (app)
+npx expo start          # Dev server (app) — Expo Go, no native modules (no Stripe/bg-location)
+npx expo start --dev-client  # Dev server for an installed EAS dev build (full native modules)
 npx expo start --web    # Web version
 npx serve landing -p 3000  # Static marketing landing page
 npx serve admin -p 3001    # Admin dashboard (standalone HTML, Supabase login)
 ```
 
 No tests. No linter. TypeScript via Expo transpilation only.
+
+## EAS Builds & Device Testing
+
+- **Expo Go can't run Stripe payments or background location** (native modules). Use an EAS **dev build** (`eas build --profile development --platform android`) installed on a device/emulator, then `npx expo start --dev-client`.
+- **expo-splash-screen MUST be installed** (`expo-splash-screen` in package.json). SDK 54 prebuild generates `MainApplication.kt` calling `expo.modules.splashscreen.SplashScreenManager`; if the package is missing the dev build crashes on launch with `ClassNotFoundException: ...SplashScreenManager` (`MainApplication.onCreate`). app.json uses the legacy top-level `splash` key.
+- **EAS env vars**: `.env` is gitignored so EAS Build won't upload it. `eas.json` build profiles set `"environment": development|preview|production`; push the app's PUBLIC vars to EAS server-side via `eas env:push --environment <env> --path <file>`. `eas env:push` REJECTS empty values — push a trimmed file with only the 3 used vars (`EXPO_PUBLIC_SUPABASE_URL`, `EXPO_PUBLIC_SUPABASE_ANON_KEY`, `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY`); `EXPO_PUBLIC_MAPBOX_TOKEN`/`EXPO_PUBLIC_SENTRY_DSN` are empty (unused). NEVER push `STRIPE_SECRET_KEY` to the app build.
+- **Isolated app TEST-MODE Stripe** (test payments without touching live): dev EAS env overrides `EXPO_PUBLIC_STRIPE_PUBLISHABLE_KEY`→pk_test + adds `EXPO_PUBLIC_STRIPE_MODE=test`. `hooks/usePayments.ts` then calls `create-payment-intent-test` (reads secret `STRIPE_SECRET_KEY_TEST`) instead of live `create-payment-intent`; `stripe-webhook-test` (reads `STRIPE_SECRET_KEY_TEST` + `STRIPE_WEBHOOK_SECRET_TEST`, app-gig path only) completes the chain. pk/sk must be from the SAME Stripe account (live account is `..._51TYF63DzksslYekx...` — NOT the old `51TYF6FDqX9Woayua` test keys). Test card `4242 4242 4242 4242`. Revert dev to live: delete the 2 dev env vars + rebuild.
+- **Windows = no iOS Simulator** (needs macOS); real-device/App Store iOS needs a paid Apple Dev acct. Test on the free Android dev build first.
+- **Android emulator (Windows)**: Android Studio SDK at `C:\Users\USER\AppData\Local\Android\Sdk`; set `ANDROID_HOME`/`ANDROID_SDK_ROOT` (env vars apply only to NEW terminals). adb at `<SDK>\platform-tools\adb.exe`. Install a built APK: `eas build:run -p android --latest`.
+- **Port 8081 gotcha**: a Docker `smarketer_pro_searxng` container (8081→8080) can occupy Metro's default 8081, forcing Metro to 8082 and breaking emulator auto-connect. Free it with `docker stop smarketer_pro_searxng` (restart later with `docker start`). Manual connect if needed: `adb reverse tcp:<port> tcp:<port>` then `adb shell am start -a android.intent.action.VIEW -d "exp+fast-fix-work://expo-development-client/?url=http%3A%2F%2Flocalhost%3A<port>" com.fastfixwork.app`.
 
 ## Project
 
@@ -134,9 +145,10 @@ Types in `lib/supabase.ts`. Delete order: notifications → reports → reviews 
 
 ## Key Business Logic
 
-- **Pricing**: Base by home_size → crew/truck multipliers → surcharges (stairs $75/flight, heavy items $75-350 each, distance $1.25/mi over 15mi, long carry $50). Tax 8.25%.
-- **Payment**: Customer pays 10% deposit via Stripe. Remaining 90% settled directly customer→mover.
-- **Gig status flow**: `draft` → `posted` → `matched` → `in_progress` (deposit paid) → `completed`.
+- **Pricing**: Base by home_size → crew/truck multipliers → surcharges (stairs $30/flight, heavy items $75-350 each, distance $1.25/mi over 15mi, long carry $50). Tax 8.25%. Stair rate ($30/flight) matches intake form + admin.
+- **Payment**: Customer pays **100% upfront** via Stripe. Platform keeps a **15% service fee** (`PLATFORM_FEE_PERCENT` in `lib/pricing.ts`). The worker's share (`mover_payout_cents`) is paid out **after the job** via Stripe Connect (Express accounts) — `connect-onboard`/`connect-status`/`transfer-to-mover` edge functions; mover UI in `earnings.tsx` (+ `hooks/usePayouts.ts`).
+- **Gig status flow**: `draft` → `posted` → `matched` → `in_progress` (paid in full) → `completed`. Payout: `payout_status` `unpaid` → `pending` → `paid` (after `transfer-to-mover`).
+- **Leads vs gigs**: Website intake leads and in-app gig wizards autosave partial progress (`quote_requests.progress_step` / `gigs.draft_step`). Admin **Leads** tab shows only **abandoned** attempts (web `incomplete` + app `draft`) with the step they stopped on; **paid** leads convert to marketplace gigs (`stripe-webhook`) and appear under Gigs/Calendar. Leads are **soft-deleted** (`quote_requests.deleted_at`), shown in a Deleted tab.
 - **Gig wizard steps**: Always starts with `StepCategory`. Moving: dynamic by `home_size` ('item' skips crew, 'other' skips inventory+crew). Non-moving categories (cleaning, etc.): simplified flow — category → locations → schedule → contact → review.
 - **Gig categories**: `gig_category` field on gigs ('moving' default). Only 'moving' is live; others shown as "Coming Soon" in `StepCategory`. To enable a category flip `available: false → true` in `StepCategory.tsx`.
 - **Category colors**: Per-user swatch preferences in `profiles.category_colors` (jsonb). Mover home merges with `DEFAULT_CATEGORY_COLORS` fallback. Saved via mover settings.
@@ -157,6 +169,25 @@ Types in `lib/supabase.ts`. Delete order: notifications → reports → reviews 
 - **Realtime home screens**: Both home screens subscribe to `gigs` table changes via Supabase Realtime (requires migration 008). Mover: new posted jobs appear live, accepted/completed jobs update. Customer: gig status updates live, `gig_applications` INSERT triggers a reload. Channels cleaned up on unmount.
 - **Delete account**: `hooks/useAuth.ts` → `deleteAccount()` calls `delete-account` edge function then signs out. UI button in both customer and mover settings (underlined text below sign out).
 - **Avatar upload**: Both customer and mover settings have photo picker (`expo-image-picker`). Uploads to `avatars/{userId}/avatar.{ext}`. Customer settings added this pattern in the same session as mover settings.
+
+## Animation & Interaction Patterns
+
+- **Press feedback**: Wrap tappable cards in an `AnimatedJobCard`-style component using `Animated.spring` (scale 0.96–0.97 on pressIn, bounce back on pressOut with `bounciness: 8`). Use `activeOpacity={1}` on the `TouchableOpacity` wrapper.
+- **Staggered list entrance**: `Animated.spring({ toValue: 1, speed: 14, bounciness: 5, delay: index * 55 })` on opacity (0→1) + translateY (16→0). Wrap each list item in a dedicated animated component.
+- **Loading skeletons**: Use `GigCardSkeleton` from `components/primitives` instead of `ActivityIndicator` for list loading states. Render 2–3 skeletons.
+- **Animated imports**: When adding spring animations, add `Animated` and `useRef` to imports; remove `ActivityIndicator` if replaced.
+- **Admin dashboard animations**: CSS-only via `@keyframes` (modalIn, cardIn, sheetIn) + `cubic-bezier(0.16,1,0.3,1)` spring easing. Stagger via inline `style="animation: cardIn 0.36s ... Nms both"`.
+
+## Intake Form (landing/intake.html)
+
+- **Mobile nav bar**: `.mob-nav-row` is a fixed bottom bar rendered as static HTML in `.shell` (not inside the card template). Bound once via `initMobNav()` at boot. State (disabled, label) synced in `renderCard()` by querying `#mob-back-btn` / `#mob-continue-btn`.
+- **No auto-advance**: Single-chip selection (`bind === 'single'`) only highlights — does NOT auto-navigate. User presses Continue.
+- **Photo quick button**: Triggers a persistent hidden `<input id="photo-quick-input">` outside the card. Files go into `S.photoFiles['photos']` without navigating away.
+- **iOS submit pattern**: Submit form data first with `photo_urls: []` → show confirmation immediately → upload photos in parallel background with `Promise.allSettled` → PATCH record with URLs. Use `keepalive: true` on all fetch calls to prevent iOS Safari from throttling pending requests when page state changes.
+
+## Admin Dashboard (admin/index.html)
+
+- **Sidebar active state**: The `pages` array in `showPage()` must exactly match sidebar `<a>` HTML order. Current order: `['overview','users','movers','businesses','gigs','applications','photos','leads','calendar']`. Mismatch causes wrong tab to highlight.
 
 ## Environment Variables (.env)
 

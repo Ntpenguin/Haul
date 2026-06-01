@@ -4,17 +4,25 @@
 // Sources:
 // - Austin movers: $90–$180/hr for 2-mover crew + truck
 // - Studio: $300–$450, 1BR: $400–$650, 2BR: $700–$900, 3BR: $1,100–$1,650
-// - Stairs surcharge: ~$75/flight industry standard
+// - Stairs surcharge: $30/flight (matches intake form + admin)
 // - Heavy items: $50–$150 each depending on item
 //
 // Payment model:
-// - Customer pays a 10% deposit through the app when a worker is accepted
-// - The remaining 90% is settled directly between customer and worker
+// - Customer pays 100% upfront through the app at booking.
+// - Platform keeps PLATFORM_FEE_PERCENT; the worker is paid the remainder
+//   after the job via Stripe Connect.
+//
+// Pricing parity: this engine is kept EXACTLY in sync with the public intake
+// form (landing/intake.html `calcQuote`). That means:
+//   - base price is by move size only — crew size and truck size do NOT change
+//     the price (they're still collected for the mover's planning).
+//   - long-distance (>= 50 mi) multiplies the base by 1.5x.
+//   - stairs are charged per flight with no elevator discount.
 
 import { z } from 'zod';
 
 export const GigDataSchema = z.object({
-  homeSize: z.enum(['item', 'few-items', 'studio', '1br', '2br', '3br+', 'other']),
+  homeSize: z.enum(['few-items', 'studio', '1br', '2br', '3br+', '4br', 'other']),
   crew: z.number().min(1).max(6),
   truck: z.enum(['none', 'small', 'medium', 'large']),
   stairsFrom: z.number().min(0),
@@ -24,6 +32,8 @@ export const GigDataSchema = z.object({
   longCarry: z.boolean(),
   heavyItems: z.array(z.string()),
   distanceMiles: z.number().optional(),
+  staging: z.boolean().optional(),
+  packing: z.boolean().optional(),
 });
 
 export type GigPricingData = z.infer<typeof GigDataSchema>;
@@ -36,10 +46,13 @@ export interface FlatPriceResult {
   taxesCents: number;
   totalCents: number;
   baseCents: number;
+  longDistanceCents: number;
   stairsSurchargeCents: number;
   longCarryCents: number;
   heavyItemsCents: number;
   distanceSurchargeCents: number;
+  stagingCents: number;
+  packingCents: number;
 }
 
 export interface HourlyPriceResult {
@@ -50,18 +63,20 @@ export interface HourlyPriceResult {
   taxesCents: number;
   totalCents: number;
   minimumHours: number;
+  stagingCents: number;
+  packingCents: number;
 }
 
 export type PriceResult = FlatPriceResult | HourlyPriceResult;
 
-// Base prices aligned with Austin, TX local moving market
+// Base prices — kept identical to the intake form (landing/intake.html BASE_PRICES)
 const BASE_PRICES_CENTS: Record<string, number> = {
-  item: 8500,       // $85 — single item (couch, desk, appliance)
-  'few-items': 17500, // $175 — few items, between single item and studio
+  'few-items': 17500, // $175 — just a few items
   studio: 35000,    // $350 — studio apartment
   '1br': 50000,     // $500 — 1 bedroom
   '2br': 80000,     // $800 — 2 bedroom
-  '3br+': 135000,   // $1,350 — 3+ bedroom
+  '3br+': 135000,   // $1,350 — 3 bedroom
+  '4br': 160000,    // $1,600 — 4+ BR / full house
   other: 0,          // $0 — custom quote (TBD)
 };
 
@@ -84,14 +99,28 @@ const TRUCK_MULTIPLIERS: Record<string, number> = {
 };
 
 // Austin industry standard surcharges
-const STAIRS_SURCHARGE_CENTS_PER_FLIGHT = 7500;   // $75/flight
+const STAIRS_SURCHARGE_CENTS_PER_FLIGHT = 3000;   // $30/flight (matches intake/admin)
 const LONG_CARRY_SURCHARGE_CENTS = 5000;           // $50 for long carry (100+ ft)
 const HEAVY_ITEM_SURCHARGE_CENTS = 7500;           // $75 per heavy/specialty item (default)
 const TAX_RATE = 0.0825;                           // Texas sales tax 8.25%
 
+// Staging surcharge — crew arranges/styles furniture (occupied-home staging, existing furniture).
+// Industry: furniture arrangement ~$250/room; occupied staging $1,000-$3,000.
+// Applied as a percentage of the move base (after crew/truck multipliers) so it scales with home size.
+export const STAGING_SURCHARGE_PERCENT = 30;
+
+// Packing service — crew brings boxes, materials & labor and packs everything.
+// Applied as a percentage of the move base (after crew/truck multipliers) so it scales with home size.
+export const PACKING_SURCHARGE_PERCENT = 25;
+
 // Distance surcharge — Austin movers charge ~$1.00-$1.50/mile beyond 15 miles
 export const DISTANCE_FREE_MILES = 15;
 export const DISTANCE_PER_MILE_CENTS = 125;        // $1.25/mile over free miles
+
+// Long-distance — moves at/above this distance multiply the base by 1.5x.
+// Mirrors the intake form (LONG_DISTANCE_THRESHOLD / LONG_DISTANCE_MULTIPLIER).
+export const LONG_DISTANCE_THRESHOLD_MILES = 50;
+export const LONG_DISTANCE_MULTIPLIER = 1.5;
 
 // Per-item heavy/specialty item pricing
 const HEAVY_ITEM_PRICES: Record<string, number> = {
@@ -106,26 +135,27 @@ const HOURLY_BASE_RATE_CENTS = 10700; // $107/hr base (2 movers + small truck)
 const MINIMUM_HOURS = 2;
 
 const ESTIMATED_HOURS: Record<string, number> = {
-  item: 1,
   'few-items': 1.5,
   studio: 2.5,
   '1br': 3.5,
   '2br': 5,
   '3br+': 7,
+  '4br': 8.5,
   other: 0,
 };
 
-// Deposit percentage — customer pays this through the app
-export const DEPOSIT_PERCENT = 10;
+// Customer pays 100% upfront through the app. The platform keeps a platform
+// fee and pays the worker the remainder after the job (via Stripe Connect).
+export const PLATFORM_FEE_PERCENT = 15;
 
-// Calculate deposit amount in cents
-export function depositCents(totalCents: number): number {
-  return Math.round(totalCents * (DEPOSIT_PERCENT / 100));
+// Platform's cut in cents
+export function platformFeeCents(totalCents: number): number {
+  return Math.round(totalCents * (PLATFORM_FEE_PERCENT / 100));
 }
 
-// Calculate remainder owed directly to worker
-export function remainderCents(totalCents: number): number {
-  return totalCents - depositCents(totalCents);
+// What the worker is paid after the job (total minus platform fee)
+export function moverPayoutCents(totalCents: number): number {
+  return totalCents - platformFeeCents(totalCents);
 }
 
 function heavyItemCost(item: string): number {
@@ -137,6 +167,13 @@ function distanceSurcharge(distanceMiles?: number): number {
   return Math.round((distanceMiles - DISTANCE_FREE_MILES) * DISTANCE_PER_MILE_CENTS);
 }
 
+// Long-distance multiplier applied to the base (1.5x at/over the threshold).
+function longDistanceMultiplier(distanceMiles?: number): number {
+  return distanceMiles != null && distanceMiles >= LONG_DISTANCE_THRESHOLD_MILES
+    ? LONG_DISTANCE_MULTIPLIER
+    : 1;
+}
+
 export function priceFor(data: GigPricingData, model: PricingModel = 'flat'): PriceResult {
   const crewMult = CREW_MULTIPLIERS[data.crew] ?? 1;
   const truckMult = TRUCK_MULTIPLIERS[data.truck] ?? 1;
@@ -144,7 +181,10 @@ export function priceFor(data: GigPricingData, model: PricingModel = 'flat'): Pr
   if (model === 'hourly') {
     const rateCentsPerHour = Math.round(HOURLY_BASE_RATE_CENTS * crewMult * truckMult);
     const estimatedHours = ESTIMATED_HOURS[data.homeSize] ?? 2;
-    const subtotalCents = Math.round(rateCentsPerHour * estimatedHours);
+    const laborCents = Math.round(rateCentsPerHour * estimatedHours);
+    const stagingCents = data.staging ? Math.round(laborCents * (STAGING_SURCHARGE_PERCENT / 100)) : 0;
+    const packingCents = data.packing ? Math.round(laborCents * (PACKING_SURCHARGE_PERCENT / 100)) : 0;
+    const subtotalCents = laborCents + stagingCents + packingCents;
     const taxesCents = Math.round(subtotalCents * TAX_RATE);
     const totalCents = subtotalCents + taxesCents;
 
@@ -156,21 +196,28 @@ export function priceFor(data: GigPricingData, model: PricingModel = 'flat'): Pr
       taxesCents,
       totalCents,
       minimumHours: MINIMUM_HOURS,
+      stagingCents,
+      packingCents,
     };
   }
 
-  // Flat rate
+  // Flat rate — mirrors the intake form's calcQuote exactly.
+  // Crew size and truck size do NOT affect the flat price (parity with the website).
   const baseCents = BASE_PRICES_CENTS[data.homeSize] ?? 50000;
-  const stairsFlights = Math.max(
-    0,
-    data.stairsFrom + data.stairsTo - (data.elevatorFrom ? 1 : 0) - (data.elevatorTo ? 1 : 0)
-  );
+  // Stairs are charged per flight with no elevator discount (matches intake form).
+  const stairsFlights = Math.max(0, data.stairsFrom + data.stairsTo);
   const stairsSurchargeCents = stairsFlights * STAIRS_SURCHARGE_CENTS_PER_FLIGHT;
   const longCarryCents = data.longCarry ? LONG_CARRY_SURCHARGE_CENTS : 0;
   const heavyItemsCents = data.heavyItems.reduce((sum, item) => sum + heavyItemCost(item), 0);
   const distanceSurchargeCents = distanceSurcharge(data.distanceMiles);
 
-  const subtotalCents = Math.round(baseCents * crewMult * truckMult) + stairsSurchargeCents + longCarryCents + heavyItemsCents + distanceSurchargeCents;
+  // Long-distance (>= 50 mi) multiplies the base by 1.5x before percentage add-ons.
+  const adjustedBaseCents = baseCents * longDistanceMultiplier(data.distanceMiles);
+  const longDistanceCents = Math.round(adjustedBaseCents - baseCents);
+  const stagingCents = data.staging ? Math.round(adjustedBaseCents * (STAGING_SURCHARGE_PERCENT / 100)) : 0;
+  const packingCents = data.packing ? Math.round(adjustedBaseCents * (PACKING_SURCHARGE_PERCENT / 100)) : 0;
+
+  const subtotalCents = Math.round(adjustedBaseCents + stairsSurchargeCents + longCarryCents + heavyItemsCents + distanceSurchargeCents + stagingCents + packingCents);
   const taxesCents = Math.round(subtotalCents * TAX_RATE);
   const totalCents = subtotalCents + taxesCents;
 
@@ -180,10 +227,13 @@ export function priceFor(data: GigPricingData, model: PricingModel = 'flat'): Pr
     taxesCents,
     totalCents,
     baseCents,
+    longDistanceCents,
     stairsSurchargeCents,
     longCarryCents,
     heavyItemsCents,
     distanceSurchargeCents,
+    stagingCents,
+    packingCents,
   };
 }
 
@@ -197,10 +247,8 @@ export function surchargesFromGig(gig: {
   heavy_items?: string[];
   distance_miles?: number;
 }): { stairsCents: number; longCarryCents: number; heavyItemsCents: number; distanceCents: number; totalCents: number } {
-  const flights = Math.max(
-    0,
-    (gig.stairs_from || 0) + (gig.stairs_to || 0) - (gig.elevator_from ? 1 : 0) - (gig.elevator_to ? 1 : 0)
-  );
+  // Stairs charged per flight, no elevator discount (matches intake form).
+  const flights = Math.max(0, (gig.stairs_from || 0) + (gig.stairs_to || 0));
   const stairsCents = flights * STAIRS_SURCHARGE_CENTS_PER_FLIGHT;
   const longCarryCents = gig.long_carry ? LONG_CARRY_SURCHARGE_CENTS : 0;
   const heavyItemsCents = (gig.heavy_items ?? []).reduce((sum, item) => sum + heavyItemCost(item), 0);

@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fast Fix Work — Admin Dashboard</title>
+<!-- CSP: allow supabase, jsdelivr CDN, google calendar links; block everything else -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src 'self' data: blob: https://joiukvttuamaanrgzfrz.supabase.co; connect-src https://joiukvttuamaanrgzfrz.supabase.co wss://joiukvttuamaanrgzfrz.supabase.co; frame-src 'none'; object-src 'none';" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
@@ -37,13 +39,15 @@
   .topbar h1 { font-size: 18px; font-weight: 700; letter-spacing: -0.3px; }
   .topbar-right { display: flex; align-items: center; gap: 12px; }
   .topbar-right span { font-size: 13px; color: var(--ink3); }
-  .btn-sm { height: 34px; padding: 0 14px; border: 1px solid var(--line2); border-radius: 8px; background: var(--card); font-size: 13px; font-weight: 600; color: var(--ink2); cursor: pointer; }
+  .btn-sm { height: 34px; padding: 0 14px; border: 1px solid var(--line2); border-radius: 8px; background: var(--card); font-size: 13px; font-weight: 600; color: var(--ink2); cursor: pointer; transition: background .15s, transform .1s; }
   .btn-sm:hover { background: var(--surface); }
+  .btn-sm:active { transform: scale(0.96); }
 
   .layout { display: flex; min-height: calc(100vh - 65px); }
   .sidebar { width: 220px; background: var(--card); border-right: 1px solid var(--line); padding: 16px 0; flex-shrink: 0; }
-  .sidebar a { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 14px; font-weight: 500; color: var(--ink2); text-decoration: none; cursor: pointer; }
+  .sidebar a { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 14px; font-weight: 500; color: var(--ink2); text-decoration: none; cursor: pointer; transition: background 0.15s, color 0.15s; }
   .sidebar a:hover { background: var(--surface); }
+  .sidebar a:active { transform: scale(0.97); }
   .sidebar a.active { background: var(--accent-soft); color: var(--accent-deep); font-weight: 700; }
   .sidebar .nav-icon { width: 20px; text-align: center; font-size: 16px; }
 
@@ -65,6 +69,7 @@
   table { width: 100%; border-collapse: collapse; font-size: 13px; }
   thead th { background: var(--surface); padding: 10px 14px; text-align: left; font-size: 11px; font-weight: 700; color: var(--ink3); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--line); white-space: nowrap; }
   tbody td { padding: 12px 14px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+  tbody tr { transition: background .12s; }
   tbody tr:hover { background: var(--accent-soft); }
   tbody tr:last-child td { border-bottom: none; }
 
@@ -89,8 +94,24 @@
   .detail-link { color: var(--accent-deep); font-weight: 600; cursor: pointer; text-decoration: underline; }
 
   /* Modal */
-  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(26,23,20,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; }
-  .modal { background: var(--card); border-radius: 20px; padding: 28px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 16px 48px rgba(26,23,20,0.2); }
+  @keyframes modalIn {
+    from { opacity: 0; transform: scale(0.95) translateY(8px); }
+    to   { opacity: 1; transform: scale(1) translateY(0); }
+  }
+  @keyframes overlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  @keyframes sheetIn {
+    from { transform: translateY(100%); }
+    to   { transform: translateY(0); }
+  }
+  @keyframes cardIn {
+    from { opacity: 0; transform: translateY(14px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(26,23,20,0.5); display: flex; align-items: center; justify-content: center; z-index: 100; animation: overlayIn 0.18s ease; }
+  .modal { background: var(--card); border-radius: 20px; padding: 28px; max-width: 600px; width: 90%; max-height: 80vh; overflow-y: auto; box-shadow: 0 16px 48px rgba(26,23,20,0.2); animation: modalIn 0.28s cubic-bezier(0.16,1,0.3,1); }
   .modal h2 { font-size: 20px; font-weight: 700; margin-bottom: 16px; letter-spacing: -0.3px; }
   .modal-row { display: flex; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--line); }
   .modal-label { font-size: 12px; font-weight: 700; color: var(--ink3); text-transform: uppercase; width: 130px; flex-shrink: 0; padding-top: 2px; }
@@ -120,6 +141,19 @@
   .cal-gig.status-cancelled { background: var(--error-soft); color: var(--error); border-left: 3px solid var(--error); }
   .cal-gig.status-draft { background: var(--surface); color: var(--ink3); border-left: 3px solid var(--ink4); }
   .cal-gig.asap-gig { background: var(--warning-soft); color: var(--accent-deep); border-left: 3px solid var(--warning); }
+  .cal-gig.lead { background: #EDE7F6; color: #5E35B1; border-left: 3px solid #7E57C2; }
+  .cal-gig.blocked { background: #FFEBEE; color: #C62828; border-left: 3px solid #E53935; }
+  .cal-gig.blocked .block-x { cursor: pointer; margin-left: 4px; font-weight: 700; opacity: 0.6; }
+  .cal-gig.blocked .block-x:hover { opacity: 1; }
+  .block-form { display: flex; gap: 10px; align-items: flex-end; flex-wrap: wrap; margin-top: 16px; padding: 16px; background: var(--surface); border-radius: 10px; border: 1px solid var(--border); }
+  .block-form label { font-size: 12px; font-weight: 600; color: var(--ink2); display: flex; flex-direction: column; gap: 4px; }
+  .block-form input, .block-form select { padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); font-size: 13px; }
+  .block-form button { padding: 8px 16px; border-radius: 8px; border: none; background: #C62828; color: #fff; font-weight: 700; font-size: 13px; cursor: pointer; }
+  .block-form button:hover { background: #B71C1C; }
+  .blocked-list { margin-top: 12px; }
+  .blocked-list table { width: 100%; }
+  .blocked-list td, .blocked-list th { padding: 8px 12px; font-size: 13px; }
+  .cal-gig .cal-dur { font-size: 9px; font-weight: 400; opacity: 0.7; }
   .cal-more { font-size: 10px; color: var(--ink3); font-weight: 600; padding: 2px 6px; cursor: pointer; }
   .cal-more:hover { color: var(--accent-deep); }
   .cal-legend { display: flex; gap: 16px; margin-top: 16px; flex-wrap: wrap; }
@@ -128,10 +162,49 @@
   .cal-asap-section { margin-top: 24px; }
   .cal-asap-section h3 { font-size: 16px; font-weight: 700; margin-bottom: 12px; }
 
+  /* Worker cards */
+  .worker-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .worker-card { background: var(--card); border-radius: 16px; border: 1px solid var(--line); padding: 20px; box-shadow: 0 2px 12px rgba(26,23,20,0.04); cursor: pointer; transition: box-shadow .2s, transform .15s cubic-bezier(0.34,1.56,0.64,1); }
+  .worker-card:hover { box-shadow: 0 6px 24px rgba(26,23,20,0.10); transform: translateY(-2px); }
+  .worker-card:active { transform: scale(0.98); }
+  .worker-card-header { display: flex; align-items: center; gap: 14px; margin-bottom: 14px; }
+  .worker-avatar { width: 56px; height: 56px; border-radius: 28px; background: var(--surface); object-fit: cover; flex-shrink: 0; }
+  .worker-avatar-placeholder { width: 56px; height: 56px; border-radius: 28px; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 700; color: var(--accent-deep); flex-shrink: 0; }
+  .worker-name { font-size: 16px; font-weight: 700; color: var(--ink); }
+  .worker-meta { font-size: 12px; color: var(--ink3); margin-top: 2px; }
+  .worker-info-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line); font-size: 13px; color: var(--ink2); }
+  .worker-info-row:last-child { border-bottom: none; }
+  .worker-info-label { font-weight: 700; color: var(--ink3); min-width: 90px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px; padding-top: 1px; }
+  .skill-tag { display: inline-block; padding: 3px 8px; border-radius: 6px; background: var(--accent-soft); color: var(--accent-deep); font-size: 11px; font-weight: 600; margin: 2px 2px 2px 0; }
+  .selfie-thumb { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; cursor: pointer; border: 1px solid var(--line); }
+
+  /* Lead cards (mobile) */
+  .lead-card { background: var(--card); border-radius: 14px; border: 1px solid var(--line); padding: 16px; margin-bottom: 12px; cursor: pointer; box-shadow: 0 2px 8px rgba(26,23,20,0.04); transition: box-shadow .2s, transform .15s cubic-bezier(0.34,1.56,0.64,1); }
+  .lead-card:hover { box-shadow: 0 6px 20px rgba(26,23,20,0.10); transform: translateY(-1px); }
+  .lead-card:active { transform: scale(0.98); box-shadow: 0 2px 8px rgba(26,23,20,0.04); }
+  .lead-card-name { font-size: 16px; font-weight: 700; color: var(--ink); margin-bottom: 4px; }
+  .lead-card-meta { font-size: 13px; color: var(--ink3); margin-bottom: 8px; }
+  .lead-card-row { display: flex; justify-content: space-between; align-items: center; font-size: 13px; color: var(--ink2); padding: 4px 0; border-bottom: 1px solid var(--line); }
+  .lead-card-row:last-child { border-bottom: none; }
+  .lead-price { font-size: 18px; font-weight: 800; color: var(--accent-deep); }
+  .gcal-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 14px; padding: 9px 16px; background: #4285F4; color: #fff; border-radius: 10px; font-size: 13px; font-weight: 700; text-decoration: none; }
+  .gcal-btn:hover { opacity: 0.9; }
+
   @media (max-width: 768px) {
-    .sidebar { display: none; }
-    .main { padding: 16px; }
-    .stats-row { flex-direction: column; }
+    .sidebar { position: fixed; bottom: 0; left: 0; right: 0; width: 100%; height: auto; border-right: none; border-top: 1px solid var(--line); display: flex; flex-direction: row; padding: 0; z-index: 20; overflow-x: auto; }
+    .sidebar a { flex-direction: column; gap: 2px; padding: 8px 12px; font-size: 10px; flex-shrink: 0; text-align: center; min-width: 60px; }
+    .sidebar .nav-icon { width: auto; font-size: 18px; }
+    .layout { flex-direction: column; min-height: calc(100vh - 57px); }
+    .main { padding: 14px 14px 80px; overflow-x: hidden; }
+    .page-title { font-size: 18px; }
+    .stats-row { flex-direction: column; gap: 10px; }
+    .worker-grid { grid-template-columns: 1fr; }
+    .table-wrap { overflow-x: auto; }
+    .topbar { padding: 12px 16px; }
+    .topbar h1 { font-size: 15px; }
+    .topbar-right span { display: none; }
+    .modal { max-height: 90vh; border-radius: 20px 20px 0 0; position: fixed; bottom: 0; left: 0; right: 0; width: 100%; max-width: 100%; animation: sheetIn 0.32s cubic-bezier(0.16,1,0.3,1); }
+    .modal-overlay { align-items: flex-end; }
   }
 </style>
 </head>
@@ -164,10 +237,12 @@
     <div class="sidebar">
       <a class="active" onclick="showPage('overview')"><span class="nav-icon">&#9632;</span> Overview</a>
       <a onclick="showPage('users')"><span class="nav-icon">&#9775;</span> Users</a>
-      <a onclick="showPage('movers')"><span class="nav-icon">&#9883;</span> Movers</a>
+      <a onclick="showPage('movers')"><span class="nav-icon">&#9883;</span> Workers</a>
+      <a onclick="showPage('businesses')"><span class="nav-icon">&#9632;</span> Businesses</a>
       <a onclick="showPage('gigs')"><span class="nav-icon">&#9733;</span> Gigs</a>
       <a onclick="showPage('applications')"><span class="nav-icon">&#9997;</span> Applications</a>
       <a onclick="showPage('photos')"><span class="nav-icon">&#9998;</span> Photos</a>
+      <a onclick="showPage('leads')"><span class="nav-icon">&#9993;</span> Leads</a>
       <a onclick="showPage('calendar')"><span class="nav-icon">&#9776;</span> Calendar</a>
     </div>
     <div class="main" id="main-content"></div>
@@ -183,7 +258,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-let cache = { profiles: [], moverProfiles: [], gigs: [], applications: [], photos: [] };
+let cache = { profiles: [], moverProfiles: [], gigs: [], applications: [], photos: [], leads: [] };
 
 // ─── Auth ────────────────────────────────────
 async function doLogin() {
@@ -215,25 +290,31 @@ async function initApp() {
 
 // ─── Data Loading ────────────────────────────
 async function loadAll() {
-  const [profiles, moverProfiles, gigs, applications, photos] = await Promise.all([
+  const [profiles, moverProfiles, gigs, applications, photos, leads, blockedSlots] = await Promise.all([
     sb.from('profiles').select('*').order('created_at', { ascending: false }),
     sb.from('mover_profiles').select('*').order('created_at', { ascending: false }),
     sb.from('gigs').select('*').order('created_at', { ascending: false }),
     sb.from('gig_applications').select('*').order('created_at', { ascending: false }),
     sb.from('gig_photos').select('*').order('created_at', { ascending: false }),
+    sb.from('quote_requests').select('*').order('created_at', { ascending: false }),
+    sb.from('blocked_slots').select('*').order('blocked_date', { ascending: true }),
   ]);
   cache.profiles = profiles.data || [];
   cache.moverProfiles = moverProfiles.data || [];
   cache.gigs = gigs.data || [];
   cache.applications = applications.data || [];
   cache.photos = photos.data || [];
+  cache.leads = leads.data || [];
+  cache.blockedSlots = blockedSlots.data || [];
 }
 
 // ─── Navigation ──────────────────────────────
+let currentPage = 'overview';
 function showPage(page) {
+  currentPage = page;
   document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
   const links = document.querySelectorAll('.sidebar a');
-  const pages = ['overview','users','movers','gigs','applications','photos','calendar'];
+  const pages = ['overview','users','movers','businesses','gigs','applications','photos','leads','calendar'];
   const idx = pages.indexOf(page);
   if (idx >= 0 && links[idx]) links[idx].classList.add('active');
 
@@ -242,31 +323,42 @@ function showPage(page) {
     case 'overview': main.innerHTML = renderOverview(); break;
     case 'users': main.innerHTML = renderUsers(); break;
     case 'movers': main.innerHTML = renderMovers(); break;
+    case 'businesses': main.innerHTML = renderBusinesses(); break;
     case 'gigs': main.innerHTML = renderGigs(); break;
     case 'applications': main.innerHTML = renderApplications(); break;
     case 'photos': main.innerHTML = renderPhotos(); break;
     case 'calendar': main.innerHTML = renderCalendar(); break;
+    case 'leads': main.innerHTML = renderLeads(); break;
   }
 }
 
 // ─── Helpers ─────────────────────────────────
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+function escAttr(s) { return esc(s); }
 function fmt(d) { return d ? new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : '—'; }
-function badge(val) { return `<span class="badge badge-${(val||'').replace(/\s/g,'_')}">${val || '—'}</span>`; }
+function badge(val) { const safe = (val||'').replace(/[^a-zA-Z0-9_-]/g,'_'); return `<span class="badge badge-${safe}">${esc(val || '—')}</span>`; }
 function dollars(cents) { return cents != null ? '$' + (cents / 100).toFixed(2) : '—'; }
-function truncate(s, n) { if (!s) return '—'; return s.length > n ? s.slice(0, n) + '...' : s; }
-function profileName(id) { const p = cache.profiles.find(p => p.id === id); return p ? (p.full_name || p.email || id.slice(0,8)) : id ? id.slice(0,8) : '—'; }
+function truncate(s, n) { if (!s) return '—'; const t = s.length > n ? s.slice(0, n) + '...' : s; return esc(t); }
+function profileName(id) { const p = cache.profiles.find(p => p.id === id); return p ? esc(p.full_name || p.email || id.slice(0,8)) : id ? esc(id.slice(0,8)) : '—'; }
 
 // ─── Overview ────────────────────────────────
 function renderOverview() {
   const totalUsers = cache.profiles.length;
   const movers = cache.profiles.filter(p => p.role === 'mover' || p.role === 'both').length;
   const customers = cache.profiles.filter(p => p.role === 'customer').length;
-  const totalGigs = cache.gigs.length;
-  const posted = cache.gigs.filter(g => g.status === 'posted').length;
-  const completed = cache.gigs.filter(g => g.status === 'completed').length;
+  const liveGigs = cache.gigs.filter(g => !g.deleted_at);
+  const totalGigs = liveGigs.length;
+  const posted = liveGigs.filter(g => g.status === 'posted').length;
+  const completed = liveGigs.filter(g => g.status === 'completed').length;
   const totalApps = cache.applications.length;
   const totalPhotos = cache.photos.length;
-  const revenue = cache.gigs.filter(g => g.status === 'completed').reduce((s, g) => s + (g.final_price_cents || g.quoted_price_cents || 0), 0);
+  const revenue = liveGigs.filter(g => g.status === 'completed').reduce((s, g) => s + (g.final_price_cents || g.quoted_price_cents || 0), 0);
+  const stripeEarnings = cache.leads.filter(l => l.payment_status === 'paid').reduce((s, l) => s + (l.deposit_cents || l.estimated_price_cents || 0), 0);
+  // Abandoned leads = started intake/wizard but didn't pay (web incomplete + app drafts).
+  const abandonedWeb = cache.leads.filter(l => !l.deleted_at && l.payment_status !== 'paid' && l.status !== 'booked').length;
+  const draftGigCount = cache.gigs.filter(g => g.status === 'draft').length;
+  const abandonedLeads = abandonedWeb + draftGigCount;
+  const paidLeads = cache.leads.filter(l => l.payment_status === 'paid').length;
 
   const recentGigs = cache.gigs.slice(0, 5);
 
@@ -286,6 +378,11 @@ function renderOverview() {
       <div class="stat-card"><div class="stat-label">Applications</div><div class="stat-value">${totalApps}</div></div>
       <div class="stat-card"><div class="stat-label">Photos Uploaded</div><div class="stat-value">${totalPhotos}</div></div>
       <div class="stat-card"><div class="stat-label">Total Revenue</div><div class="stat-value accent">${dollars(revenue)}</div></div>
+    </div>
+    <div class="stats-row">
+      <div class="stat-card"><div class="stat-label">Stripe Earnings (Leads)</div><div class="stat-value success">${dollars(stripeEarnings)}</div></div>
+      <div class="stat-card"><div class="stat-label">Abandoned Leads</div><div class="stat-value warning">${abandonedLeads}</div></div>
+      <div class="stat-card"><div class="stat-label">Paid (→ Gigs)</div><div class="stat-value success">${paidLeads}</div></div>
     </div>
     <h3 style="font-size:16px;font-weight:700;margin-bottom:12px">Recent Gigs</h3>
     <div class="table-wrap">
@@ -320,9 +417,9 @@ function renderUsers() {
         <tbody>
           ${cache.profiles.length ? cache.profiles.map(p => `
             <tr>
-              <td><strong>${p.full_name || '—'}</strong></td>
-              <td>${p.email || '—'}</td>
-              <td>${p.phone || '—'}</td>
+              <td><strong>${esc(p.full_name) || '—'}</strong></td>
+              <td>${esc(p.email) || '—'}</td>
+              <td>${esc(p.phone) || '—'}</td>
               <td>${badge(p.role)}</td>
               <td>${p.rating || '—'}</td>
               <td>${p.total_gigs || 0}</td>
@@ -335,57 +432,160 @@ function renderUsers() {
   `;
 }
 
-// ─── Movers ──────────────────────────────────
-function renderMovers() {
+// ─── Workers ─────────────────────────────────
+function workerCard(m) {
+  const profile = cache.profiles.find(p => p.id === m.id) || {};
+  const initials = (profile.full_name || '??').split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase();
+  const skills = (m.skills || []).map(s => `<span class="skill-tag">${esc(s.replace(/-/g,' '))}</span>`).join('');
+  const selfieHtml = m.selfie_url
+    ? `<img class="selfie-thumb" src="${escAttr(m.selfie_url)}" onclick="window.open(this.src,'_blank')" title="Selfie verification photo">`
+    : '<span style="font-size:11px;color:var(--ink4)">No selfie</span>';
+  const avatarHtml = profile.avatar_url
+    ? `<img class="worker-avatar" src="${escAttr(profile.avatar_url)}" alt="${escAttr(profile.full_name)}">`
+    : `<div class="worker-avatar-placeholder">${esc(initials)}</div>`;
+
   return `
-    <h2 class="page-title">Workers</h2>
-    <p class="page-sub">${cache.moverProfiles.length} worker profiles</p>
-    <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('movers'))">Refresh</button>
-    <div class="table-wrap">
-      <table>
-        <thead><tr><th>Name</th><th>Status</th><th>Vehicle</th><th>Service ZIPs</th><th>Bio</th><th>BG Check</th><th>Created</th></tr></thead>
-        <tbody>
-          ${cache.moverProfiles.length ? cache.moverProfiles.map(m => `
-            <tr>
-              <td><strong>${profileName(m.id)}</strong></td>
-              <td>${badge(m.status)}</td>
-              <td>${m.vehicle_type || '—'}</td>
-              <td>${(m.service_area_zip || []).join(', ') || '—'}</td>
-              <td>${truncate(m.bio, 50)}</td>
-              <td>${badge(m.background_check_status)}</td>
-              <td>${fmt(m.created_at)}</td>
-            </tr>
-          `).join('') : '<tr><td colspan="7" class="empty">No worker profiles yet</td></tr>'}
-        </tbody>
-      </table>
+    <div class="worker-card" onclick="showWorkerModal('${m.id}')" style="animation:cardIn 0.36s cubic-bezier(0.16,1,0.3,1) both">
+      <div class="worker-card-header">
+        ${avatarHtml}
+        <div style="flex:1;min-width:0">
+          <div class="worker-name">${esc(profile.full_name) || '—'}</div>
+          <div class="worker-meta">${m.account_type === 'business' ? '🏢 ' + esc(m.business_name || 'Business') : '👤 Independent'} · ${badge(m.status)}</div>
+        </div>
+        ${selfieHtml}
+      </div>
+      <div class="worker-info-row"><span class="worker-info-label">Phone</span><span>${esc(profile.phone) || '—'}</span></div>
+      <div class="worker-info-row"><span class="worker-info-label">Email</span><span>${esc(profile.email) || '—'}</span></div>
+      <div class="worker-info-row"><span class="worker-info-label">Address</span><span>${esc(m.address) || '—'}</span></div>
+      <div class="worker-info-row"><span class="worker-info-label">Vehicle</span><span>${esc(m.vehicle_make_model || m.vehicle_type) || '—'}</span></div>
+      <div class="worker-info-row"><span class="worker-info-label">Experience</span><span>${m.years_experience != null ? m.years_experience + ' yr' + (m.years_experience !== 1 ? 's' : '') : '—'}</span></div>
+      <div class="worker-info-row"><span class="worker-info-label">Service ZIPs</span><span>${esc((m.service_area_zip || []).join(', ')) || '—'}</span></div>
+      <div class="worker-info-row"><span class="worker-info-label">Rating</span><span>${profile.rating ? '⭐ ' + profile.rating + ' (' + (profile.total_gigs || 0) + ' jobs)' : 'No reviews yet'}</span></div>
+      ${skills ? `<div class="worker-info-row"><span class="worker-info-label">Skills</span><span>${skills}</span></div>` : ''}
+      ${m.bio ? `<div style="margin-top:10px;font-size:12px;color:var(--ink3);line-height:1.6;border-top:1px solid var(--line);padding-top:10px">${truncate(m.bio, 120)}</div>` : ''}
     </div>
   `;
 }
 
+function renderMovers() {
+  const workers = cache.moverProfiles.filter(m => m.account_type !== 'business');
+  const pending = workers.filter(m => m.status === 'pending').length;
+  return `
+    <h2 class="page-title">Independent Workers</h2>
+    <p class="page-sub">${workers.length} workers · ${pending} pending approval</p>
+    <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('movers'))">Refresh</button>
+    ${workers.length ? `<div class="worker-grid">${workers.map(workerCard).join('')}</div>`
+      : '<div class="empty">No independent worker profiles yet</div>'}
+  `;
+}
+
+function renderBusinesses() {
+  const businesses = cache.moverProfiles.filter(m => m.account_type === 'business');
+  const pending = businesses.filter(m => m.status === 'pending').length;
+  return `
+    <h2 class="page-title">Businesses</h2>
+    <p class="page-sub">${businesses.length} business accounts · ${pending} pending approval</p>
+    <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('businesses'))">Refresh</button>
+    ${businesses.length ? `<div class="worker-grid">${businesses.map(workerCard).join('')}</div>`
+      : '<div class="empty">No business profiles yet</div>'}
+  `;
+}
+
+function showWorkerModal(id) {
+  const m = cache.moverProfiles.find(x => x.id === id);
+  const profile = cache.profiles.find(p => p.id === id) || {};
+  if (!m) return;
+  const skills = (m.skills || []).map(s => `<span class="skill-tag">${esc(s.replace(/-/g,' '))}</span>`).join('') || '—';
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()" style="position:relative">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>${esc(profile.full_name) || 'Worker'}</h2>
+        <div class="modal-row"><div class="modal-label">Account type</div><div class="modal-value">${m.account_type === 'business' ? 'Business' : 'Independent'}</div></div>
+        ${m.business_name ? `<div class="modal-row"><div class="modal-label">Business name</div><div class="modal-value">${esc(m.business_name)}</div></div>` : ''}
+        <div class="modal-row"><div class="modal-label">Status</div><div class="modal-value">${badge(m.status)}</div></div>
+        <div class="modal-row"><div class="modal-label">Phone</div><div class="modal-value">${esc(profile.phone) || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Email</div><div class="modal-value">${esc(profile.email) || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Address</div><div class="modal-value">${esc(m.address) || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Vehicle</div><div class="modal-value">${esc(m.vehicle_make_model || m.vehicle_type) || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Experience</div><div class="modal-value">${m.years_experience != null ? m.years_experience + ' years' : '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Service ZIPs</div><div class="modal-value">${esc((m.service_area_zip || []).join(', ')) || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Rating</div><div class="modal-value">${profile.rating ? '⭐ ' + profile.rating : '—'} · ${profile.total_gigs || 0} jobs</div></div>
+        <div class="modal-row"><div class="modal-label">Skills</div><div class="modal-value">${skills}</div></div>
+        <div class="modal-row"><div class="modal-label">BG Check</div><div class="modal-value">${badge(m.background_check_status)}</div></div>
+        <div class="modal-row"><div class="modal-label">Joined</div><div class="modal-value">${fmt(m.created_at)}</div></div>
+        ${m.bio ? `<div class="modal-row"><div class="modal-label">Bio</div><div class="modal-value">${esc(m.bio)}</div></div>` : ''}
+        ${m.selfie_url ? `
+          <div style="margin-top:16px">
+            <div class="modal-label" style="margin-bottom:8px">Identity selfie</div>
+            <img src="${escAttr(m.selfie_url)}" style="width:160px;height:160px;border-radius:12px;object-fit:cover;cursor:pointer" onclick="window.open(this.src,'_blank')">
+          </div>
+        ` : ''}
+        ${m.license_doc_url ? `<div style="margin-top:12px"><div class="modal-label" style="margin-bottom:6px">License</div><a href="${escAttr(m.license_doc_url)}" target="_blank" style="color:var(--accent-deep);font-size:13px">View document ↗</a></div>` : ''}
+        <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
+          <button class="btn-sm" onclick="approveWorker('${id}')" style="background:var(--success-soft);color:var(--success);border-color:var(--success)">✓ Approve</button>
+          <button class="btn-sm" onclick="suspendWorker('${id}')" style="background:var(--error-soft);color:var(--error);border-color:var(--error)">✕ Suspend</button>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+async function approveWorker(id) {
+  const { error } = await sb.from('mover_profiles').update({ status: 'approved' }).eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  await loadAll();
+  closeModal();
+  showPage('movers');
+}
+
+async function suspendWorker(id) {
+  if (!confirm('Suspend this worker?')) return;
+  const { error } = await sb.from('mover_profiles').update({ status: 'suspended' }).eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  await loadAll();
+  closeModal();
+  showPage('movers');
+}
+
 // ─── Gigs ────────────────────────────────────
 function renderGigs() {
+  // Real gigs only — abandoned wizard drafts (status 'draft') live in Leads.
+  const real = cache.gigs.filter(g => g.status !== 'draft');
+  const active = real.filter(g => !g.deleted_at && g.status !== 'completed');
+  const completed = real.filter(g => !g.deleted_at && g.status === 'completed');
+  const deleted = real.filter(g => g.deleted_at);
+  const gigs = gigTab === 'completed' ? completed : gigTab === 'deleted' ? deleted : active;
+
+  const tabStyle = (t) => `padding:8px 18px;border:1.5px solid ${gigTab===t?'var(--accent)':'var(--border)'};border-radius:999px;background:${gigTab===t?'var(--accent-soft)':'var(--card)'};color:${gigTab===t?'var(--accent-deep)':'var(--muted)'};font-size:13px;font-weight:600;cursor:pointer`;
+
   return `
     <h2 class="page-title">Gigs</h2>
-    <p class="page-sub">${cache.gigs.length} total gigs</p>
-    <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('gigs'))">Refresh</button>
+    <p class="page-sub">${active.length} active · ${completed.length} completed</p>
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+      <button style="${tabStyle('active')}" onclick="gigTab='active';showPage('gigs')">Active (${active.length})</button>
+      <button style="${tabStyle('completed')}" onclick="gigTab='completed';showPage('gigs')">Completed (${completed.length})</button>
+      <button style="${tabStyle('deleted')}" onclick="gigTab='deleted';showPage('gigs')">Deleted (${deleted.length})</button>
+      <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('gigs'))">Refresh</button>
+    </div>
     <div class="table-wrap">
       <table>
         <thead><tr><th>From</th><th>To</th><th>Customer</th><th>Worker</th><th>Status</th><th>Size</th><th>Crew</th><th>Price</th><th>When</th><th>Created</th></tr></thead>
         <tbody>
-          ${cache.gigs.length ? cache.gigs.map(g => `
+          ${gigs.length ? gigs.map(g => `
             <tr onclick="showGigModal('${g.id}')" style="cursor:pointer">
               <td>${truncate(g.from_address, 25)}</td>
               <td>${truncate(g.to_address, 25)}</td>
               <td>${profileName(g.customer_id)}</td>
               <td>${g.mover_id ? profileName(g.mover_id) : '—'}</td>
               <td>${badge(g.status)}</td>
-              <td>${g.home_size || '—'}</td>
+              <td>${esc(g.home_size) || '—'}</td>
               <td>${g.crew_size || '—'}</td>
               <td>${dollars(g.quoted_price_cents)}</td>
               <td>${g.scheduled_for ? fmt(g.scheduled_for) : 'ASAP'}</td>
               <td>${fmt(g.created_at)}</td>
             </tr>
-          `).join('') : '<tr><td colspan="10" class="empty">No gigs yet</td></tr>'}
+          `).join('') : `<tr><td colspan="10" class="empty">No ${gigTab} gigs</td></tr>`}
         </tbody>
       </table>
     </div>
@@ -435,9 +635,9 @@ function renderPhotos() {
             const gig = cache.gigs.find(g => g.id === p.gig_id);
             return `
               <tr>
-                <td><img class="photo-thumb" src="${p.url}" onclick="window.open('${p.url}','_blank')" alt="photo"></td>
+                <td><img class="photo-thumb" src="${escAttr(p.url)}" onclick="window.open(this.src,'_blank')" alt="photo"></td>
                 <td>${gig ? truncate(gig.from_address, 35) : p.gig_id.slice(0,8)}</td>
-                <td>${p.label || '—'}</td>
+                <td>${esc(p.label) || '—'}</td>
                 <td>${fmt(p.created_at)}</td>
               </tr>
             `;
@@ -463,9 +663,11 @@ function renderCalendar() {
   const today = new Date();
   const todayStr = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
 
-  // Group gigs by date
-  const scheduledGigs = cache.gigs.filter(g => g.scheduled_for);
-  const asapGigs = cache.gigs.filter(g => !g.scheduled_for);
+  // Calendar shows real gigs only (paid leads are converted to gigs). Exclude
+  // in-progress wizard drafts so they never appear on the schedule.
+  const calGigs = cache.gigs.filter(g => g.status !== 'draft' && !g.deleted_at);
+  const scheduledGigs = calGigs.filter(g => g.scheduled_for);
+  const asapGigs = calGigs.filter(g => !g.scheduled_for);
   const gigsByDate = {};
   scheduledGigs.forEach(g => {
     const d = new Date(g.scheduled_for);
@@ -481,11 +683,23 @@ function renderCalendar() {
     gigsByDate[key].push({ ...g, _isAsap: true });
   });
 
+  // Add blocked slots to the calendar
+  const blockedByDate = {};
+  (cache.blockedSlots || []).forEach(bs => {
+    const key = bs.blocked_date;
+    if (!blockedByDate[key]) blockedByDate[key] = [];
+    blockedByDate[key].push(bs);
+    if (!gigsByDate[key]) gigsByDate[key] = [];
+    gigsByDate[key].push({ ...bs, _isBlocked: true });
+  });
+
+  // Leads are NOT shown on the calendar — only paid gigs appear here. Leads
+  // are abandoned/incomplete intake attempts and live in the Leads tab only.
+
   // Sort gigs within each date by time
   Object.values(gigsByDate).forEach(arr => arr.sort((a, b) => {
-    const ta = new Date(a.scheduled_for || a.created_at).getTime();
-    const tb = new Date(b.scheduled_for || b.created_at).getTime();
-    return ta - tb;
+    const timeOf = x => new Date(x.scheduled_for || x.created_at).getHours() * 60 + new Date(x.scheduled_for || x.created_at).getMinutes();
+    return timeOf(a) - timeOf(b);
   }));
 
   // Build cells
@@ -506,10 +720,14 @@ function renderCalendar() {
 
     let gigsHtml = '';
     dayGigs.slice(0, maxShow).forEach(g => {
-      const cls = g._isAsap ? 'asap-gig' : `status-${g.status}`;
-      const time = g.scheduled_for ? new Date(g.scheduled_for).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'ASAP';
-      const label = `${time} ${truncate(g.from_address, 15)}`;
-      gigsHtml += `<div class="cal-gig ${cls}" onclick="showGigModal('${g.id}')" title="${g.from_address} → ${g.to_address}\n${dollars(g.quoted_price_cents)} | ${g.status}">${label}</div>`;
+      if (g._isBlocked) {
+        gigsHtml += `<div class="cal-gig blocked" title="${g.reason || 'Blocked'}">${g.blocked_time} BLOCKED <span class="block-x" onclick="event.stopPropagation();unblockSlot('${g.id}')">&times;</span></div>`;
+      } else {
+        const cls = g._isAsap ? 'asap-gig' : `status-${g.status}`;
+        const time = g.scheduled_for ? new Date(g.scheduled_for).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' }) : 'ASAP';
+        const label = `${time} ${truncate(g.from_address, 15)}`;
+        gigsHtml += `<div class="cal-gig ${cls}" onclick="showGigModal('${g.id}')" title="${escAttr(g.from_address)} → ${escAttr(g.to_address)}\n${dollars(g.quoted_price_cents)} | ${escAttr(g.status)}">${label}</div>`;
+      }
     });
     if (dayGigs.length > maxShow) {
       gigsHtml += `<div class="cal-more">+${dayGigs.length - maxShow} more</div>`;
@@ -527,7 +745,7 @@ function renderCalendar() {
 
   // Upcoming gigs list (sorted chronologically)
   const upcoming = [...cache.gigs]
-    .filter(g => g.status !== 'cancelled' && g.status !== 'completed')
+    .filter(g => g.status !== 'cancelled' && g.status !== 'completed' && g.status !== 'draft' && !g.deleted_at)
     .sort((a, b) => {
       const ta = new Date(a.scheduled_for || a.created_at).getTime();
       const tb = new Date(b.scheduled_for || b.created_at).getTime();
@@ -537,7 +755,7 @@ function renderCalendar() {
 
   return `
     <h2 class="page-title">Calendar</h2>
-    <p class="page-sub">Gigs laid out by scheduled date. ASAP gigs shown by creation date.</p>
+    <p class="page-sub">Paid gigs laid out by date. Leads (incomplete intake attempts) are not shown here — see the Leads tab.</p>
     <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('calendar'))">Refresh</button>
 
     <div class="cal-header">
@@ -558,6 +776,49 @@ function renderCalendar() {
       <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--success)"></div> Completed</div>
       <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--error)"></div> Cancelled</div>
       <div class="cal-legend-item"><div class="cal-legend-dot" style="background:var(--warning)"></div> ASAP</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#7E57C2"></div> Lead (intake form)</div>
+      <div class="cal-legend-item"><div class="cal-legend-dot" style="background:#E53935"></div> Blocked (manual)</div>
+    </div>
+
+    <h3 style="margin-top:24px">Block a Time Slot</h3>
+    <div class="block-form">
+      <label>Date<input type="date" id="block-date" min="${new Date().toISOString().split('T')[0]}" /></label>
+      <label>Time
+        <select id="block-time">
+          <option value="9:00 AM">9:00 AM</option>
+          <option value="10:00 AM">10:00 AM</option>
+          <option value="11:00 AM">11:00 AM</option>
+          <option value="12:00 PM">12:00 PM</option>
+          <option value="1:00 PM">1:00 PM</option>
+          <option value="2:00 PM">2:00 PM</option>
+          <option value="3:00 PM">3:00 PM</option>
+          <option value="4:00 PM">4:00 PM</option>
+          <option value="5:00 PM">5:00 PM</option>
+          <option value="6:00 PM">6:00 PM</option>
+        </select>
+      </label>
+      <label>Reason (optional)<input type="text" id="block-reason" placeholder="e.g. Personal, Full day" /></label>
+      <button onclick="blockSlot()">Block</button>
+      <button onclick="blockFullDay()" style="background:#B71C1C">Block Full Day</button>
+    </div>
+
+    <div class="blocked-list">
+      <h3 style="margin-top:16px">Currently Blocked</h3>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Date</th><th>Time</th><th>Reason</th><th></th></tr></thead>
+          <tbody>
+            ${(cache.blockedSlots || []).length ? (cache.blockedSlots || []).map(bs => `
+              <tr>
+                <td>${bs.blocked_date}</td>
+                <td>${bs.blocked_time}</td>
+                <td>${bs.reason || '—'}</td>
+                <td><button class="btn-sm" style="background:#C62828;color:#fff;border:none" onclick="unblockSlot('${bs.id}')">Remove</button></td>
+              </tr>
+            `).join('') : '<tr><td colspan="4" class="empty">No blocked slots</td></tr>'}
+          </tbody>
+        </table>
+      </div>
     </div>
 
     <div class="cal-asap-section">
@@ -584,6 +845,41 @@ function renderCalendar() {
   `;
 }
 
+async function blockSlot() {
+  const date = document.getElementById('block-date').value;
+  const time = document.getElementById('block-time').value;
+  const reason = document.getElementById('block-reason').value.trim();
+  if (!date) { alert('Please select a date.'); return; }
+  const { error } = await sb.from('blocked_slots').insert({ blocked_date: date, blocked_time: time, reason: reason || null });
+  if (error) { alert('Error: ' + error.message); return; }
+  await loadAll();
+  showPage('calendar');
+}
+
+async function blockFullDay() {
+  const date = document.getElementById('block-date').value;
+  const reason = document.getElementById('block-reason').value.trim() || 'Full day blocked';
+  if (!date) { alert('Please select a date.'); return; }
+  const times = ['9:00 AM','10:00 AM','11:00 AM','12:00 PM','1:00 PM','2:00 PM','3:00 PM','4:00 PM','5:00 PM','6:00 PM'];
+  // Don't duplicate — filter out already blocked times
+  const existing = (cache.blockedSlots || []).filter(bs => bs.blocked_date === date).map(bs => bs.blocked_time);
+  const toBlock = times.filter(t => !existing.includes(t));
+  if (!toBlock.length) { alert('All times already blocked for this date.'); return; }
+  const rows = toBlock.map(t => ({ blocked_date: date, blocked_time: t, reason }));
+  const { error } = await sb.from('blocked_slots').insert(rows);
+  if (error) { alert('Error: ' + error.message); return; }
+  await loadAll();
+  showPage('calendar');
+}
+
+async function unblockSlot(id) {
+  if (!confirm('Remove this blocked time?')) return;
+  const { error } = await sb.from('blocked_slots').delete().eq('id', id);
+  if (error) { alert('Error: ' + error.message); return; }
+  await loadAll();
+  showPage('calendar');
+}
+
 function calPrev() { calMonth--; if (calMonth < 0) { calMonth = 11; calYear--; } showPage('calendar'); }
 function calNext() { calMonth++; if (calMonth > 11) { calMonth = 0; calYear++; } showPage('calendar'); }
 function calToday() { const t = new Date(); calYear = t.getFullYear(); calMonth = t.getMonth(); showPage('calendar'); }
@@ -599,28 +895,34 @@ function showGigModal(id) {
     <div class="modal-overlay" onclick="closeModal(event)">
       <div class="modal" onclick="event.stopPropagation()" style="position:relative">
         <button class="modal-close" onclick="closeModal()">&times;</button>
+        ${g.deleted_at
+          ? `<button onclick="restoreGig('${g.id}')" style="position:absolute;top:16px;right:56px;padding:7px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">Restore</button>`
+          : `<button onclick="deleteGig('${g.id}')" style="position:absolute;top:16px;right:56px;padding:7px 14px;background:var(--error);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">Delete</button>`}
+        ${!g.deleted_at && g.status !== 'completed' && g.status !== 'cancelled'
+          ? `<button onclick="completeGig('${g.id}')" style="position:absolute;top:16px;right:118px;padding:7px 14px;background:var(--success);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">Complete</button>`
+          : ''}
         <h2>Gig Details</h2>
         <div class="modal-row"><div class="modal-label">Status</div><div class="modal-value">${badge(g.status)}</div></div>
         <div class="modal-row"><div class="modal-label">Customer</div><div class="modal-value">${profileName(g.customer_id)}</div></div>
         <div class="modal-row"><div class="modal-label">Worker</div><div class="modal-value">${g.mover_id ? profileName(g.mover_id) : 'None assigned'}</div></div>
-        <div class="modal-row"><div class="modal-label">From</div><div class="modal-value">${g.from_address}</div></div>
-        <div class="modal-row"><div class="modal-label">To</div><div class="modal-value">${g.to_address}</div></div>
+        <div class="modal-row"><div class="modal-label">From</div><div class="modal-value">${esc(g.from_address)}</div></div>
+        <div class="modal-row"><div class="modal-label">To</div><div class="modal-value">${esc(g.to_address)}</div></div>
         <div class="modal-row"><div class="modal-label">Distance</div><div class="modal-value">${g.distance_miles ? g.distance_miles + ' mi' : '—'}</div></div>
-        <div class="modal-row"><div class="modal-label">Home Size</div><div class="modal-value">${g.home_size || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Home Size</div><div class="modal-value">${esc(g.home_size) || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Crew</div><div class="modal-value">${g.crew_size || '—'}</div></div>
-        <div class="modal-row"><div class="modal-label">Truck</div><div class="modal-value">${g.truck_size || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Truck</div><div class="modal-value">${esc(g.truck_size) || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Stairs</div><div class="modal-value">${g.stairs_from || 0} from, ${g.stairs_to || 0} to</div></div>
         <div class="modal-row"><div class="modal-label">Elevator</div><div class="modal-value">From: ${g.elevator_from ? 'Yes' : 'No'}, To: ${g.elevator_to ? 'Yes' : 'No'}</div></div>
-        <div class="modal-row"><div class="modal-label">Heavy Items</div><div class="modal-value">${(g.heavy_items || []).join(', ') || 'None'}</div></div>
+        <div class="modal-row"><div class="modal-label">Heavy Items</div><div class="modal-value">${esc((g.heavy_items || []).join(', ')) || 'None'}</div></div>
         <div class="modal-row"><div class="modal-label">Quoted Price</div><div class="modal-value">${dollars(g.quoted_price_cents)}</div></div>
         <div class="modal-row"><div class="modal-label">Final Price</div><div class="modal-value">${dollars(g.final_price_cents)}</div></div>
         <div class="modal-row"><div class="modal-label">Scheduled</div><div class="modal-value">${g.scheduled_for ? fmt(g.scheduled_for) : 'ASAP'}</div></div>
-        <div class="modal-row"><div class="modal-label">Notes</div><div class="modal-value">${g.customer_notes || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Notes</div><div class="modal-value">${esc(g.customer_notes) || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Created</div><div class="modal-value">${fmt(g.created_at)}</div></div>
         ${gigPhotos.length ? `
           <div style="margin-top:16px">
             <div class="modal-label" style="margin-bottom:8px">Photos (${gigPhotos.length})</div>
-            <div class="modal-photos">${gigPhotos.map(p => `<img src="${p.url}" onclick="window.open('${p.url}','_blank')" alt="${p.label || 'photo'}">`).join('')}</div>
+            <div class="modal-photos">${gigPhotos.map(p => `<img src="${escAttr(p.url)}" onclick="window.open(this.src,'_blank')" alt="${escAttr(p.label || 'photo')}">`).join('')}</div>
           </div>
         ` : ''}
         ${gigApps.length ? `
@@ -630,7 +932,10 @@ function showGigModal(id) {
               <div style="padding:8px 0;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:center">
                 <strong>${profileName(a.mover_id)}</strong>
                 ${badge(a.status)}
-                <span style="color:var(--ink3);font-size:12px">${truncate(a.message, 40)}</span>
+                <span style="color:var(--ink3);font-size:12px;flex:1">${truncate(a.message, 40)}</span>
+                ${a.status === 'pending' && g.status !== 'completed' && g.status !== 'cancelled' ? `
+                  <button onclick="assignMover('${g.id}','${a.id}')" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Assign</button>
+                ` : ''}
               </div>
             `).join('')}
           </div>
@@ -646,11 +951,314 @@ function closeModal(e) {
   }
 }
 
+// Soft-delete: gigs (often paid bookings) are never hard-deleted, just hidden
+// in the Deleted tab so payment/payout records are preserved and recoverable.
+async function deleteGig(id) {
+  if (!confirm('Move this gig to Deleted? You can restore it later.')) return;
+  const { error } = await sb.from('gigs').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+  if (error) { alert('Could not delete gig: ' + error.message); return; }
+  closeModal();
+  await loadAll();
+  showPage(currentPage);
+}
+
+async function restoreGig(id) {
+  const { error } = await sb.from('gigs').update({ deleted_at: null }).eq('id', id);
+  if (error) { alert('Could not restore gig: ' + error.message); return; }
+  closeModal();
+  await loadAll();
+  showPage(currentPage);
+}
+
+async function completeGig(id) {
+  if (!confirm('Mark this gig as completed?')) return;
+  const { error } = await sb.from('gigs').update({ status: 'completed' }).eq('id', id);
+  if (error) { alert('Could not complete gig: ' + error.message); return; }
+  closeModal();
+  await loadAll();
+  showPage('gigs');
+}
+
+// Admin assigns a mover to a gig by accepting their application. Backed by the
+// assign_mover_to_gig SECURITY DEFINER RPC (migration 034), which is admin-gated
+// and works even on lead-sourced gigs where customer_id IS NULL.
+async function assignMover(gigId, appId) {
+  if (!confirm('Assign this mover to the gig?')) return;
+  const { error } = await sb.rpc('assign_mover_to_gig', { p_gig_id: gigId, p_application_id: appId });
+  if (error) { alert('Could not assign mover: ' + error.message); return; }
+  closeModal();
+  await loadAll();
+  showPage(currentPage);
+}
+
+// Soft-delete: leads are never hard-deleted, just hidden in the Deleted tab.
+async function deleteLead(id) {
+  if (!confirm('Move this lead to Deleted? You can restore it later.')) return;
+  await sb.from('quote_requests').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+  closeModal();
+  await loadAll();
+  showPage(currentPage);
+}
+
+async function restoreLead(id) {
+  await sb.from('quote_requests').update({ deleted_at: null }).eq('id', id);
+  closeModal();
+  await loadAll();
+  showPage(currentPage);
+}
+
 // ─── Init ────────────────────────────────────
 (async () => {
   const { data: { session } } = await sb.auth.getSession();
   if (session) await initApp();
 })();
+
+// ─── Leads ───────────────────────────────────
+// ── Lead price breakdown (mirrors intake form calcQuote) ─────────────────────
+const LEAD_BASE = { 'Just a few items':17500, 'Studio':35000, '1 BR':50000, '2 BR':80000, '3 BR':135000, '4+ BR / full house':160000 };
+const LEAD_HEAVY = { 'Piano':25000, 'Safe / gun safe':15000, 'Pool table':30000, 'Treadmill / Peloton':7500, 'Big TV (65"+)':7500, 'Aquarium':7500, 'Artwork / mirror':7500 };
+const LEAD_HOURS = { 'Just a few items':1.5, 'Studio':2, '1 BR':3, '2 BR':4, '3 BR':5, '4+ BR / full house':7 };
+function estimateLeadHours(l) {
+  let hrs = LEAD_HOURS[l.items_size] || 2;
+  const sp = l.stairs_pickup || '', sd = l.stairs_dropoff || '';
+  if (sp.includes('Stairs')) hrs += 0.5;
+  if (sd.includes('Stairs')) hrs += 0.5;
+  const special = Array.isArray(l.special_items) ? l.special_items.filter(x => x !== 'Nope — just regular stuff') : [];
+  hrs += special.length * 0.25; // repeated entries count individually
+  if ((l.parking || '').includes('100+')) hrs += 0.25;
+  return Math.ceil(hrs * 2) / 2; // round to nearest 0.5
+}
+function fmtDuration(hrs) { const h = Math.floor(hrs); const m = (hrs - h) * 60; return m ? `${h}h ${m}m` : `${h}h`; }
+function calcLeadQuote(l) {
+  const base = LEAD_BASE[l.items_size];
+  if (!base) return null;
+  const special = Array.isArray(l.special_items) ? l.special_items.filter(x => x !== 'Nope — just regular stuff') : [];
+  const sp = l.stairs_pickup || '', sd = l.stairs_dropoff || '';
+  const hasStairs = lbl => lbl === 'Stairs' || lbl === 'Both';
+  const flightsFrom = hasStairs(sp) ? Math.max(1, l.flights_pickup || 1) : 0;
+  const flightsTo   = hasStairs(sd) ? Math.max(1, l.flights_dropoff || 1) : 0;
+  const flights    = flightsFrom + flightsTo;
+  const stairsCents = flights * 3000; // $30/flight — matches intake STAIRS_SURCHARGE
+  const carryCents  = (l.parking || '').includes('100+') ? 5000 : 0;
+  const heavyCents  = special.reduce((s, x) => s + (LEAD_HEAVY[x] || 7500), 0);
+  const isLongDistance = l.service_type === 'Long distance' || l.service_type === 'Long distance (auto)';
+  const ldMult = isLongDistance ? 1.5 : 1;
+  const adjustedBase = Math.round(base * ldMult);
+  const stagingCents = l.staging ? Math.round(adjustedBase * 0.30) : 0;
+  const wantsPacking = l.packing_service != null ? l.packing_service : (l.items_boxed === 'Not yet');
+  const packingCents = wantsPacking ? Math.round(adjustedBase * 0.25) : 0;
+  const subtotal = adjustedBase + stairsCents + carryCents + heavyCents + stagingCents + packingCents;
+  const tax = Math.round(subtotal * 0.0825);
+  const total = subtotal + tax;
+  const deposit = total; // 100% upfront
+  return { base, stairsCents, carryCents, heavyCents, stagingCents, packingCents, isLongDistance, subtotal, tax, total, deposit, flights, heavyCount: special.length };
+}
+function fmtMoney(c) { return '$' + (c/100).toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0}); }
+function renderLeadPrice(l) {
+  const q = calcLeadQuote(l);
+  if (!q) return l.estimated_price_cents
+    ? `<div style="background:var(--accent-soft);border:1.5px solid var(--accent);border-radius:10px;padding:12px 14px;margin:10px 0">
+        <div style="font-size:11px;font-weight:700;color:var(--accent-deep);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Submitted estimate</div>
+        <div style="font-size:22px;font-weight:800;color:var(--ink)">${fmtMoney(l.estimated_price_cents)}</div>
+       </div>` : '';
+  const rows = [
+    q.isLongDistance ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Long distance (50%)</span><span>+${fmtMoney(Math.round(q.base * 0.5))}</span></div>` : '',
+    q.stairsCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Stairs (${q.flights} flight${q.flights>1?'s':''})</span><span>+${fmtMoney(q.stairsCents)}</span></div>` : '',
+    q.carryCents  ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Long carry</span><span>+${fmtMoney(q.carryCents)}</span></div>` : '',
+    q.heavyCents  ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Special items (${q.heavyCount})</span><span>+${fmtMoney(q.heavyCents)}</span></div>` : '',
+    q.stagingCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Home staging (+30%)</span><span>+${fmtMoney(q.stagingCents)}</span></div>` : '',
+    q.packingCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Packing service (+25%)</span><span>+${fmtMoney(q.packingCents)}</span></div>` : '',
+    `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Tax (8.25%)</span><span>+${fmtMoney(q.tax)}</span></div>`,
+  ].filter(Boolean).join('');
+  return `<div style="background:var(--accent-soft);border:2px solid var(--accent);border-radius:12px;padding:14px 16px;margin:10px 0">
+    <div style="font-size:11px;font-weight:700;color:var(--accent-deep);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Price estimate</div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Base (${l.items_size})</span><span>${fmtMoney(q.base)}</span></div>
+    ${rows}
+    <div style="border-top:1.5px solid var(--accent);margin:8px 0 6px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline">
+      <span style="font-size:16px;font-weight:800;color:var(--ink)">Total</span>
+      <span style="font-size:24px;font-weight:800;color:var(--ink)">${fmtMoney(q.total)}</span>
+    </div>
+    <div style="font-size:12px;color:var(--ink3);margin-top:4px">100% upfront · 80% refundable if cancelled 48+ hrs before move</div>
+    <div style="font-size:12px;color:#5E35B1;font-weight:600;margin-top:6px">Est. duration: ${fmtDuration(estimateLeadHours(l))}</div>
+  </div>`;
+}
+function renderLeadPhotos(l) {
+  if (!Array.isArray(l.photo_urls) || !l.photo_urls.length) return '';
+  const imgs = l.photo_urls.map(url => {
+    const safeUrl = escAttr(url);
+    return `<a href="${safeUrl}" target="_blank" style="display:inline-block;border-radius:8px;overflow:hidden;border:1.5px solid var(--line2)">
+      <img src="${safeUrl}" style="width:80px;height:80px;object-fit:cover;display:block" onerror="this.style.display='none'" />
+    </a>`;
+  }).join('');
+  return `<div style="margin:10px 0">
+    <div style="font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Photos (${l.photo_urls.length})</div>
+    <div style="display:flex;flex-wrap:wrap;gap:8px">${imgs}</div>
+  </div>`;
+}
+
+function gcalLink(l) {
+  if (!l.preferred_date) return null;
+  const d = l.preferred_date.replace(/-/g, '');
+  const hrs = estimateLeadHours(l);
+  const title = encodeURIComponent(`Move: ${l.name || 'Lead'} (${l.items_size || 'move'}, est. ${fmtDuration(hrs)})`);
+  const loc = encodeURIComponent(l.pickup_address || '');
+  const details = encodeURIComponent([
+    l.phone ? `Phone: ${l.phone}` : '',
+    l.email ? `Email: ${l.email}` : '',
+    l.service_type ? `Service: ${l.service_type}` : '',
+    l.items_size ? `Size: ${l.items_size}` : '',
+    `Est. duration: ${fmtDuration(hrs)}`,
+    l.dropoff_address ? `Drop-off: ${l.dropoff_address}` : '',
+    l.estimated_price_cents ? `Est. price: $${Math.round(l.estimated_price_cents/100).toLocaleString()}` : '',
+  ].filter(Boolean).join('\n'));
+  // Parse start hour from preferred_time like "9:00 AM"
+  let startH = 9;
+  if (l.preferred_time) {
+    const m = l.preferred_time.match(/(\d+)/);
+    if (m) { startH = parseInt(m[1]); if (l.preferred_time.includes('PM') && startH !== 12) startH += 12; }
+  }
+  const endH = startH + Math.floor(hrs);
+  const endM = (hrs % 1) * 60;
+  const startTime = String(startH).padStart(2,'0') + '0000';
+  const endTime = String(endH).padStart(2,'0') + String(endM).padStart(2,'0') + '00';
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${d}T${startTime}/${d}T${endTime}&location=${loc}&details=${details}`;
+}
+
+function openLeadModal(id) {
+  const l = cache.leads.find(x => x.id === id);
+  if (!l) return;
+  const price = l.estimated_price_cents ? `$${Math.round(l.estimated_price_cents/100).toLocaleString()}` : '—';
+  const specialArr = Array.isArray(l.special_items) ? l.special_items.filter(x => x !== 'Nope — just regular stuff') : [];
+  const specialCounts = {};
+  specialArr.forEach(x => { specialCounts[x] = (specialCounts[x] || 0) + 1; });
+  const special = Object.keys(specialCounts).length
+    ? Object.entries(specialCounts).map(([k,v]) => v > 1 ? `${k} ×${v}` : k).join(', ') : '—';
+  const commonArr = Array.isArray(l.common_items) ? l.common_items : [];
+  const commonCounts = {};
+  commonArr.forEach(x => { commonCounts[x] = (commonCounts[x] || 0) + 1; });
+  const commonDetails = (l.common_item_details && typeof l.common_item_details === 'object') ? l.common_item_details : {};
+  const common = Object.keys(commonCounts).length
+    ? Object.entries(commonCounts).map(([k,v]) => {
+        const label = v > 1 ? `${k} ×${v}` : k;
+        const attrs = (commonDetails[k] && typeof commonDetails[k] === 'object') ? commonDetails[k] : null;
+        const attrStr = attrs ? Object.entries(attrs).map(([a,c]) => `${c} ${a.toLowerCase()}`).join(', ') : '';
+        return attrStr ? `${label} (${attrStr})` : label;
+      }).join(', ') : '—';
+  const cal = gcalLink(l);
+  const hrs = estimateLeadHours(l);
+  const endTimeLabel = l.preferred_time ? (() => {
+    const m = l.preferred_time.match(/(\d+)/);
+    if (!m) return '';
+    let startH = parseInt(m[1]); const isPM = l.preferred_time.includes('PM');
+    if (isPM && startH !== 12) startH += 12;
+    const endH = startH + Math.floor(hrs); const endM = (hrs % 1) * 60;
+    const endH12 = endH > 12 ? endH - 12 : endH; const endAmPm = endH >= 12 ? 'PM' : 'AM';
+    return ` → ${endH12}:${String(endM).padStart(2,'0')} ${endAmPm}`;
+  })() : '';
+  const rows = [
+    ['Phone',       l.phone ? `<a href="tel:${escAttr(l.phone)}" style="color:var(--accent-deep)">${esc(l.phone)}</a>` : '—'],
+    ['Email',       l.email ? `<a href="mailto:${escAttr(l.email)}" style="color:var(--accent-deep)">${esc(l.email)}</a>` : '—'],
+    ['Service',     esc(l.service_type) || '—'],
+    ['Move size',   esc(l.items_size) || '—'],
+    ['Pickup',      esc(l.pickup_address) || '—'],
+    ['Drop-off',    esc(l.dropoff_address) || '—'],
+    ['Date',        esc(l.preferred_date) || '—'],
+    ['Time',        l.preferred_time ? `${esc(l.preferred_time)}${endTimeLabel}` : '—'],
+    ['Est. duration', `<span style="font-weight:700;color:#5E35B1">${fmtDuration(hrs)}</span>`],
+    ['Parking',     esc(l.parking) || '—'],
+    ['Stairs (pickup)', (esc(l.stairs_pickup) || '—') + ((l.stairs_pickup === 'Stairs' || l.stairs_pickup === 'Both') && l.flights_pickup ? ` · ${l.flights_pickup} flight${l.flights_pickup>1?'s':''}` : '')],
+    ['Stairs (drop)',   (esc(l.stairs_dropoff) || '—') + ((l.stairs_dropoff === 'Stairs' || l.stairs_dropoff === 'Both') && l.flights_dropoff ? ` · ${l.flights_dropoff} flight${l.flights_dropoff>1?'s':''}` : '')],
+    ['Common items',    esc(common)],
+    ['Special items',   esc(special)],
+    ['Boxed up',    (esc(l.items_boxed) || '—') + (l.box_count ? ` · ${l.box_count} boxes` : '')],
+    ['Packing service', (l.packing_service != null ? l.packing_service : (l.items_boxed === 'Not yet')) ? '<span style="color:#27ae60;font-weight:700">Yes (+25%)</span>' : (l.items_boxed === 'Not yet' ? '<span style="color:var(--ink3)">Declined</span>' : '—')],
+    ['Prep needed', Array.isArray(l.prep_needed) && l.prep_needed.length ? esc(l.prep_needed.join(', ')) : '—'],
+    ['Home staging', l.staging ? '<span style="color:#27ae60;font-weight:700">Yes (+30%)</span>' : '—'],
+    ['Items list',  esc(l.items_list) || '—'],
+    ['Other notes', esc(l.other_notes) || '—'],
+    ['Payment',     l.payment_status === 'paid' ? `<span style="color:#27ae60;font-weight:700">Paid (${l.deposit_cents ? '$'+Math.round(l.deposit_cents/100) : '—'})</span>` : l.payment_status === 'pending' ? '<span style="color:#e67e22;font-weight:600">Pending</span>' : '<span style="color:var(--muted)">Unpaid</span>'],
+    ['Stopped on',  `<span style="color:var(--accent-deep);font-weight:700">${esc(leadStopStep(l))}</span>`],
+    ['Submitted',   fmt(l.created_at)],
+  ].map(([label, val]) => `<div class="modal-row"><div class="modal-label">${label}</div><div class="modal-value">${val}</div></div>`).join('');
+
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()" style="position:relative">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        ${l.deleted_at
+          ? `<button onclick="restoreLead('${l.id}')" style="position:absolute;top:16px;right:56px;padding:7px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">Restore</button>`
+          : `<button onclick="deleteLead('${l.id}')" style="position:absolute;top:16px;right:56px;padding:7px 14px;background:var(--error);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">Delete</button>`}
+        <h2>${l.lead_number ? '<span style="color:var(--accent-deep);font-size:16px;font-weight:700">#'+l.lead_number+'</span> ' : ''}${esc(l.name) || 'Lead'}</h2>
+        ${rows}
+        ${renderLeadPrice(l)}
+        ${renderLeadPhotos(l)}
+        ${cal ? `<a class="gcal-btn" href="${cal}" target="_blank">📅 Add to Google Calendar</a>` : ''}
+      </div>
+    </div>`;
+}
+
+// Human-readable label for where a lead abandoned the flow.
+const GIG_STEP_LABELS = { locations:'Locations', size:'Move size', inventory:'Inventory', crew:'Crew & truck', extras:'Extras', schedule:'Schedule', contact:'Contact info', review:'Review' };
+function leadStopStep(l) {
+  if (l._isDraftGig) return GIG_STEP_LABELS[l.draft_step] || l.draft_step || 'In progress';
+  if (l.status === 'submitted') return 'Completed form · unpaid';
+  return l.progress_step || 'Just started';
+}
+
+let leadTab = 'open';
+let gigTab = 'active';
+function renderLeads() {
+  // Leads = people who STARTED the website intake form or the in-app gig wizard
+  // but did NOT finish/pay. Anyone who paid is converted to a gig (Gigs tab).
+  // Soft-deleted leads move to the Deleted tab.
+  const webLeads = (cache.leads || []).filter(l => !l.deleted_at && l.payment_status !== 'paid' && l.status !== 'booked');
+  const deletedLeads = (cache.leads || []).filter(l => l.deleted_at);
+  const draftGigs = (cache.gigs || []).filter(g => g.status === 'draft').map(g => ({ ...g, _isDraftGig: true }));
+  const open = [...webLeads, ...draftGigs].sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+
+  const list = leadTab === 'deleted' ? deletedLeads : open;
+
+  const card = (l, i) => {
+    if (l._isDraftGig) {
+      const name = profileName(l.customer_id) || 'App user';
+      const size = esc(l.home_size) || '—';
+      const where = esc((l.from_address || '—').split(',')[0]);
+      return `<div class="lead-card" style="animation:cardIn 0.36s cubic-bezier(0.16,1,0.3,1) ${i*50}ms both" onclick="showGigModal('${l.id}')">
+        <div class="lead-card-name">${esc(name)} <span style="background:#5E35B1;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-left:6px">APP DRAFT</span></div>
+        <div class="lead-card-meta">${fmt(l.created_at)} · Stopped on: <strong style="color:#5E35B1">${esc(leadStopStep(l))}</strong></div>
+        <div class="lead-card-row"><span>Moving</span><span>${size}</span></div>
+        <div class="lead-card-row"><span>📍 ${where}</span><span>${l.scheduled_for ? fmt(l.scheduled_for) : 'ASAP'}</span></div>
+      </div>`;
+    }
+    const price = l.estimated_price_cents ? `<span class="lead-price">$${Math.round(l.estimated_price_cents/100).toLocaleString()}</span>` : '';
+    const leadNum = l.lead_number ? `<span style="font-size:11px;font-weight:700;color:var(--accent-deep);margin-right:6px">#${l.lead_number}</span>` : '';
+    const srcBadge = l.deleted_at
+      ? '<span style="background:var(--error);color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-left:6px">DELETED</span>'
+      : l.status === 'submitted'
+        ? '<span style="background:#e67e22;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-left:6px">UNPAID</span>'
+        : '<span style="background:#999;color:#fff;font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;margin-left:6px">ABANDONED</span>';
+    return `<div class="lead-card" style="animation:cardIn 0.36s cubic-bezier(0.16,1,0.3,1) ${i*50}ms both;${l.deleted_at ? 'opacity:0.7;' : ''}" onclick="openLeadModal('${l.id}')">
+      <div class="lead-card-name">${leadNum}${esc(l.name) || 'Unknown'} ${price}${srcBadge}</div>
+      <div class="lead-card-meta">${esc(l.phone) || ''} · ${fmt(l.created_at)} · Stopped on: <strong style="color:var(--accent-deep)">${esc(leadStopStep(l))}</strong></div>
+      <div class="lead-card-row"><span>${esc(l.service_type) || 'Move'}</span><span>${esc(l.items_size) || '—'}</span></div>
+      <div class="lead-card-row"><span>📍 ${esc((l.pickup_address || '—').split(',')[0])}</span><span>${esc(l.preferred_date) || 'Date TBD'}</span></div>
+    </div>`;
+  };
+  const cards = list.map(card).join('');
+
+  const tabStyle = (t) => `padding:8px 18px;border:1.5px solid ${leadTab===t?'var(--accent)':'var(--border)'};border-radius:999px;background:${leadTab===t?'var(--accent-soft)':'var(--card)'};color:${leadTab===t?'var(--accent-deep)':'var(--muted)'};font-size:13px;font-weight:600;cursor:pointer`;
+
+  return `
+    <h2 class="page-title">Leads</h2>
+    <p class="page-sub">People who started the intake form or app gig wizard but didn't finish. Paid leads become gigs.</p>
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap">
+      <button style="${tabStyle('open')}" onclick="leadTab='open';showPage('leads')">Abandoned (${open.length})</button>
+      <button style="${tabStyle('deleted')}" onclick="leadTab='deleted';showPage('leads')">Deleted (${deletedLeads.length})</button>
+      <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('leads'))">Refresh</button>
+    </div>
+    ${list.length ? cards : '<div class="empty">No ' + (leadTab === 'deleted' ? 'deleted' : 'abandoned') + ' leads.</div>'}`;
+}
 </script>
 </body>
 </html>

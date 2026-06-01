@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, TextInput } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { colors, radii } from '../../lib/theme';
 import { useGigDraftStore } from '../../stores/gigDraft';
@@ -8,7 +8,7 @@ type ScheduleMode = 'anytime' | 'pick';
 
 const WEEKDAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
-const HOURS = Array.from({ length: 16 }, (_, i) => i + 6); // 6 AM to 9 PM
+const HOURS = Array.from({ length: 14 }, (_, i) => i + 8); // 8 AM to 9 PM
 
 function formatHour(h: number) {
   const suffix = h >= 12 ? 'PM' : 'AM';
@@ -106,36 +106,6 @@ export function StepSchedule() {
         <Text style={{ fontSize: 15, color: colors.ink2, lineHeight: 22 }}>
           Choose a time that works best for you.
         </Text>
-      </View>
-
-      {/* Job title + description — tap mic on keyboard to dictate */}
-      <View style={{ paddingHorizontal: 20, marginBottom: 20, gap: 10 }}>
-        <TextInput
-          value={draft.gig_title}
-          onChangeText={(v) => updateDraft({ gig_title: v })}
-          placeholder="Job title (e.g. 2BR move + piano)"
-          placeholderTextColor={colors.ink4}
-          style={{
-            height: 52, paddingHorizontal: 16, borderRadius: radii.md,
-            backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.line,
-            fontSize: 15, fontWeight: '600', color: colors.ink,
-          }}
-        />
-        <TextInput
-          value={draft.gig_description}
-          onChangeText={(v) => updateDraft({ gig_description: v })}
-          placeholder="Describe the job — tap the mic key on your keyboard to dictate"
-          placeholderTextColor={colors.ink4}
-          multiline
-          numberOfLines={3}
-          textAlignVertical="top"
-          style={{
-            minHeight: 88, paddingHorizontal: 16, paddingTop: 14,
-            borderRadius: radii.md, backgroundColor: colors.card,
-            borderWidth: 1.5, borderColor: colors.line,
-            fontSize: 14, color: colors.ink, lineHeight: 20,
-          }}
-        />
       </View>
 
       {/* Mode selector */}

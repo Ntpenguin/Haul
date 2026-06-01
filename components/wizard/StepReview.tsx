@@ -19,10 +19,14 @@ export function StepReview() {
     elevatorTo: draft.elevator_to,
     longCarry: draft.long_carry,
     heavyItems: draft.heavy_items,
+    distanceMiles: draft.distance_miles || undefined,
+    staging: draft.staging,
+    packing: draft.packing_service,
   }, 'flat');
 
   const sizeLabel: Record<string, string> = {
-    item: 'Single item', studio: 'Studio', '1br': '1 bedroom', '2br': '2 bedroom', '3br+': '3+ bedroom',
+    'few-items': 'Just a few items', studio: 'Studio', '1br': '1 bedroom',
+    '2br': '2 bedroom', '3br+': '3 bedroom', '4br': '4+ BR / full house', other: 'Custom',
   };
   const truckLabel: Record<string, string> = {
     none: 'No truck', small: 'Van', medium: '16 ft truck', large: '26 ft truck',
@@ -61,7 +65,7 @@ export function StepReview() {
           <SummaryRow icon="home-outline" label="Move size" value={sizeLabel[draft.home_size] || draft.home_size} />
           <SummaryRow icon="people-outline" label="Crew" value={`${draft.crew_size} ${draft.crew_size === 1 ? 'mover' : 'movers'}`} />
           <SummaryRow icon="car-outline" label="Truck" value={truckLabel[draft.truck_size]} />
-          <SummaryRow icon="calendar-outline" label="When" value={draft.scheduled_for ? draft.scheduled_for : 'ASAP'} />
+          <SummaryRow icon="calendar-outline" label="When" value={draft.scheduled_for ? new Date(draft.scheduled_for).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) : 'ASAP'} />
           {draft.heavy_items.length > 0 && <SummaryRow icon="barbell-outline" label="Heavy items" value={`${draft.heavy_items.length} flagged`} />}
           <SummaryRow icon="trending-up-outline" label="Stairs" value={`${draft.stairs_from + draft.stairs_to} flights total`} last />
         </Card>
@@ -74,9 +78,13 @@ export function StepReview() {
           {price.pricing === 'flat' && (
             <>
               <PriceRow label="Base move" value={formatCents(price.baseCents)} />
+              {price.longDistanceCents > 0 && <PriceRow label="Long distance (+50%)" value={`+${formatCents(price.longDistanceCents)}`} />}
+              {price.distanceSurchargeCents > 0 && <PriceRow label="Mileage" value={`+${formatCents(price.distanceSurchargeCents)}`} />}
               {price.stairsSurchargeCents > 0 && <PriceRow label="Stairs surcharge" value={`+${formatCents(price.stairsSurchargeCents)}`} />}
               {price.longCarryCents > 0 && <PriceRow label="Long carry" value={`+${formatCents(price.longCarryCents)}`} />}
               {price.heavyItemsCents > 0 && <PriceRow label="Heavy items" value={`+${formatCents(price.heavyItemsCents)}`} />}
+              {price.stagingCents > 0 && <PriceRow label="Home staging (+30%)" value={`+${formatCents(price.stagingCents)}`} />}
+              {price.packingCents > 0 && <PriceRow label="Packing service (+25%)" value={`+${formatCents(price.packingCents)}`} />}
             </>
           )}
           <PriceRow label="Taxes & fees" value={formatCents(price.taxesCents)} />

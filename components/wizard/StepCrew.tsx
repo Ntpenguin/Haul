@@ -14,8 +14,8 @@ const TRUCK_OPTIONS = [
 export function StepCrew() {
   const { draft, updateDraft } = useGigDraftStore();
 
-  // Studio and single item: max 2 movers. Larger moves: up to 4.
-  const isSmallMove = draft.home_size === 'item' || draft.home_size === 'studio';
+  // Few items and studio: max 2 movers. Larger moves: up to 4.
+  const isSmallMove = draft.home_size === 'few-items' || draft.home_size === 'studio';
   const maxCrew = isSmallMove ? 2 : 4;
   const crewOptions = Array.from({ length: maxCrew }, (_, i) => i + 1);
 

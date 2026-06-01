@@ -1,4 +1,4 @@
-// Supabase Edge Function — creates a Stripe PaymentIntent for the 10% deposit
+// Supabase Edge Function — creates a Stripe PaymentIntent for the full price (100% upfront)
 // Deploy: supabase functions deploy create-payment-intent --no-verify-jwt
 // Set secret: supabase secrets set STRIPE_SECRET_KEY=sk_test_...
 
@@ -17,7 +17,7 @@ serve(async (req) => {
   // CORS headers
   const headers = {
     'Content-Type': 'application/json',
-    'Access-Control-Allow-Origin': '*',
+    'Access-Control-Allow-Origin': 'https://fastfixwork.com',
     'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   };
 
@@ -39,10 +39,10 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers });
     }
 
-    // Parse request body — amount_cents is the deposit amount (10% of total)
-    const { gig_id, amount_cents } = await req.json();
-    if (!gig_id || !amount_cents) {
-      return new Response(JSON.stringify({ error: 'gig_id and amount_cents required' }), { status: 400, headers });
+    // Parse request body — only gig_id needed; price comes from DB
+    const { gig_id } = await req.json();
+    if (!gig_id) {
+      return new Response(JSON.stringify({ error: 'gig_id required' }), { status: 400, headers });
     }
 
     // Verify the gig exists and belongs to this customer
@@ -60,27 +60,41 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Not your gig' }), { status: 403, headers });
     }
 
-    // Create the PaymentIntent for the deposit amount
+    // Use server-side price — never trust client-sent amounts
+    const total_cents = gig.quoted_price_cents;
+    if (!total_cents || total_cents < 50) {
+      return new Response(JSON.stringify({ error: 'Gig has no valid price' }), { status: 400, headers });
+    }
+
+    // Customer pays 100% upfront through the app. The platform keeps a
+    // platform fee and pays the worker the remainder after the job via
+    // Stripe Connect (see transfer-to-mover). Charge the full amount.
+    const PLATFORM_FEE_PERCENT = 15;
+    const platform_fee_cents = Math.round(total_cents * (PLATFORM_FEE_PERCENT / 100));
+    const mover_payout_cents = total_cents - platform_fee_cents;
+
+    // Create the PaymentIntent for the full amount
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: amount_cents,
+      amount: total_cents,
       currency: 'usd',
       metadata: {
         gig_id,
         customer_id: user.id,
         mover_id: gig.mover_id || '',
-        total_price_cents: (gig.quoted_price_cents || 0).toString(),
-        deposit_cents: amount_cents.toString(),
-        type: 'deposit',
+        total_price_cents: total_cents.toString(),
+        platform_fee_cents: platform_fee_cents.toString(),
+        mover_payout_cents: mover_payout_cents.toString(),
+        type: 'full_payment',
       },
     });
 
-    // Record the payment in our database
+    // Record the payment in our database (full charge; payout settled later)
     await supabase.from('payments').insert({
       gig_id,
       customer_id: user.id,
       mover_id: gig.mover_id,
-      amount_cents,
-      platform_fee_cents: amount_cents, // The deposit IS the platform revenue
+      amount_cents: total_cents,
+      platform_fee_cents,
       stripe_payment_intent_id: paymentIntent.id,
       status: 'pending',
     });
@@ -92,7 +106,7 @@ serve(async (req) => {
   } catch (err: any) {
     console.error('Error creating payment intent:', err);
     return new Response(
-      JSON.stringify({ error: err.message || 'Internal error' }),
+      JSON.stringify({ error: 'Payment processing failed' }),
       { status: 500, headers },
     );
   }

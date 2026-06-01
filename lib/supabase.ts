@@ -75,21 +75,31 @@ export interface MoverProfile {
   id: string;
   status: 'pending' | 'approved' | 'rejected' | 'suspended';
   vehicle_type: string | null;
+  vehicle_make_model: string | null;
   license_doc_url: string | null;
   insurance_doc_url: string | null;
   background_check_status: string;
   background_check_id: string | null;
   stripe_account_id: string | null;
   stripe_onboarding_complete: boolean;
+  payouts_enabled: boolean;
+  charges_enabled: boolean;
   service_area_zip: string[];
   bio: string | null;
+  selfie_url: string | null;
+  years_experience: number | null;
+  skills: string[];
+  address: string | null;
+  account_type: 'independent' | 'business' | null;
+  business_name: string | null;
   created_at: string;
   updated_at: string;
 }
 
 export interface Gig {
   id: string;
-  customer_id: string;
+  customer_id: string | null;
+  quote_request_id: string | null;
   status: 'draft' | 'posted' | 'matched' | 'in_progress' | 'completed' | 'cancelled';
   from_address: string;
   from_lat: number | null;
@@ -110,6 +120,8 @@ export interface Gig {
   elevator_from: boolean;
   elevator_to: boolean;
   long_carry: boolean;
+  staging: boolean;
+  packing_service: boolean;
   has_fragile_items: boolean;
   scheduled_for: string | null;
   estimated_duration_hours: number | null;
@@ -124,6 +136,13 @@ export interface Gig {
   mover_id: string | null;
   matched_at: string | null;
   completed_at: string | null;
+  platform_fee_cents: number | null;
+  mover_payout_cents: number | null;
+  payout_status: 'unpaid' | 'pending' | 'paid' | 'failed';
+  stripe_transfer_id: string | null;
+  paid_at: string | null;
+  payout_at: string | null;
+  draft_step: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -133,6 +152,7 @@ export interface GigPhoto {
   gig_id: string;
   url: string;
   label: string | null;
+  phase: 'inspection' | 'loading' | 'dropoff' | 'item' | null;
   position: number | null;
   created_at: string;
 }
@@ -144,6 +164,8 @@ export interface GigApplication {
   status: 'pending' | 'accepted' | 'declined' | 'withdrawn';
   quoted_price_cents: number | null;
   message: string | null;
+  slots_claimed: number;
+  is_lead: boolean;
   created_at: string;
 }
 

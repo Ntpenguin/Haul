@@ -1,5 +1,5 @@
-import React from 'react';
-import { TouchableOpacity, Text, StyleSheet, ViewStyle, ActivityIndicator } from 'react-native';
+import React, { useRef } from 'react';
+import { Animated, Pressable, Text, ViewStyle, ActivityIndicator } from 'react-native';
 import { colors, radii, shadows } from '../../lib/theme';
 
 type ButtonVariant = 'primary' | 'dark' | 'ghost' | 'soft' | 'white';
@@ -34,40 +34,53 @@ export function Button({
 }: ButtonProps) {
   const s = SIZE_MAP[size];
   const variantStyles = getVariantStyles(variant, disabled);
+  const scale = useRef(new Animated.Value(1)).current;
+
+  const onPressIn = () => {
+    Animated.spring(scale, { toValue: 0.96, useNativeDriver: true, speed: 50, bounciness: 0 }).start();
+  };
+  const onPressOut = () => {
+    Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
+  };
 
   return (
-    <TouchableOpacity
+    <Pressable
       onPress={onPress}
+      onPressIn={disabled || loading ? undefined : onPressIn}
+      onPressOut={disabled || loading ? undefined : onPressOut}
       disabled={disabled || loading}
-      activeOpacity={0.85}
-      style={[
-        {
-          height: s.height,
-          paddingHorizontal: s.px,
-          borderRadius: s.radius,
-          backgroundColor: variantStyles.bg,
-          borderWidth: variantStyles.borderWidth,
-          borderColor: variantStyles.borderColor,
-          alignItems: 'center',
-          justifyContent: 'center',
-          flexDirection: 'row',
-          gap: 8,
-          width: full ? '100%' : undefined,
-        },
-        variant === 'primary' && !disabled && shadows.elevated,
-      ] as ViewStyle[]}
+      style={{ width: full ? '100%' : undefined }}
     >
-      {loading ? (
-        <ActivityIndicator color={variantStyles.fg} />
-      ) : (
-        <>
-          {icon}
-          <Text style={{ color: variantStyles.fg, fontSize: s.fontSize, fontWeight: '600' }}>
-            {children}
-          </Text>
-        </>
-      )}
-    </TouchableOpacity>
+      <Animated.View
+        style={[
+          {
+            height: s.height,
+            paddingHorizontal: s.px,
+            borderRadius: s.radius,
+            backgroundColor: variantStyles.bg,
+            borderWidth: variantStyles.borderWidth,
+            borderColor: variantStyles.borderColor,
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexDirection: 'row',
+            gap: 8,
+            transform: [{ scale }],
+          },
+          variant === 'primary' && !disabled && shadows.elevated,
+        ] as ViewStyle[]}
+      >
+        {loading ? (
+          <ActivityIndicator color={variantStyles.fg} />
+        ) : (
+          <>
+            {icon}
+            <Text style={{ color: variantStyles.fg, fontSize: s.fontSize, fontWeight: '600' }}>
+              {children}
+            </Text>
+          </>
+        )}
+      </Animated.View>
+    </Pressable>
   );
 }
 

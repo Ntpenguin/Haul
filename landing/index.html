@@ -1,851 +1,485 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Fast Fix Work — Move It. On Your Schedule.</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-
-    :root {
-      --forest-deep: #0a1f0f;
-      --forest-dark: #122a1a;
-      --forest-mid: #1a3d25;
-      --forest-base: #1e5631;
-      --forest-bright: #2e7d46;
-      --forest-light: #4caf50;
-      --forest-glow: #00c853;
-      --forest-pale: #e8f5e9;
-      --gold: #ffa500;
-      --gold-light: #ffc947;
-      --white: #ffffff;
-      --gray-100: #f5f7f6;
-      --gray-200: #e0e5e2;
-      --gray-600: #5a6b5e;
-      --gray-800: #2a3a2e;
-    }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: var(--forest-deep);
-      color: var(--white);
-      overflow-x: hidden;
-      line-height: 1.6;
-    }
-
-    /* Animated gradient background */
-    .bg-gradient {
-      position: fixed;
-      inset: 0;
-      background: radial-gradient(ellipse at 20% 50%, rgba(30, 86, 49, 0.4) 0%, transparent 50%),
-                  radial-gradient(ellipse at 80% 20%, rgba(0, 200, 83, 0.1) 0%, transparent 40%),
-                  radial-gradient(ellipse at 50% 100%, rgba(255, 165, 0, 0.05) 0%, transparent 40%),
-                  var(--forest-deep);
-      z-index: -1;
-    }
-
-    /* Nav */
-    nav {
-      position: fixed;
-      top: 0;
-      width: 100%;
-      padding: 20px 40px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      z-index: 100;
-      backdrop-filter: blur(20px);
-      background: rgba(10, 31, 15, 0.8);
-      border-bottom: 1px solid rgba(78, 175, 80, 0.1);
-      transition: all 0.3s;
-    }
-
-    .logo {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-size: 24px;
-      font-weight: 800;
-      letter-spacing: -0.5px;
-    }
-
-    .logo-icon {
-      width: 38px;
-      height: 38px;
-      background: linear-gradient(135deg, var(--forest-glow), var(--forest-bright));
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 18px;
-      box-shadow: 0 4px 15px rgba(0, 200, 83, 0.3);
-    }
-
-    .nav-links { display: flex; gap: 32px; align-items: center; }
-    .nav-links a {
-      color: rgba(255,255,255,0.7);
-      text-decoration: none;
-      font-size: 15px;
-      font-weight: 500;
-      transition: color 0.2s;
-    }
-    .nav-links a:hover { color: var(--forest-glow); }
-
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 12px 24px;
-      border-radius: 50px;
-      font-weight: 600;
-      font-size: 15px;
-      text-decoration: none;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      cursor: pointer;
-      border: none;
-    }
-
-    .btn-primary {
-      background: linear-gradient(135deg, var(--forest-glow), var(--forest-bright));
-      color: #fff;
-      box-shadow: 0 4px 20px rgba(0, 200, 83, 0.3);
-    }
-    .btn-primary:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(0, 200, 83, 0.4);
-    }
-
-    .btn-secondary {
-      background: rgba(255,255,255,0.08);
-      color: #fff;
-      border: 1px solid rgba(255,255,255,0.15);
-    }
-    .btn-secondary:hover {
-      background: rgba(255,255,255,0.12);
-      transform: translateY(-2px);
-    }
-
-    .btn-gold {
-      background: linear-gradient(135deg, var(--gold), var(--gold-light));
-      color: var(--forest-deep);
-      box-shadow: 0 4px 20px rgba(255, 165, 0, 0.3);
-    }
-    .btn-gold:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 8px 30px rgba(255, 165, 0, 0.4);
-    }
-
-    /* Hero */
-    .hero {
-      min-height: 100vh;
-      display: flex;
-      align-items: center;
-      padding: 120px 40px 80px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .hero-content { flex: 1; max-width: 600px; }
-
-    .hero-badge {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 16px;
-      background: rgba(0, 200, 83, 0.1);
-      border: 1px solid rgba(0, 200, 83, 0.2);
-      border-radius: 50px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--forest-glow);
-      margin-bottom: 24px;
-      animation: fadeInUp 0.6s ease;
-    }
-
-    .hero-badge .pulse {
-      width: 8px;
-      height: 8px;
-      background: var(--forest-glow);
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-
-    h1 {
-      font-size: clamp(48px, 6vw, 72px);
-      font-weight: 800;
-      line-height: 1.05;
-      letter-spacing: -2px;
-      margin-bottom: 20px;
-      animation: fadeInUp 0.6s ease 0.1s both;
-    }
-
-    h1 .highlight {
-      background: linear-gradient(135deg, var(--forest-glow), var(--forest-light));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-    }
-
-    .hero-sub {
-      font-size: 19px;
-      color: rgba(255,255,255,0.7);
-      max-width: 460px;
-      margin-bottom: 36px;
-      animation: fadeInUp 0.6s ease 0.2s both;
-    }
-
-    .hero-buttons {
-      display: flex;
-      gap: 14px;
-      flex-wrap: wrap;
-      animation: fadeInUp 0.6s ease 0.3s both;
-    }
-
-    .hero-visual {
-      flex: 1;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      animation: fadeInUp 0.8s ease 0.4s both;
-    }
-
-    .phone-mockup {
-      width: 300px;
-      height: 600px;
-      background: linear-gradient(160deg, var(--forest-dark), var(--forest-mid));
-      border-radius: 40px;
-      border: 3px solid rgba(78, 175, 80, 0.2);
-      padding: 16px;
-      box-shadow: 0 40px 80px rgba(0,0,0,0.5), 0 0 60px rgba(0, 200, 83, 0.1);
-      position: relative;
-      overflow: hidden;
-    }
-
-    .phone-screen {
-      width: 100%;
-      height: 100%;
-      background: #000;
-      border-radius: 28px;
-      padding: 40px 20px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .phone-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .phone-app-icon {
-      width: 32px;
-      height: 32px;
-      background: linear-gradient(135deg, var(--forest-glow), var(--forest-bright));
-      border-radius: 8px;
-    }
-
-    .phone-avatar {
-      width: 32px;
-      height: 32px;
-      background: var(--forest-mid);
-      border-radius: 10px;
-    }
-
-    .phone-card {
-      background: linear-gradient(135deg, var(--forest-glow), var(--forest-base));
-      border-radius: 20px;
-      padding: 20px;
-    }
-
-    .phone-card h3 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
-    .phone-card p { font-size: 12px; opacity: 0.8; margin-bottom: 14px; }
-
-    .phone-input {
-      background: #fff;
-      border-radius: 16px;
-      padding: 14px 16px;
-      color: #888;
-      font-size: 13px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .phone-input .start-btn {
-      background: #111;
-      color: #fff;
-      padding: 8px 14px;
-      border-radius: 12px;
-      font-size: 12px;
-      font-weight: 600;
-    }
-
-    .phone-gig {
-      background: #1f1f1f;
-      border-radius: 14px;
-      padding: 14px;
-    }
-
-    .phone-gig-route {
-      display: flex;
-      gap: 10px;
-      align-items: center;
-      margin-bottom: 10px;
-    }
-
-    .route-dots {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 2px;
-    }
-
-    .route-dots .dot { width: 8px; height: 8px; border-radius: 50%; background: #fff; }
-    .route-dots .line { width: 2px; height: 16px; background: rgba(255,255,255,0.2); }
-    .route-dots .square { width: 8px; height: 8px; border-radius: 2px; background: var(--forest-glow); }
-
-    .route-text { font-size: 13px; font-weight: 500; }
-    .route-text span { display: block; margin-bottom: 12px; }
-
-    .phone-gig-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-top: 10px;
-      border-top: 1px solid rgba(255,255,255,0.08);
-      font-size: 11px;
-      color: rgba(255,255,255,0.6);
-    }
-
-    .live-dot {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      color: var(--forest-glow);
-      font-weight: 600;
-    }
-
-    .live-dot::before {
-      content: '';
-      width: 6px;
-      height: 6px;
-      background: var(--forest-glow);
-      border-radius: 50%;
-      animation: pulse 2s infinite;
-    }
-
-    /* Stats */
-    .stats {
-      padding: 80px 40px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .stats-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: 24px;
-    }
-
-    .stat-card {
-      text-align: center;
-      padding: 32px 20px;
-      background: rgba(30, 86, 49, 0.15);
-      border: 1px solid rgba(78, 175, 80, 0.12);
-      border-radius: 20px;
-      transition: all 0.3s;
-    }
-    .stat-card:hover {
-      transform: translateY(-4px);
-      border-color: rgba(0, 200, 83, 0.3);
-      background: rgba(30, 86, 49, 0.25);
-    }
-
-    .stat-number {
-      font-size: 42px;
-      font-weight: 800;
-      background: linear-gradient(135deg, var(--forest-glow), var(--forest-light));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      margin-bottom: 4px;
-    }
-
-    .stat-label { font-size: 14px; color: rgba(255,255,255,0.6); }
-
-    /* Features */
-    .features {
-      padding: 100px 40px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .section-label {
-      font-size: 13px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      color: var(--forest-glow);
-      margin-bottom: 12px;
-    }
-
-    .section-title {
-      font-size: clamp(32px, 4vw, 48px);
-      font-weight: 800;
-      letter-spacing: -1px;
-      margin-bottom: 16px;
-    }
-
-    .section-sub {
-      font-size: 17px;
-      color: rgba(255,255,255,0.6);
-      max-width: 500px;
-      margin-bottom: 60px;
-    }
-
-    .features-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-      gap: 20px;
-    }
-
-    .feature-card {
-      padding: 32px;
-      background: rgba(18, 42, 26, 0.5);
-      border: 1px solid rgba(78, 175, 80, 0.1);
-      border-radius: 24px;
-      transition: all 0.3s;
-    }
-    .feature-card:hover {
-      border-color: rgba(0, 200, 83, 0.25);
-      transform: translateY(-4px);
-      box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-    }
-
-    .feature-icon {
-      width: 52px;
-      height: 52px;
-      background: linear-gradient(135deg, rgba(0, 200, 83, 0.15), rgba(0, 200, 83, 0.05));
-      border: 1px solid rgba(0, 200, 83, 0.2);
-      border-radius: 14px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 24px;
-      margin-bottom: 18px;
-    }
-
-    .feature-card h3 {
-      font-size: 20px;
-      font-weight: 700;
-      margin-bottom: 8px;
-      letter-spacing: -0.3px;
-    }
-
-    .feature-card p {
-      font-size: 15px;
-      color: rgba(255,255,255,0.6);
-      line-height: 1.6;
-    }
-
-    /* How it works */
-    .how-it-works {
-      padding: 100px 40px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .steps {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 32px;
-      margin-top: 60px;
-    }
-
-    .step {
-      position: relative;
-      text-align: center;
-      padding: 40px 24px;
-    }
-
-    .step-number {
-      width: 56px;
-      height: 56px;
-      background: linear-gradient(135deg, var(--forest-glow), var(--forest-bright));
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 22px;
-      font-weight: 800;
-      margin: 0 auto 20px;
-      box-shadow: 0 8px 25px rgba(0, 200, 83, 0.25);
-    }
-
-    .step h3 { font-size: 18px; font-weight: 700; margin-bottom: 8px; }
-    .step p { font-size: 14px; color: rgba(255,255,255,0.6); }
-
-    /* Earn section */
-    .earn {
-      padding: 100px 40px;
-      max-width: 1200px;
-      margin: 0 auto;
-    }
-
-    .earn-card {
-      background: linear-gradient(135deg, var(--forest-mid), var(--forest-dark));
-      border: 1px solid rgba(255, 165, 0, 0.15);
-      border-radius: 32px;
-      padding: 60px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 60px;
-      align-items: center;
-    }
-
-    .earn-card h2 {
-      font-size: clamp(32px, 4vw, 44px);
-      font-weight: 800;
-      letter-spacing: -1px;
-      margin-bottom: 16px;
-    }
-
-    .earn-card h2 .gold {
-      color: var(--gold);
-    }
-
-    .earn-card p {
-      font-size: 17px;
-      color: rgba(255,255,255,0.7);
-      margin-bottom: 28px;
-      line-height: 1.7;
-    }
-
-    .earn-stats {
-      display: flex;
-      flex-direction: column;
-      gap: 16px;
-    }
-
-    .earn-stat {
-      background: rgba(255, 165, 0, 0.08);
-      border: 1px solid rgba(255, 165, 0, 0.15);
-      border-radius: 16px;
-      padding: 20px 24px;
-      display: flex;
-      align-items: center;
-      gap: 16px;
-    }
-
-    .earn-stat-icon {
-      width: 44px;
-      height: 44px;
-      background: linear-gradient(135deg, var(--gold), var(--gold-light));
-      border-radius: 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 20px;
-      flex-shrink: 0;
-    }
-
-    .earn-stat-text h4 { font-size: 18px; font-weight: 700; }
-    .earn-stat-text p { font-size: 13px; color: rgba(255,255,255,0.6); margin: 0; }
-
-    /* CTA */
-    .cta {
-      padding: 120px 40px;
-      text-align: center;
-      max-width: 700px;
-      margin: 0 auto;
-    }
-
-    .cta h2 {
-      font-size: clamp(36px, 5vw, 56px);
-      font-weight: 800;
-      letter-spacing: -1.5px;
-      margin-bottom: 16px;
-    }
-
-    .cta p {
-      font-size: 18px;
-      color: rgba(255,255,255,0.6);
-      margin-bottom: 36px;
-    }
-
-    .cta-buttons { display: flex; gap: 14px; justify-content: center; flex-wrap: wrap; }
-
-    /* Footer */
-    footer {
-      border-top: 1px solid rgba(78, 175, 80, 0.1);
-      padding: 40px;
-      text-align: center;
-      color: rgba(255,255,255,0.4);
-      font-size: 14px;
-    }
-
-    /* Animations */
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(24px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    @keyframes pulse {
-      0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(1.5); }
-    }
-
-    .fade-in {
-      opacity: 0;
-      transform: translateY(30px);
-      transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .fade-in.visible {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    /* Responsive */
-    @media (max-width: 768px) {
-      nav { padding: 16px 20px; }
-      .nav-links { display: none; }
-      .hero { flex-direction: column; padding: 120px 20px 60px; text-align: center; }
-      .hero-sub { margin: 0 auto 36px; }
-      .hero-buttons { justify-content: center; }
-      .hero-visual { margin-top: 50px; }
-      .phone-mockup { width: 240px; height: 480px; }
-      .features, .how-it-works, .stats, .earn, .cta { padding: 60px 20px; }
-      .earn-card { grid-template-columns: 1fr; padding: 36px 24px; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Austin Movers You Control From Your Phone | Fast Fix Work</title>
+<meta name="description" content="Austin movers that work without you there. Approve every step from your phone. Moving, delivery, junk removal, and home services. Call 512-777-1628.">
+<link rel="canonical" href="https://fastfixwork.com/">
+<meta property="og:title" content="Austin Movers You Control From Your Phone | Fast Fix Work">
+<meta property="og:description" content="Austin movers that work without you there. Approve every step from your phone. Moving, delivery, junk removal, and home services.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://fastfixwork.com/">
+<meta property="og:site_name" content="Fast. Fix. Work.">
+<meta property="og:image" content="https://fastfixwork.com/og-image.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Austin Movers You Control From Your Phone | Fast Fix Work">
+<meta name="twitter:description" content="Austin movers that work without you there. Approve every step from your phone.">
+<meta name="twitter:image" content="https://fastfixwork.com/og-image.jpg">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><circle cx='50' cy='50' r='48' fill='%23C98B3F'/><text x='50' y='64' text-anchor='middle' font-family='sans-serif' font-weight='900' font-size='30' fill='%231A1714'>FFX</text></svg>">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"MovingCompany","name":"Fast. Fix. Work.","description":"Austin movers you control from your phone. Approve every step remotely. White glove moving, delivery, junk removal, and recurring home services.","url":"https://fastfixwork.com","telephone":"+15127771628","email":"communication@fastfixwork.com","address":{"@type":"PostalAddress","addressLocality":"Austin","addressRegion":"TX","addressCountry":"US"},"areaServed":[{"@type":"City","name":"Austin"},{"@type":"City","name":"Round Rock"},{"@type":"City","name":"Cedar Park"},{"@type":"City","name":"Pflugerville"},{"@type":"City","name":"Georgetown"}],"priceRange":"$$"}
+</script>
+<script type="application/ld+json">
+{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Do I need to be home during the move?","acceptedAnswer":{"@type":"Answer","text":"No. We send you photo updates at every checkpoint and wait for your approval before proceeding. You manage the entire move from your phone."}},{"@type":"Question","name":"What areas do you serve?","acceptedAnswer":{"@type":"Answer","text":"Greater Austin including Round Rock, Cedar Park, Pflugerville, Georgetown, Leander, Lakeway, and surrounding communities."}},{"@type":"Question","name":"How does Can-to-Curb work?","acceptedAnswer":{"@type":"Answer","text":"We take your trash and recycling bins from your property to the curb on collection day and bring them back. Weekly recurring service, built for Airbnb hosts and property managers."}},{"@type":"Question","name":"How fast can I get a quote?","acceptedAnswer":{"@type":"Answer","text":"Same day. Use the online quote form or call 512-777-1628 for an over-the-phone estimate."}}]}
+</script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+img{max-width:100%;height:auto;display:block}
+a{text-decoration:none;color:inherit}
+button{border:none;background:none;cursor:pointer;font:inherit}
+ul,ol{list-style:none}
+
+:root{
+--amber:#C98B3F;--amber-deep:#8B5E2B;--amber-soft:#F5EDE0;--amber-mid:#E8C48A;
+--ink:#1A1714;--ink2:#534C44;--ink3:#8B8379;--ink4:#B8B0A4;
+--bg:#FAF7F2;--card:#FFFFFF;--surface:#F2EEE7;
+--line:rgba(26,23,20,0.08);--line2:rgba(26,23,20,0.18);
+--success:#4A8066;--error:#C0392B;
+--radius:18px;--shadow:5px 5px 0 var(--ink);
+--ff:'Fraunces','Georgia',serif;--fi:'Inter',system-ui,sans-serif;
+}
+
+body{font-family:var(--fi);font-size:16px;color:var(--ink);background:var(--bg);line-height:1.65;-webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(rgba(26,23,20,0.045) 1px,transparent 1px);background-size:22px 22px}
+.c{width:100%;max-width:1140px;margin:0 auto;padding:0 24px}
+h1,h2,h3{font-family:var(--ff);line-height:1.1;letter-spacing:-0.02em}
+
+/* === HEADER === */
+.hdr{position:fixed;top:0;left:0;right:0;z-index:100;background:rgba(250,247,242,0.92);backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);padding:14px 0;transition:padding 0.26s ease,box-shadow 0.26s ease;border-bottom:1px solid var(--line)}
+.hdr.sc{padding:8px 0;box-shadow:0 2px 12px rgba(26,23,20,0.06)}
+.hdr-i{display:flex;align-items:center;justify-content:space-between;gap:16px}
+.logo{display:flex;align-items:center;gap:8px}
+.logo-b{width:40px;height:40px;background:var(--amber);border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--fi);font-weight:800;font-size:0.75rem;color:var(--ink);box-shadow:2px 2px 0 var(--ink)}
+.logo-t{font-family:var(--ff);font-size:1.15rem;font-weight:700;color:var(--ink)}
+.logo-t i{color:var(--amber);font-style:normal}
+.nav-d{display:none;align-items:center;gap:36px}
+.nav-d a{font-size:0.9rem;font-weight:500;color:var(--ink2);transition:color 0.18s}
+.nav-d a:hover{color:var(--amber)}
+.hdr-ph{display:none;align-items:center;gap:6px;font-family:var(--fi);font-weight:700;font-size:0.9rem;color:var(--amber-deep);padding:8px 16px;border:2px solid var(--amber);border-radius:10px;transition:background 0.18s,color 0.18s}
+.hdr-ph:hover{background:var(--amber);color:var(--ink)}
+.hdr-ph svg,.m-ph svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5}
+.ham{display:flex;flex-direction:column;gap:5px;padding:8px;cursor:pointer}
+.ham span{width:22px;height:2px;background:var(--ink);border-radius:2px;transition:transform 0.26s,opacity 0.18s}
+.ham.op span:nth-child(1){transform:translateY(7px) rotate(45deg)}
+.ham.op span:nth-child(2){opacity:0}
+.ham.op span:nth-child(3){transform:translateY(-7px) rotate(-45deg)}
+.m-nav{position:fixed;top:0;right:-100%;width:min(85vw,340px);height:100vh;background:var(--ink);z-index:200;padding:80px 32px 32px;transition:right 0.26s;display:flex;flex-direction:column;gap:28px}
+.m-nav.op{right:0}
+.m-nav a{font-family:var(--ff);font-size:1.5rem;font-weight:700;color:var(--surface);transition:color 0.18s}
+.m-nav a:hover{color:var(--amber)}
+.ov{position:fixed;inset:0;background:rgba(26,23,20,0.5);z-index:150;opacity:0;pointer-events:none;transition:opacity 0.26s}
+.ov.v{opacity:1;pointer-events:auto}
+.m-ph{margin-top:auto;display:flex;align-items:center;gap:8px;font-family:var(--ff);font-size:1.2rem;font-weight:700;color:var(--amber)}
+
+/* === HERO === */
+.hero{background:var(--ink);color:var(--surface);padding:calc(72px + 80px) 0 80px;position:relative;overflow:hidden}
+.hero::after{content:'';position:absolute;bottom:-20%;right:-10%;width:min(55%,550px);height:120%;background:radial-gradient(ellipse at 60% 55%,rgba(201,139,63,0.12) 0%,transparent 65%);pointer-events:none}
+.hero-g{position:relative;z-index:1;display:grid;grid-template-columns:1fr;gap:48px;align-items:center}
+.hero-c{max-width:620px}
+.hero-tag{display:inline-flex;align-items:center;gap:8px;background:rgba(201,139,63,0.12);border:1px solid rgba(201,139,63,0.3);border-radius:99px;padding:5px 16px;font-size:0.8rem;font-weight:600;color:var(--amber);margin-bottom:28px}
+.hero-dot{width:7px;height:7px;background:var(--success);border-radius:50%;box-shadow:0 0 0 3px rgba(74,128,102,0.3)}
+.hero h1{font-size:clamp(2.1rem,5.5vw,3.3rem);color:#FDFAF3;margin-bottom:28px;line-height:1.05;letter-spacing:-0.03em}
+.hero h1 em{color:var(--amber);font-style:italic;font-weight:inherit}
+.hero-p{font-size:1.15rem;color:rgba(242,238,231,0.85);margin-bottom:40px;max-width:520px;line-height:1.6}
+.hero-a{display:flex;flex-wrap:wrap;gap:14px;margin-bottom:40px}
+.hero-tr{display:flex;flex-wrap:wrap;gap:24px;padding-top:24px;border-top:1px solid rgba(242,238,231,0.1)}
+.hero-tr-i{display:flex;align-items:center;gap:6px;font-size:0.85rem;color:rgba(242,238,231,0.75)}
+.hero-tr-i svg{width:16px;height:16px;stroke:var(--success);fill:none;stroke-width:3;flex-shrink:0}
+
+/* Phone mockup with map */
+.hero-v{display:none;position:relative;max-width:400px;margin:0 auto}
+.ph-m{position:relative;width:280px;margin:0 auto;background:#2C261D;border:5px solid var(--ink2);border-radius:28px;padding:14px 10px 12px;box-shadow:0 40px 80px rgba(0,0,0,0.5),8px 8px 0 var(--amber-deep)}
+.ph-notch{width:80px;height:6px;background:#1A1714;border-radius:3px;margin:0 auto 10px}
+.ph-map{width:100%;height:300px;border-radius:16px;overflow:hidden;position:relative}
+.ph-map #hero-map{width:100%;height:100%}
+.ph-bar{display:flex;align-items:center;gap:8px;margin-top:10px;padding:10px;background:rgba(201,139,63,0.08);border-radius:10px;border:1px solid rgba(201,139,63,0.2)}
+.ph-bar-ico{width:28px;height:28px;background:var(--amber);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ph-bar-ico svg{width:14px;height:14px;stroke:var(--ink);fill:none;stroke-width:2.5}
+.ph-bar-txt{flex:1}
+.ph-bar-t1{font-size:0.65rem;font-weight:700;color:rgba(242,238,231,0.9)}
+.ph-bar-t2{font-size:0.5rem;color:rgba(242,238,231,0.5)}
+.ph-map .leaflet-control-attribution{display:none}
+
+/* === BUTTONS === */
+.btn{display:inline-flex;align-items:center;gap:8px;padding:14px 28px;border-radius:10px;font-family:var(--fi);font-weight:700;font-size:1rem;cursor:pointer;transition:background 0.18s,transform 0.18s,box-shadow 0.18s}
+.btn:active{transform:scale(0.98)}
+.btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:2.5}
+.btn-p{background:var(--amber);color:var(--ink);box-shadow:4px 4px 0 var(--amber-deep)}
+.btn-p:hover{background:#D49A4E;box-shadow:2px 2px 0 var(--amber-deep)}
+.btn-o{background:transparent;color:var(--surface);border:2px solid rgba(242,238,231,0.2);border-radius:10px}
+.btn-o:hover{border-color:var(--amber);color:var(--amber)}
+.btn-warm{background:var(--amber);color:var(--ink);box-shadow:4px 4px 0 var(--amber-deep)}
+.btn-warm:hover{background:#D49A4E}
+
+/* === HOW IT WORKS === */
+.how{padding:80px 0}
+.how-g{display:grid;grid-template-columns:1fr;gap:40px;counter-reset:step}
+.how-s{position:relative;padding-left:72px}
+.how-s::before{counter-increment:step;content:counter(step);position:absolute;left:0;top:0;width:52px;height:52px;background:var(--amber);color:var(--ink);border-radius:12px;display:flex;align-items:center;justify-content:center;font-family:var(--ff);font-weight:800;font-size:1.2rem;line-height:1;box-shadow:3px 3px 0 var(--amber-deep)}
+.how-s h3{font-size:1.25rem;margin-bottom:6px}
+.how-s p{color:var(--ink2);line-height:1.7}
+
+/* === SECTIONS === */
+.sec{padding:80px 0}
+.sec-a{background:var(--surface)}
+.sec-hd{margin-bottom:48px}
+.sec-hd.ctr{text-align:center;max-width:680px;margin-left:auto;margin-right:auto}
+.sec-ey{display:inline-block;font-size:0.75rem;font-weight:700;color:var(--amber-deep);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:12px;background:var(--amber-soft);padding:4px 12px;border-radius:6px}
+.sec-hd h2{font-size:clamp(1.7rem,4vw,2.4rem);color:var(--ink);margin-bottom:12px}
+.sec-hd p{font-size:1.1rem;color:var(--ink3);line-height:1.6}
+
+/* === SERVICES === */
+.sv-stack{display:flex;flex-direction:column;gap:16px}
+.sv{background:var(--card);border-radius:var(--radius);padding:28px;border:1.5px solid var(--line2);display:flex;flex-direction:column;gap:16px;transition:transform 0.26s,box-shadow 0.26s,border-color 0.26s}
+.sv:hover{transform:translateY(-3px);border-color:var(--amber);box-shadow:var(--shadow)}
+.sv.ft{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.sv.ft h3{color:#FDFAF3}
+.sv.ft p{color:rgba(242,238,231,0.8)}
+.sv.ft .sv-dl{border-color:rgba(242,238,231,0.12)}
+.sv.ft .sv-lab{color:var(--amber)}
+.sv-top{display:flex;align-items:center;gap:16px}
+.sv-ico{width:52px;height:52px;background:var(--amber-soft);border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.sv.ft .sv-ico{background:rgba(201,139,63,0.2)}
+.sv-ico svg{width:26px;height:26px;stroke:var(--amber);fill:none;stroke-width:1.8}
+.sv h3{font-size:1.25rem}
+.sv p{color:var(--ink2);line-height:1.7}
+.sv-dl{display:flex;flex-wrap:wrap;gap:24px;padding-top:14px;border-top:1px dashed var(--line2)}
+.sv-di{display:flex;flex-direction:column;gap:2px}
+.sv-lab{font-size:0.65rem;font-weight:700;letter-spacing:0.08em;text-transform:uppercase;color:var(--ink3)}
+.sv-val{font-family:var(--fi);font-weight:600;font-size:0.85rem}
+
+/* === TESTIMONIALS === */
+.tm-g{display:grid;grid-template-columns:1fr;gap:16px}
+.tm{background:var(--card);border-radius:var(--radius);padding:28px;border:1.5px solid var(--line2);display:flex;flex-direction:column;position:relative;transition:box-shadow 0.26s,border-color 0.26s}
+.tm:hover{border-color:var(--amber);box-shadow:var(--shadow)}
+.tm::before{content:'\201C';position:absolute;top:-8px;left:28px;font-family:var(--ff);font-size:3.5rem;line-height:1;color:var(--amber)}
+.tm-st{display:flex;gap:2px;margin-bottom:14px}
+.tm-st svg{width:15px;height:15px;fill:var(--amber)}
+.tm blockquote{flex:1;font-size:1rem;line-height:1.7;margin-bottom:24px}
+.tm cite{display:flex;align-items:center;gap:8px;font-weight:600;font-size:0.9rem;font-style:normal;color:var(--ink)}
+.tm cite::before{content:'';width:28px;height:28px;background:var(--amber);border-radius:50%;flex-shrink:0;box-shadow:2px 2px 0 var(--amber-deep)}
+
+/* === ABOUT === */
+.ab-g{display:grid;grid-template-columns:1fr;gap:40px;align-items:start}
+.ab-t p{font-size:1.1rem;line-height:1.75;color:var(--ink);margin-bottom:14px}
+.ab-t p+p{color:var(--ink2);font-size:1rem}
+.ab-box{background:var(--ink);color:var(--surface);padding:36px;border-radius:var(--radius);position:relative;overflow:hidden;box-shadow:6px 6px 0 var(--amber-deep)}
+.ab-box::before{content:'';position:absolute;top:-30px;right:-30px;width:140px;height:140px;background:radial-gradient(circle,rgba(201,139,63,0.15) 0%,transparent 70%);pointer-events:none}
+.ab-box h3{font-size:1.25rem;color:#FDFAF3;margin-bottom:14px}
+.ab-box li{display:flex;align-items:flex-start;gap:14px;padding:8px 0;font-size:0.95rem;line-height:1.6}
+.ab-box li svg{width:16px;height:16px;stroke:var(--amber);fill:none;stroke-width:3;flex-shrink:0;margin-top:4px}
+
+/* === FAQ === */
+.fq-l{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:8px}
+.fq{border:1.5px solid var(--line2);border-radius:var(--radius);background:var(--card);overflow:hidden;transition:border-color 0.18s,box-shadow 0.18s}
+.fq.op{border-color:var(--amber);box-shadow:var(--shadow)}
+.fq-q{display:flex;align-items:center;justify-content:space-between;width:100%;padding:22px 28px;font-family:var(--ff);font-size:1.1rem;font-weight:700;text-align:left;color:var(--ink);cursor:pointer;transition:color 0.18s}
+.fq-q:hover{color:var(--amber)}
+.fq-q svg{width:18px;height:18px;stroke:var(--ink3);fill:none;stroke-width:2;flex-shrink:0;transition:transform 0.26s}
+.fq.op .fq-q svg{transform:rotate(180deg);stroke:var(--amber)}
+.fq-a{max-height:0;overflow:hidden;transition:max-height 0.4s cubic-bezier(0.4,0,0.2,1)}
+.fq-a-i{padding:0 28px 24px;color:var(--ink2);line-height:1.75}
+.fq.op .fq-a{max-height:600px}
+
+/* === CTA BANNER === */
+.cta-b{background:var(--ink);padding:80px 0;text-align:center;position:relative;overflow:hidden}
+.cta-b::before{content:'';position:absolute;top:-40%;left:50%;transform:translateX(-50%);width:500px;height:500px;background:radial-gradient(circle,rgba(201,139,63,0.1) 0%,transparent 60%);pointer-events:none}
+.cta-b-i{position:relative;z-index:1}
+.cta-b h2{color:#FDFAF3;font-size:clamp(1.9rem,4.5vw,2.8rem);margin-bottom:14px;letter-spacing:-0.03em}
+.cta-b h2 em{color:var(--amber);font-style:italic}
+.cta-b p{color:rgba(242,238,231,0.8);font-size:1.1rem;margin-bottom:40px;max-width:460px;margin-left:auto;margin-right:auto}
+.cta-b-a{display:flex;flex-wrap:wrap;justify-content:center;gap:14px}
+
+/* === CONTACT === */
+.ct-g{display:grid;grid-template-columns:1fr;gap:48px}
+.ct-i h3{font-size:1.25rem;font-family:var(--ff);margin-bottom:24px}
+.ct-it{display:flex;align-items:center;gap:16px;margin-bottom:14px;padding:16px;background:var(--card);border-radius:var(--radius);border:1.5px solid var(--line2);transition:border-color 0.18s,box-shadow 0.18s}
+.ct-it:hover{border-color:var(--amber);box-shadow:var(--shadow)}
+.ct-ic{width:42px;height:42px;background:var(--amber-soft);border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ct-ic svg{width:18px;height:18px;stroke:var(--amber);fill:none;stroke-width:2}
+.ct-it a{font-weight:600;color:var(--ink);transition:color 0.18s}
+.ct-it a:hover{color:var(--amber)}
+.ct-it span{color:var(--ink3);font-size:0.85rem;display:block}
+
+/* === FOOTER === */
+.ftr{background:var(--ink);padding:56px 0 28px}
+.ftr-g{display:grid;grid-template-columns:1fr;gap:40px;margin-bottom:40px}
+.ftr-c h4{font-size:0.9rem;font-family:var(--ff);color:#FDFAF3;margin-bottom:14px}
+.ftr-c a,.ftr-c p{display:block;font-size:0.9rem;color:rgba(242,238,231,0.55);margin-bottom:8px;transition:color 0.18s}
+.ftr-c a:hover{color:var(--amber)}
+.ftr-b{border-top:1px solid rgba(255,255,255,0.06);padding-top:24px;text-align:center;font-size:0.85rem;color:rgba(242,238,231,0.35)}
+
+/* === MOBILE CTA === */
+.m-cta{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:90;background:var(--ink);padding:8px 16px;border-top:1px solid rgba(255,255,255,0.06);gap:8px;transition:transform 0.26s}
+.m-cta.hid{transform:translateY(100%)}
+.m-cta a{flex:1;text-align:center;padding:12px;border-radius:10px;font-family:var(--fi);font-weight:700;font-size:0.9rem;cursor:pointer}
+.m-cta .mc-c{border:2px solid var(--amber);color:var(--amber);background:transparent}
+.m-cta .mc-q{background:var(--amber);color:var(--ink)}
+
+/* === SCROLL REVEAL === */
+.sr{opacity:0;transform:translateY(20px);transition:opacity 0.5s cubic-bezier(0,0,0.2,1),transform 0.5s cubic-bezier(0,0,0.2,1)}
+.sr.vis{opacity:1;transform:translateY(0)}
+
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important;scroll-behavior:auto!important}}
+@media(min-width:640px){
+.how-g{grid-template-columns:repeat(3,1fr)}
+.tm-g{grid-template-columns:repeat(3,1fr)}
+.ftr-g{grid-template-columns:2fr 1fr 1fr}
+.sv{flex-direction:row;align-items:flex-start}
+.sv-top{align-self:flex-start}
+}
+@media(min-width:768px){
+.ct-g{grid-template-columns:5fr 4fr}
+.ab-g{grid-template-columns:3fr 2fr;gap:64px}
+}
+@media(min-width:1024px){
+.ham{display:none}.nav-d{display:flex}.hdr-ph{display:flex}
+.m-cta{display:none}
+.hero-g{grid-template-columns:1fr 1fr}
+.hero-v{display:block}
+}
+</style>
 </head>
 <body>
-  <div class="bg-gradient"></div>
 
-  <!-- Nav -->
-  <nav>
-    <div class="logo">
-      <div class="logo-icon">H</div>
-      <span>Fast Fix Work</span>
-    </div>
-    <div class="nav-links">
-      <a href="#features">Features</a>
-      <a href="#how">How it works</a>
-      <a href="#earn">Earn</a>
-      <a href="#" class="btn btn-primary">Get the app</a>
-    </div>
-  </nav>
+<header class="hdr" id="top">
+<div class="c hdr-i">
+<a href="#top" class="logo" aria-label="Fast Fix Work home"><div class="logo-b">FFX</div><div class="logo-t">Fast. <i>Fix.</i> Work.</div></a>
+<nav class="nav-d" aria-label="Main navigation">
+<a href="#how">How it works</a><a href="#services">Services</a><a href="#reviews">Reviews</a><a href="#about">About</a><a href="#faq">FAQ</a><a href="#contact">Contact</a>
+</nav>
+<a href="tel:+15127771628" class="hdr-ph" aria-label="Call Fast Fix Work"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>512-777-1628</a>
+<button class="ham" id="mt" aria-label="Toggle menu" aria-expanded="false"><span></span><span></span><span></span></button>
+</div>
+</header>
 
-  <!-- Hero -->
-  <section class="hero">
-    <div class="hero-content">
-      <div class="hero-badge">
-        <span class="pulse"></span>
-        Now available in Austin
-      </div>
-      <h1>Move anything.<br><span class="highlight">Anytime.</span></h1>
-      <p class="hero-sub">The easiest way to move anything in Austin. The work marketplace built for the way you live.</p>
-      <div class="hero-buttons">
-        <a href="#" class="btn btn-primary">Book a move</a>
-        <a href="#earn" class="btn btn-secondary">Start earning</a>
-      </div>
-    </div>
-    <div class="hero-visual">
-      <div class="phone-mockup">
-        <div class="phone-screen">
-          <div class="phone-header">
-            <div class="phone-app-icon"></div>
-            <div class="phone-avatar"></div>
-          </div>
-          <div class="phone-card">
-            <h3>Where to today?</h3>
-            <p>Movers arrive in ~25 min</p>
-            <div class="phone-input">
-              <span>Where are you moving from?</span>
-              <span class="start-btn">Start</span>
-            </div>
-          </div>
-          <div class="phone-gig">
-            <div class="phone-gig-route">
-              <div class="route-dots">
-                <div class="dot"></div>
-                <div class="line"></div>
-                <div class="square"></div>
-              </div>
-              <div class="route-text">
-                <span>Mission District</span>
-                <span>Oakland, Rockridge</span>
-              </div>
-            </div>
-            <div class="phone-gig-footer">
-              <span>Posted - awaiting mover</span>
-              <span class="live-dot">LIVE</span>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+<div class="ov" id="ov"></div>
+<nav class="m-nav" id="mn" aria-label="Mobile navigation">
+<a href="#how" class="ml">How it works</a><a href="#services" class="ml">Services</a><a href="#reviews" class="ml">Reviews</a><a href="#about" class="ml">About</a><a href="#faq" class="ml">FAQ</a><a href="#contact" class="ml">Contact</a>
+<a href="tel:+15127771628" class="m-ph"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>512-777-1628</a>
+</nav>
 
-  <!-- Stats -->
-  <section class="stats fade-in">
-    <div class="stats-grid">
-      <div class="stat-card">
-        <div class="stat-number">Fast</div>
-        <div class="stat-label">Same-day availability</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">Flexible</div>
-        <div class="stat-label">Work on your schedule</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">Trusted</div>
-        <div class="stat-label">Vetted local movers</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-number">Simple</div>
-        <div class="stat-label">Book in minutes</div>
-      </div>
-    </div>
-  </section>
+<main>
+<section class="hero" id="home">
+<div class="c">
+<div class="hero-g">
+<div class="hero-c">
+<h1>Austin movers you control <em>from your phone.</em></h1>
+<p class="hero-p">You pick the window. We show up. You approve each step from wherever you are, with photos at every checkpoint. Moving, junk removal, delivery, recurring trash service.</p>
+<div class="hero-a">
+<a href="/intake.html" class="btn btn-p">Get a free quote <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+<a href="tel:+15127771628" class="btn btn-o"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>Call 512-777-1628</a>
+</div>
+<div class="hero-tr">
+<div class="hero-tr-i"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>5-star rated on Thumbtack</div>
+<div class="hero-tr-i"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Quote back the same day you ask</div>
+</div>
+</div>
+<div class="hero-v" aria-hidden="true">
+<div class="ph-m">
+<div class="ph-notch"></div>
+<div class="ph-map"><div id="hero-map"></div></div>
+<div class="ph-bar">
+<div class="ph-bar-ico"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+<div class="ph-bar-txt"><div class="ph-bar-t1">En route to drop-off</div><div class="ph-bar-t2">ETA 18 min · 7.2 miles</div></div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</section>
 
-  <!-- Features -->
-  <section class="features fade-in" id="features">
-    <div class="section-label">Features</div>
-    <h2 class="section-title">Moving, reimagined.</h2>
-    <p class="section-sub">Everything you need to move — from a single couch to a full home — at the tap of a button.</p>
-    <div class="features-grid">
-      <div class="feature-card">
-        <div class="feature-icon">&#9889;</div>
-        <h3>On-demand moves</h3>
-        <p>Need help now? Get a mover at your door in as little as 30 minutes. No scheduling required.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">&#128197;</div>
-        <h3>Schedule ahead</h3>
-        <p>Plan up to 30 days out. Pick the exact date, time, and crew size that works for your move.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">&#128247;</div>
-        <h3>Photo inventory</h3>
-        <p>Snap photos of what needs moving. Get accurate quotes instantly — no surprises on move day.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">&#128274;</div>
-        <h3>Vetted movers</h3>
-        <p>Every mover is background-checked, insured, and rated by the community. Your stuff is safe.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">&#128176;</div>
-        <h3>Transparent pricing</h3>
-        <p>See the full price upfront. No hidden fees, no surge pricing. Pay only for what you need.</p>
-      </div>
-      <div class="feature-card">
-        <div class="feature-icon">&#128172;</div>
-        <h3>Real-time tracking</h3>
-        <p>Watch your mover en route, chat directly, and get notified at every step of your move.</p>
-      </div>
-    </div>
-  </section>
+<section class="how" id="how">
+<div class="c">
+<div class="sec-hd ctr sr"><span class="sec-ey">How it works</span><h2>Your move, start to finish.</h2><p>You describe the job. We quote it, crew it, and run it while you go about your day.</p></div>
+<div class="how-g">
+<div class="how-s sr"><h3>Tell us what you need</h3><p>Submit your inventory online or call us. We send a real quote the same day. No vague ranges, no callbacks from a national call center.</p></div>
+<div class="how-s sr"><h3>We work, you approve</h3><p>Our crew shows up on time. We send photos before we touch anything breakable and wait for your go-ahead at every checkpoint.</p></div>
+<div class="how-s sr"><h3>Walk through when we're finished</h3><p>You get a final photo set and a satisfaction check. If something is off, we fix it before we leave the property.</p></div>
+</div>
+</div>
+</section>
 
-  <!-- How it works -->
-  <section class="how-it-works fade-in" id="how">
-    <div class="section-label">How it works</div>
-    <h2 class="section-title">Three steps. That's it.</h2>
-    <p class="section-sub">Getting your stuff moved has never been this easy.</p>
-    <div class="steps">
-      <div class="step">
-        <div class="step-number">1</div>
-        <h3>Tell us what & where</h3>
-        <p>Enter your pickup and drop-off locations, snap a few photos, and pick your move size.</p>
-      </div>
-      <div class="step">
-        <div class="step-number">2</div>
-        <h3>Get matched</h3>
-        <p>We'll connect you with a vetted mover nearby. Accept the quote and confirm your time.</p>
-      </div>
-      <div class="step">
-        <div class="step-number">3</div>
-        <h3>Sit back & move</h3>
-        <p>Your mover arrives, handles the heavy lifting, and gets everything to your new spot.</p>
-      </div>
-    </div>
-  </section>
+<section class="sec sec-a" id="services">
+<div class="c">
+<div class="sec-hd sr"><span class="sec-ey">What we do</span><h2>We move it, haul it, or handle it weekly.</h2><p>Apartments, offices, storage units, trash bins. Same crew each time.</p></div>
+<div class="sv-stack">
+<article class="sv ft sr">
+<div class="sv-top"><div class="sv-ico"><svg viewBox="0 0 24 24"><path d="M16 3h5v5M14 10l7-7M9 21H4a2 2 0 01-2-2v-5"/><path d="M3 21l7-7"/></svg></div></div>
+<div><h3>White Glove Moving and Delivery</h3><p>Full moves, deliveries, junk hauling, and post-move cleanup. We wrap your furniture before we lift it. We label the boxes so you find the coffee maker first. We sweep on the way out.</p>
+<div class="sv-dl"><div class="sv-di"><span class="sv-lab">Best for</span><span class="sv-val">Whole-home and apartment moves</span></div><div class="sv-di"><span class="sv-lab">Includes</span><span class="sv-val">Packing, loading, transport, unload</span></div><div class="sv-di"><span class="sv-lab">Lead time</span><span class="sv-val">Same week in most cases</span></div></div></div>
+</article>
+<article class="sv sr">
+<div class="sv-top"><div class="sv-ico"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg></div></div>
+<div><h3>Corporate Events</h3><p>Setup, teardown, and logistics for company gatherings, conferences, and office relocations. Clean uniforms, trained crew, no awkward gaps in front of your clients.</p>
+<div class="sv-dl"><div class="sv-di"><span class="sv-lab">Best for</span><span class="sv-val">Office events, conferences, relocations</span></div><div class="sv-di"><span class="sv-lab">Crew size</span><span class="sv-val">2 to 8 people</span></div></div></div>
+</article>
+<article class="sv sr">
+<div class="sv-top"><div class="sv-ico"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg></div></div>
+<div><h3>Luxury Storage Package</h3><p>We assign a crew to your storage unit and organize it so you grab what you need without digging through 20 boxes. Labeled, mapped, and accessible at a discounted rate when you book the package.</p>
+<div class="sv-dl"><div class="sv-di"><span class="sv-lab">Best for</span><span class="sv-val">Long-term storage, seasonal rotation</span></div><div class="sv-di"><span class="sv-lab">Includes</span><span class="sv-val">Organization, labeling, grab-and-go access</span></div></div></div>
+</article>
+<article class="sv sr">
+<div class="sv-top"><div class="sv-ico"><svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 01-2 2H9a2 2 0 01-2-2L5 6M10 11v6M14 11v6"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></div></div>
+<div><h3>Can-to-Curb Custom Crew</h3><p>We take your trash and recycling bins to the curb on collection day and bring them back. Weekly recurring service built for Airbnb hosts, property managers, and short-term rental operators who run multiple units and do not want to coordinate trash day across properties.</p>
+<div class="sv-dl"><div class="sv-di"><span class="sv-lab">Best for</span><span class="sv-val">STR hosts, property managers</span></div><div class="sv-di"><span class="sv-lab">Frequency</span><span class="sv-val">Weekly, on your scheduled trash day</span></div></div></div>
+</article>
+<article class="sv sr">
+<div class="sv-top"><div class="sv-ico"><svg viewBox="0 0 24 24"><path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div></div>
+<div><h3>Hyper Organization</h3><p>We catalog what goes into every box we pack. You get a digital inventory with photos. When you need the stand mixer six months later, you search instead of opening four boxes and hoping.</p>
+<div class="sv-dl"><div class="sv-di"><span class="sv-lab">Best for</span><span class="sv-val">Storage moves, long-distance relocations</span></div><div class="sv-di"><span class="sv-lab">Pairs with</span><span class="sv-val">Any moving or storage service</span></div></div></div>
+</article>
+</div></div></section>
 
-  <!-- Earn -->
-  <section class="earn fade-in" id="earn">
-    <div class="earn-card">
-      <div>
-        <div class="section-label">For movers</div>
-        <h2>Earn <span class="gold">$28-$42/hr</span> on your schedule</h2>
-        <p>Got a truck? Strong back? Turn your hustle into income. Pick gigs that fit your day, get paid instantly after each job.</p>
-        <a href="#" class="btn btn-gold">Start earning today</a>
-      </div>
-      <div class="earn-stats">
-        <div class="earn-stat">
-          <div class="earn-stat-icon">$</div>
-          <div class="earn-stat-text">
-            <h4>Same-day payouts</h4>
-            <p>Get paid within hours of completing a gig</p>
-          </div>
-        </div>
-        <div class="earn-stat">
-          <div class="earn-stat-icon">&#128663;</div>
-          <div class="earn-stat-text">
-            <h4>Use your own vehicle</h4>
-            <p>Pickup truck, van, or SUV — all welcome</p>
-          </div>
-        </div>
-        <div class="earn-stat">
-          <div class="earn-stat-icon">&#128197;</div>
-          <div class="earn-stat-text">
-            <h4>Flexible schedule</h4>
-            <p>Go online when you want, offline when you don't</p>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
+<section class="sec" id="reviews">
+<div class="c">
+<div class="sec-hd ctr sr"><span class="sec-ey">Reviews</span><h2>From our Thumbtack profile.</h2><p>These are real reviews from real customers. Read the rest on Thumbtack.</p></div>
+<div class="tm-g">
+<div class="tm sr">
+<div class="tm-st"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+<blockquote>Drew and Rodolfo provided the most excellent service. Punctual, professional, careful. The whole move was stress-free.</blockquote>
+<cite>Shae Ester</cite>
+</div>
+<div class="tm sr">
+<div class="tm-st"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+<blockquote>Fast Fix Work made our apartment-to-house move easy. The movers were professional, cheerful, and efficient.</blockquote>
+<cite>Ziggy L</cite>
+</div>
+<div class="tm sr">
+<div class="tm-st"><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg><svg viewBox="0 0 24 24"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></div>
+<blockquote>Rodolfo and Joao did a great job with my apartment-to-storage move. Handled with care, packed like pros.</blockquote>
+<cite>Parker</cite>
+</div>
+</div>
+<div style="text-align:center;margin-top:40px" class="sr">
+<a href="https://www.thumbtack.com/tx/austin/movers/fast-fix-work/service/477975414340214791" class="btn btn-warm" target="_blank" rel="noopener">Read more reviews on Thumbtack <svg viewBox="0 0 24 24"><path d="M7 17L17 7M7 7h10v10"/></svg></a>
+</div>
+</div>
+</section>
 
-  <!-- CTA -->
-  <section class="cta fade-in">
-    <h2>Ready to move?</h2>
-    <p>Whether you need a move or want to earn — Fast Fix Work has you covered.</p>
-    <div class="cta-buttons">
-      <a href="#" class="btn btn-primary">Download the app</a>
-      <a href="#" class="btn btn-gold">Become a mover</a>
-    </div>
-  </section>
+<section class="sec sec-a" id="about">
+<div class="c">
+<div class="sec-hd sr"><span class="sec-ey">Who we are</span><h2>Built for people who can't be on site.</h2></div>
+<div class="ab-g">
+<div class="ab-t sr">
+<p>Fast. Fix. Work. exists because moves happen on Tuesday mornings when you have a meeting. Deliveries arrive while you are at work. Trash day happens whether or not you are in town. We built a service around that reality: you stay wherever you are, and we handle the physical work with your approval at every step.</p>
+<p>We serve Austin and the surrounding metro with a small crew that treats your belongings the way we treat our own. We keep it local, keep it personal, and keep you in the loop.</p>
+</div>
+<aside class="ab-box sr">
+<h3>What you get with us</h3>
+<ul>
+<li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Photo updates at every checkpoint</li>
+<li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Nothing happens without your approval</li>
+<li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Same-day quotes, no waiting around</li>
+<li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Local Austin crew, not a national chain</li>
+<li><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>Membership rates for recurring services</li>
+</ul>
+</aside>
+</div>
+</div>
+</section>
 
-  <!-- Footer -->
-  <footer>
-    <p>Fast Fix Work &mdash; Move it. On your schedule. &copy; 2026</p>
-  </footer>
+<section class="sec" id="faq">
+<div class="c">
+<div class="sec-hd ctr sr"><span class="sec-ey">Questions</span><h2>Things people ask us first.</h2></div>
+<div class="fq-l sr">
+<div class="fq"><button class="fq-q" aria-expanded="false">Do I need to be home during the move?<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button><div class="fq-a"><div class="fq-a-i">No. Our whole service is built around remote approval. We send you photos at every step and wait for your green light before proceeding. If you want to be there in person, you are welcome. If not, your phone is enough.</div></div></div>
+<div class="fq"><button class="fq-q" aria-expanded="false">What areas do you serve?<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button><div class="fq-a"><div class="fq-a-i">Greater Austin including Round Rock, Cedar Park, Pflugerville, Georgetown, Leander, Lakeway, and surrounding communities. If you are unsure about your area, call and ask.</div></div></div>
+<div class="fq"><button class="fq-q" aria-expanded="false">How does Can-to-Curb work?<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button><div class="fq-a"><div class="fq-a-i">We come to your property on your scheduled trash pickup day, pull your bins to the curb, and bring them back after collection. It runs weekly. Most popular with Airbnb hosts and property managers running multiple units across Austin.</div></div></div>
+<div class="fq"><button class="fq-q" aria-expanded="false">How fast can I get a quote?<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button><div class="fq-a"><div class="fq-a-i">Same day. Use the online form to describe your job and we respond within hours during business days. Or call 512-777-1628 for a phone estimate right now.</div></div></div>
+<div class="fq"><button class="fq-q" aria-expanded="false">What if something goes wrong during the move?<svg viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg></button><div class="fq-a"><div class="fq-a-i">We handle your belongings with care and wrap furniture before moving it. If anything is damaged, report it within 72 hours and we will make it right. Our liability covers $0.60 per pound per item.</div></div></div>
+</div>
+</div>
+</section>
 
-  <script>
-    // Scroll-triggered fade-in animations
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach(entry => {
-        if (entry.isIntersecting) {
-          entry.target.classList.add('visible');
-        }
-      });
-    }, { threshold: 0.1 });
+<section class="cta-b">
+<div class="c cta-b-i sr">
+<h2>Get your quote <em>in about two minutes.</em></h2>
+<p>Fill out the form, get a price, and book your date. We won't call unless you ask us to.</p>
+<div class="cta-b-a">
+<a href="/intake.html" class="btn btn-p">Get a free quote <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+<a href="tel:+15127771628" class="btn btn-o"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>Or call 512-777-1628</a>
+</div>
+</div>
+</section>
 
-    document.querySelectorAll('.fade-in').forEach(el => observer.observe(el));
+<section class="sec sec-a" id="contact">
+<div class="c">
+<div class="sec-hd sr"><span class="sec-ey">Contact</span><h2>Call, text, or email.</h2><p>We pick up during business hours and reply to everything else the same day.</p></div>
+<div class="ct-g">
+<div class="ct-i sr">
+<div class="ct-it"><div class="ct-ic"><svg viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6A19.79 19.79 0 012.12 4.18 2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.362 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.338 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg></div><div><a href="tel:+15127771628">512-777-1628</a><span>Call or text anytime</span></div></div>
+<div class="ct-it"><div class="ct-ic"><svg viewBox="0 0 24 24"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg></div><div><a href="mailto:communication@fastfixwork.com">communication@fastfixwork.com</a><span>Same-day response</span></div></div>
+<div class="ct-it"><div class="ct-ic"><svg viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg></div><div><address style="font-style:normal"><strong>Austin, TX</strong><span>Round Rock, Cedar Park, Pflugerville, Georgetown</span></address></div></div>
+<div style="margin-top:24px">
+<a href="/intake.html" class="btn btn-warm" style="width:100%;justify-content:center">Get your free quote online <svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></a>
+</div>
+</div>
+</div>
+</div>
+</section>
+</main>
 
-    // Nav background on scroll
-    window.addEventListener('scroll', () => {
-      const nav = document.querySelector('nav');
-      if (window.scrollY > 50) {
-        nav.style.borderBottomColor = 'rgba(78, 175, 80, 0.2)';
-      } else {
-        nav.style.borderBottomColor = 'rgba(78, 175, 80, 0.1)';
-      }
-    });
-  </script>
+<footer class="ftr">
+<div class="c">
+<div class="ftr-g">
+<div class="ftr-c"><div class="logo" style="margin-bottom:14px"><div class="logo-b" style="width:34px;height:34px;font-size:0.65rem">FFX</div><div class="logo-t" style="font-size:1rem;color:rgba(242,238,231,0.9)">Fast. <i>Fix.</i> Work.</div></div><p>Austin movers you control from your phone. Moving, delivery, junk removal, and recurring home services.</p></div>
+<div class="ftr-c"><h4>Pages</h4><a href="#how">How it works</a><a href="#services">Services</a><a href="#reviews">Reviews</a><a href="#about">About</a><a href="#faq">FAQ</a></div>
+<div class="ftr-c"><h4>Contact</h4><a href="tel:+15127771628">512-777-1628</a><a href="mailto:communication@fastfixwork.com">communication@fastfixwork.com</a><p>Austin, TX</p></div>
+</div>
+<div class="ftr-b">&copy; 2026 Fast. Fix. Work. All rights reserved.</div>
+</div>
+</footer>
+
+<div class="m-cta" id="mcta">
+<a href="tel:+15127771628" class="mc-c">Call now</a>
+<a href="/intake.html" class="mc-q">Free quote</a>
+</div>
+
+<script>
+const h=document.querySelector('.hdr');
+window.addEventListener('scroll',()=>{h.classList.toggle('sc',window.scrollY>60)},{passive:true});
+
+const mc=document.getElementById('mcta'),cs=document.getElementById('contact');
+if(mc&&cs){const co=new IntersectionObserver(e=>{e.forEach(x=>{mc.classList.toggle('hid',x.isIntersecting)})},{threshold:0.15});co.observe(cs)}
+
+const tg=document.getElementById('mt'),mn=document.getElementById('mn'),ov=document.getElementById('ov'),ml=document.querySelectorAll('.ml');
+function cn(){tg.classList.remove('op');tg.setAttribute('aria-expanded','false');mn.classList.remove('op');ov.classList.remove('v');document.body.style.overflow=''}
+tg.addEventListener('click',()=>{if(mn.classList.contains('op')){cn()}else{tg.classList.add('op');tg.setAttribute('aria-expanded','true');mn.classList.add('op');ov.classList.add('v');document.body.style.overflow='hidden'}});
+ov.addEventListener('click',cn);ml.forEach(l=>l.addEventListener('click',cn));
+
+const ro=new IntersectionObserver(e=>{e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('vis');ro.unobserve(x.target)}})},{threshold:0.1});
+document.querySelectorAll('.sr').forEach(el=>ro.observe(el));
+
+document.querySelectorAll('.fq-q').forEach(b=>{b.addEventListener('click',()=>{const i=b.closest('.fq'),w=i.classList.contains('op');document.querySelectorAll('.fq.op').forEach(x=>{x.classList.remove('op');x.querySelector('.fq-q').setAttribute('aria-expanded','false')});if(!w){i.classList.add('op');b.setAttribute('aria-expanded','true')}})});
+
+// Hero map
+(function(){
+  const el=document.getElementById('hero-map');
+  if(!el||typeof L==='undefined') return;
+  const map=L.map(el,{zoomControl:false,attributionControl:false,dragging:false,scrollWheelZoom:false,doubleClickZoom:false,touchZoom:false,keyboard:false});
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:18}).addTo(map);
+  // Austin route: downtown → Round Rock
+  const pickup=[30.2672,-97.7431];
+  const dropoff=[30.5083,-97.6789];
+  map.fitBounds([pickup,dropoff],{padding:[30,30]});
+  // Route line
+  const route=[pickup,[30.2750,-97.7400],[30.2900,-97.7350],[30.3100,-97.7280],[30.3400,-97.7150],[30.3700,-97.7050],[30.4000,-97.6950],[30.4300,-97.6900],[30.4600,-97.6850],[30.4850,-97.6810],dropoff];
+  L.polyline(route,{color:'#C98B3F',weight:4,opacity:0.9,dashArray:'8,6'}).addTo(map);
+  // Markers
+  const mkIcon=(color,label)=>L.divIcon({className:'',html:`<div style="width:28px;height:28px;background:${color};border:3px solid #fff;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:#fff;font-family:Inter,sans-serif">${label}</div>`,iconSize:[28,28],iconAnchor:[14,14]});
+  L.marker(pickup,{icon:mkIcon('#4A8066','A')}).addTo(map);
+  L.marker(dropoff,{icon:mkIcon('#C98B3F','B')}).addTo(map);
+})();
+</script>
 </body>
 </html>

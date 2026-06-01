@@ -18,6 +18,10 @@ expo-env.d.ts
 *.key
 *.mobileprovision
 
+# App store submission credentials
+play-service-account.json
+google-service-account.json
+
 # Metro
 .metro-health-check*
 
@@ -43,4 +47,8 @@ yarn-error.*
 # Environment variables
 .env
 .env.local
+.env.eas
+
+# Ruflo / RuVector tooling artifacts
+ruvector.db
 

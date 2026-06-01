@@ -189,7 +189,7 @@ export function ChatScreen({ gigId, otherName, onBack, depositPaid = true }: Cha
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
             <Ionicons name="lock-closed" size={16} color={colors.ink3} />
             <Text style={{ fontSize: 14, fontWeight: '600', color: colors.ink3 }}>
-              Messaging unlocked after deposit payment
+              Messaging unlocked after payment
             </Text>
           </View>
         </View>

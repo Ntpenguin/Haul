@@ -8,6 +8,7 @@ import { supabase } from '../../../lib/supabase';
 import { useAuthStore } from '../../../stores/auth';
 import { formatCents } from '../../../lib/pricing';
 import type { Profile, MoverProfile, Gig } from '../../../lib/supabase';
+import { vehicleDisplay } from '../../../lib/vehicleTypes';
 
 export default function WorkerProfileScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
@@ -18,11 +19,13 @@ export default function WorkerProfileScreen() {
   const [pastGigs, setPastGigs] = useState<Gig[]>([]);
   const [loading, setLoading] = useState(true);
   const [reporting, setReporting] = useState(false);
+  const [blocked, setBlocked] = useState(false);
+  const [blocking, setBlocking] = useState(false);
 
   useEffect(() => {
     async function load() {
       try {
-        const [{ data: w }, { data: mp }, { data: gigs }] = await Promise.all([
+        const [{ data: w }, { data: mp }, { data: gigs }, { data: blockRow }] = await Promise.all([
           supabase.from('profiles').select('*').eq('id', id).single(),
           supabase.from('mover_profiles').select('*').eq('id', id).single(),
           supabase
@@ -31,7 +34,14 @@ export default function WorkerProfileScreen() {
             .eq('mover_id', id)
             .eq('customer_id', myProfile?.id || '')
             .order('created_at', { ascending: false }),
+          supabase
+            .from('user_blocks')
+            .select('id')
+            .eq('blocker_id', myProfile?.id || '')
+            .eq('blocked_id', id)
+            .maybeSingle(),
         ]);
+        if (blockRow) setBlocked(true);
         setWorker(w);
         setMoverProfile(mp);
         setPastGigs(gigs || []);
@@ -67,6 +77,48 @@ export default function WorkerProfileScreen() {
       { text: 'Harassment', onPress: () => submitReport('Harassment') },
       { text: 'Cancel', style: 'cancel' },
     ]);
+  }
+
+  function handleBlock() {
+    if (blocked) {
+      Alert.alert('Unblock worker', `${worker?.full_name || 'This worker'} will be able to apply to your jobs again.`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Unblock', onPress: unblockUser },
+      ]);
+    } else {
+      Alert.alert('Block worker', `${worker?.full_name || 'This worker'} will no longer be able to apply to your jobs or contact you.`, [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Block', style: 'destructive', onPress: blockUser },
+      ]);
+    }
+  }
+
+  async function blockUser() {
+    if (!myProfile?.id) return;
+    setBlocking(true);
+    try {
+      const { error } = await supabase.from('user_blocks').insert({ blocker_id: myProfile.id, blocked_id: id });
+      if (error) throw error;
+      setBlocked(true);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to block user.');
+    } finally {
+      setBlocking(false);
+    }
+  }
+
+  async function unblockUser() {
+    if (!myProfile?.id) return;
+    setBlocking(true);
+    try {
+      const { error } = await supabase.from('user_blocks').delete().eq('blocker_id', myProfile.id).eq('blocked_id', id);
+      if (error) throw error;
+      setBlocked(false);
+    } catch (err: any) {
+      Alert.alert('Error', err.message || 'Failed to unblock user.');
+    } finally {
+      setBlocking(false);
+    }
   }
 
   async function submitReport(reason: string) {
@@ -132,8 +184,8 @@ export default function WorkerProfileScreen() {
             <Text style={{ fontSize: 12, fontWeight: '700', color: colors.ink3, letterSpacing: 0.5, textTransform: 'uppercase', marginBottom: 10 }}>
               Details
             </Text>
-            {moverProfile?.vehicle_type && (
-              <DetailRow icon="car-outline" label="Vehicle" value={moverProfile.vehicle_type} />
+            {(moverProfile?.vehicle_type || moverProfile?.vehicle_make_model) && (
+              <DetailRow icon="car-outline" label="Vehicle" value={vehicleDisplay(moverProfile.vehicle_type, moverProfile.vehicle_make_model)} />
             )}
             {moverProfile?.service_area_zip && moverProfile.service_area_zip.length > 0 && (
               <DetailRow icon="location-outline" label="Service area" value={moverProfile.service_area_zip.join(', ')} />
@@ -179,10 +231,18 @@ export default function WorkerProfileScreen() {
 
       {/* Footer buttons */}
       <View style={{ position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 38, backgroundColor: colors.bg, borderTopWidth: 1, borderTopColor: colors.line, gap: 10 }}>
-        <TouchableOpacity onPress={handleReport} disabled={reporting} style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6, paddingVertical: 4 }}>
-          <Ionicons name="flag-outline" size={15} color={colors.ink4} />
-          <Text style={{ fontSize: 13, color: colors.ink4 }}>Report this worker</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', justifyContent: 'center', gap: 20 }}>
+          <TouchableOpacity onPress={handleReport} disabled={reporting} style={{ alignItems: 'center', flexDirection: 'row', gap: 5 }}>
+            <Ionicons name="flag-outline" size={15} color={colors.ink4} />
+            <Text style={{ fontSize: 13, color: colors.ink4 }}>Report</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleBlock} disabled={blocking} style={{ alignItems: 'center', flexDirection: 'row', gap: 5 }}>
+            <Ionicons name={blocked ? 'checkmark-circle-outline' : 'ban-outline'} size={15} color={blocked ? colors.success : colors.error} />
+            <Text style={{ fontSize: 13, color: blocked ? colors.success : colors.error }}>
+              {blocked ? 'Unblock' : 'Block'}
+            </Text>
+          </TouchableOpacity>
+        </View>
         <View style={{ flexDirection: 'row', gap: 10 }}>
         {activeGig && (
           <View style={{ flex: 1 }}>

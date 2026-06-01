@@ -24,7 +24,7 @@ export const profileSchema = z.object({
 export const gigDraftSchema = z.object({
   from_address: z.string().min(3, 'Pickup address required'),
   to_address: z.string().min(3, 'Drop-off address required'),
-  home_size: z.enum(['item', 'studio', '1br', '2br', '3br+']),
+  home_size: z.enum(['few-items', 'studio', '1br', '2br', '3br+', '4br', 'other']),
   crew_size: z.number().min(1).max(6),
   truck_size: z.enum(['none', 'small', 'medium', 'large']),
   stairs_from: z.number().min(0),

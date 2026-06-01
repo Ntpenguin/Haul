@@ -7,7 +7,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Origin': 'https://fastfixwork.com',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
   'Content-Type': 'application/json',
 };
@@ -112,6 +112,6 @@ Voice message: "${transcript}"`,
     );
   } catch (err: any) {
     console.error('parse-schedule-voice error:', err);
-    return new Response(JSON.stringify({ error: err.message || 'Internal error' }), { status: 500, headers: CORS });
+    return new Response(JSON.stringify({ error: 'Internal error' }), { status: 500, headers: CORS });
   }
 });

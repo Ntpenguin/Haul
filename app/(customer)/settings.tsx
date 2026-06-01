@@ -3,6 +3,7 @@ import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert } from 'reac
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { uploadToStorage } from '../../hooks/useUploadPhoto';
 import { Button, Avatar } from '../../components/primitives';
 import { colors, radii } from '../../lib/theme';
 import { useAuth } from '../../hooks/useAuth';
@@ -21,11 +22,14 @@ export default function CustomerSettings() {
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
 
   useEffect(() => {
     if (profile?.id) {
       supabase.from('reviews').select('*, reviewer:reviewer_id(full_name)').eq('reviewee_id', profile.id).order('created_at', { ascending: false })
         .then(({ data }) => { if (data) setReviews(data); });
+      supabase.from('user_blocks').select('*, blocked:blocked_id(id, full_name, avatar_url)').eq('blocker_id', profile.id)
+        .then(({ data }) => { if (data) setBlockedUsers(data); });
     }
   }, [profile?.id]);
 
@@ -78,12 +82,9 @@ export default function CustomerSettings() {
     setUploading(true);
     try {
       const asset = result.assets[0];
-      const ext = asset.uri.split('.').pop() || 'jpg';
+      const ext = (asset.uri.split('.').pop() || 'jpg').toLowerCase();
       const path = `${profile.id}/avatar.${ext}`;
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, blob, { upsert: true, contentType: `image/${ext}` });
-      if (uploadError) throw uploadError;
+      await uploadToStorage(asset.uri, 'avatars', path);
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
       await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
       setAvatarUrl(publicUrl);
@@ -288,11 +289,67 @@ export default function CustomerSettings() {
           </View>
         )}
 
+        {/* Blocked Users */}
+        <View style={{ marginTop: 36 }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: colors.ink3, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 12 }}>
+            Blocked Users
+          </Text>
+          {blockedUsers.length === 0 ? (
+            <Text style={{ fontSize: 14, color: colors.ink4, paddingVertical: 8 }}>No blocked users.</Text>
+          ) : (
+            <View style={{ gap: 10 }}>
+              {blockedUsers.map((b: any) => (
+                <View key={b.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: radii.md, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="person-outline" size={18} color={colors.ink3} />
+                  </View>
+                  <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: colors.ink }}>{b.blocked?.full_name || 'Unknown user'}</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Alert.alert('Unblock', `Unblock ${b.blocked?.full_name || 'this user'}?`, [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Unblock', onPress: async () => {
+                          await supabase.from('user_blocks').delete().eq('id', b.id);
+                          setBlockedUsers(prev => prev.filter(x => x.id !== b.id));
+                        }},
+                      ]);
+                    }}
+                    style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: 8, backgroundColor: colors.surface }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink2 }}>Unblock</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Legal */}
+        <View style={{ marginTop: 40 }}>
+          <Text style={{ fontSize: 12, fontWeight: '700', color: colors.ink3, letterSpacing: 0.4, textTransform: 'uppercase', marginBottom: 12 }}>
+            Legal
+          </Text>
+          <TouchableOpacity
+            onPress={() => router.push('/terms')}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderTopWidth: 1, borderTopColor: 'rgba(26,23,20,0.08)' }}
+          >
+            <Text style={{ fontSize: 15, color: colors.ink }}>Terms & Conditions</Text>
+            <Text style={{ fontSize: 18, color: colors.ink4 }}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/privacy-policy')}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderTopWidth: 1, borderTopColor: 'rgba(26,23,20,0.08)' }}
+          >
+            <Text style={{ fontSize: 15, color: colors.ink }}>Privacy Policy</Text>
+            <Text style={{ fontSize: 18, color: colors.ink4 }}>›</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Sign out */}
         <TouchableOpacity
           onPress={handleSignOut}
           style={{
-            marginTop: 40,
+            marginTop: 20,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',

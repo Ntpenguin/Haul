@@ -15,8 +15,8 @@ export interface GigDraft {
   to_zip: string | null;
   distance_miles: number | null;
 
-  // Step 2: Size
-  home_size: 'item' | 'few-items' | 'studio' | '1br' | '2br' | '3br+' | 'other';
+  // Step 2: Size — kept in sync with the intake form's size options
+  home_size: 'few-items' | 'studio' | '1br' | '2br' | '3br+' | '4br' | 'other';
 
   // Step 3: Inventory
   rooms: Record<string, number>;
@@ -34,6 +34,8 @@ export interface GigDraft {
   elevator_from: boolean;
   elevator_to: boolean;
   long_carry: boolean;
+  staging: boolean;
+  packing_service: boolean;
 
   // Step 6: Schedule
   scheduled_for: string | null; // null = ASAP
@@ -91,6 +93,8 @@ const INITIAL_DRAFT: GigDraft = {
   elevator_from: false,
   elevator_to: false,
   long_carry: false,
+  staging: false,
+  packing_service: false,
   scheduled_for: null,
   contact_first_name: '',
   contact_last_name: '',

@@ -1,12 +1,12 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Alert, RefreshControl, FlatList } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, Text, ScrollView, TouchableOpacity, Animated, Alert, RefreshControl, FlatList } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { Card, Chip, Avatar, Tag } from '../../components/primitives';
+import { Card, Chip, Avatar, Tag, GigCardSkeleton } from '../../components/primitives';
 import { colors, radii, shadows } from '../../lib/theme';
 import { useAuth } from '../../hooks/useAuth';
 import { useGigs } from '../../hooks/useGigs';
-import { formatCents, remainderCents } from '../../lib/pricing';
+import { formatCents, moverPayoutCents } from '../../lib/pricing';
 import { supabase } from '../../lib/supabase';
 import type { Gig } from '../../lib/supabase';
 
@@ -65,19 +65,29 @@ export default function MoverHome() {
     }
   }, [profile]);
 
-  // Fetch mover approval status
+  // Fetch mover approval status + subscribe for real-time approval
   useEffect(() => {
+    if (!profile?.id) return;
     async function checkStatus() {
-      if (!profile?.id) return;
       const { data } = await supabase
         .from('mover_profiles')
         .select('status')
-        .eq('id', profile.id)
+        .eq('id', profile!.id)
         .maybeSingle();
       setMoverStatus(data?.status || 'pending');
     }
     checkStatus();
-  }, [profile]);
+
+    const channel = supabase
+      .channel(`mover_status_${profile.id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'mover_profiles', filter: `id=eq.${profile.id}` }, (payload) => {
+        const newStatus = (payload.new as any)?.status;
+        if (newStatus) setMoverStatus(newStatus);
+      })
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [profile?.id]);
 
   useFocusEffect(
     useCallback(() => {
@@ -89,46 +99,11 @@ export default function MoverHome() {
     if (online && moverStatus === 'approved') loadGigs();
   }, [online, moverStatus, refreshKey]);
 
-  // Real-time: new/updated gigs feed
-  useEffect(() => {
-    if (!online || moverStatus !== 'approved' || !profile?.id) return;
-
-    const channel = supabase
-      .channel('mover-home-feed')
-      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'gigs' }, (payload) => {
-        const gig = payload.new as Gig;
-        if (gig.status === 'posted') {
-          setGigs(prev => [gig, ...prev.filter(g => g.id !== gig.id)]);
-        }
-      })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'gigs' }, (payload) => {
-        const gig = payload.new as Gig;
-        // Remove from available list if no longer posted
-        if (gig.status !== 'posted') {
-          setGigs(prev => prev.filter(g => g.id !== gig.id));
-        }
-        // Keep my active jobs in sync
-        if (gig.mover_id === profile.id) {
-          if (['matched', 'in_progress'].includes(gig.status)) {
-            setMyJobs(prev => {
-              const exists = prev.find(g => g.id === gig.id);
-              return exists ? prev.map(g => g.id === gig.id ? gig : g) : [gig, ...prev];
-            });
-          } else if (gig.status === 'completed') {
-            setMyJobs(prev => prev.filter(g => g.id !== gig.id));
-            setCompletedJobs(prev => [gig, ...prev.filter(g => g.id !== gig.id)]);
-          }
-        }
-      })
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [online, moverStatus, profile?.id]);
 
   async function loadGigs() {
     setLoading(true);
     try {
-      const [available, matched, completed] = await Promise.all([
+      const [available, matched, completed, blocks] = await Promise.all([
         fetchAvailableGigs(),
         profile?.id
           ? supabase
@@ -148,8 +123,12 @@ export default function MoverHome() {
               .order('created_at', { ascending: false })
               .then(({ data }) => data || [])
           : Promise.resolve([]),
+        profile?.id
+          ? supabase.from('user_blocks').select('blocked_id').eq('blocker_id', profile.id).then(({ data }) => (data || []).map((b: any) => b.blocked_id))
+          : Promise.resolve([]),
       ]);
-      setGigs(available);
+      const blockedIds = new Set(blocks as string[]);
+      setGigs(available.filter((g: Gig) => !g.customer_id || !blockedIds.has(g.customer_id)));
       setMyJobs(matched);
       setCompletedJobs(completed);
     } catch (err) {
@@ -222,6 +201,12 @@ export default function MoverHome() {
           <Text style={{ fontSize: 13, color: colors.ink3 }}>Welcome back,</Text>
           <Text style={{ fontSize: 17, fontWeight: '700', color: colors.ink, letterSpacing: -0.2 }}>{name}</Text>
         </View>
+        <TouchableOpacity
+          onPress={() => router.push('/(mover)/inbox')}
+          style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}
+        >
+          <Ionicons name="chatbubbles-outline" size={18} color={colors.ink2} />
+        </TouchableOpacity>
         <OnlineToggle online={online} onToggle={() => setOnline(!online)} />
       </View>
 
@@ -230,7 +215,7 @@ export default function MoverHome() {
         <View style={{ padding: 14, borderRadius: 14, backgroundColor: colors.accent.soft, flexDirection: 'row', gap: 10, alignItems: 'center' }}>
           <Ionicons name="shield-checkmark-outline" size={18} color={colors.accent.deep} />
           <Text style={{ flex: 1, fontSize: 13, color: colors.accent.deep, fontWeight: '500' }}>
-            Customer pays a 10% deposit through the app. You collect the remaining 90% directly from the customer.
+            Customers pay in full through the app. You're paid out after each job, minus a 15% service fee.
           </Text>
         </View>
       </View>
@@ -244,8 +229,9 @@ export default function MoverHome() {
             </Text>
           </View>
           <View style={{ paddingHorizontal: 20, gap: 10, marginBottom: 8 }}>
-            {myJobs.map((gig) => (
-              <TouchableOpacity key={gig.id} activeOpacity={0.85} onPress={() => router.push({ pathname: '/(mover)/gig/[id]', params: { id: gig.id } })}>
+            {myJobs.map((gig, index) => (
+              <AnimatedJobCard key={gig.id} index={index}>
+              <TouchableOpacity activeOpacity={0.85} onPress={() => router.push({ pathname: '/(mover)/gig/[id]', params: { id: gig.id } })}>
                 <Card style={{ padding: 16, borderWidth: 2, borderColor: colors.accent.base }}>
                   <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
                     <View>
@@ -253,7 +239,7 @@ export default function MoverHome() {
                         {gig.quoted_price_cents ? formatCents(gig.quoted_price_cents) : 'TBD'}
                       </Text>
                       <Text style={{ fontSize: 12, color: colors.ink3, marginTop: 2 }}>
-                        {gig.quoted_price_cents ? `${formatCents(remainderCents(gig.quoted_price_cents))} from customer` : 'Total pay'}
+                        {gig.quoted_price_cents ? `${formatCents(moverPayoutCents(gig.quoted_price_cents))} your payout` : 'Total pay'}
                       </Text>
                     </View>
                     <Tag color={gig.status === 'in_progress' ? 'good' : 'accent'}>
@@ -285,6 +271,7 @@ export default function MoverHome() {
                   </TouchableOpacity>
                 </Card>
               </TouchableOpacity>
+              </AnimatedJobCard>
             ))}
           </View>
         </>
@@ -373,7 +360,11 @@ export default function MoverHome() {
           </ScrollView>
 
           {loading ? (
-            <ActivityIndicator color={colors.accent.base} style={{ marginVertical: 30 }} />
+            <View style={{ paddingHorizontal: 20, gap: 12, marginTop: 4 }}>
+              <GigCardSkeleton />
+              <GigCardSkeleton />
+              <GigCardSkeleton />
+            </View>
           ) : (() => {
             const categoryColors = { ...DEFAULT_CATEGORY_COLORS, ...(profile?.category_colors || {}) };
             const filtered = gigs.filter(g => {
@@ -399,14 +390,15 @@ export default function MoverHome() {
             );
             return (
               <View style={{ paddingHorizontal: 20, gap: 12 }}>
-                {filtered.map((gig) => (
-                  <JobCard
-                    key={gig.id}
-                    gig={gig}
-                    natoName={natoNames[gig.id]}
-                    categoryColor={categoryColors[gig.gig_category] || categoryColors.moving}
-                    onPress={() => router.push({ pathname: '/(mover)/gig/[id]', params: { id: gig.id } })}
-                  />
+                {filtered.map((gig, index) => (
+                  <AnimatedJobCard key={gig.id} index={index}>
+                    <JobCard
+                      gig={gig}
+                      natoName={natoNames[gig.id]}
+                      categoryColor={categoryColors[gig.gig_category] || categoryColors.moving}
+                      onPress={() => router.push({ pathname: '/(mover)/gig/[id]', params: { id: gig.id } })}
+                    />
+                  </AnimatedJobCard>
                 ))}
               </View>
             );
@@ -427,20 +419,49 @@ export default function MoverHome() {
   );
 }
 
+function AnimatedJobCard({ children, index }: { children: React.ReactNode; index: number }) {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(anim, {
+      toValue: 1,
+      useNativeDriver: true,
+      speed: 14,
+      bounciness: 5,
+      delay: index * 55,
+    }).start();
+  }, []);
+  return (
+    <Animated.View style={{
+      opacity: anim,
+      transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }],
+    }}>
+      {children}
+    </Animated.View>
+  );
+}
+
 function OnlineToggle({ online, onToggle }: { online: boolean; onToggle: () => void }) {
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn = () => Animated.spring(scale, { toValue: 0.94, useNativeDriver: true, speed: 50, bounciness: 0 }).start();
+  const onPressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
   return (
     <TouchableOpacity
       onPress={onToggle}
-      style={{
+      onPressIn={onPressIn}
+      onPressOut={onPressOut}
+      activeOpacity={1}
+    >
+      <Animated.View style={{
         flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 12, height: 36, borderRadius: 18,
         backgroundColor: online ? colors.accent.soft : colors.surface,
         borderWidth: 1, borderColor: online ? colors.accent.base : colors.line,
-      }}
-    >
-      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: online ? colors.accent.base : colors.ink4 }} />
-      <Text style={{ fontSize: 13, fontWeight: '700', color: online ? colors.accent.deep : colors.ink3 }}>
-        {online ? 'Online' : 'Offline'}
-      </Text>
+        transform: [{ scale }],
+      }}>
+        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: online ? colors.accent.base : colors.ink4 }} />
+        <Text style={{ fontSize: 13, fontWeight: '700', color: online ? colors.accent.deep : colors.ink3 }}>
+          {online ? 'Online' : 'Offline'}
+        </Text>
+      </Animated.View>
     </TouchableOpacity>
   );
 }
@@ -448,8 +469,12 @@ function OnlineToggle({ online, onToggle }: { online: boolean; onToggle: () => v
 function JobCard({ gig, onPress, natoName, categoryColor }: { gig: Gig; onPress: () => void; natoName?: string; categoryColor?: string }) {
   const isAsap = !gig.scheduled_for;
   const color = categoryColor || '#F59E0B';
+  const scale = useRef(new Animated.Value(1)).current;
+  const onPressIn = () => Animated.spring(scale, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 0 }).start();
+  const onPressOut = () => Animated.spring(scale, { toValue: 1, useNativeDriver: true, speed: 20, bounciness: 8 }).start();
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.85}>
+    <TouchableOpacity onPress={onPress} onPressIn={onPressIn} onPressOut={onPressOut} activeOpacity={1}>
+      <Animated.View style={{ transform: [{ scale }] }}>
       <Card style={{ padding: 18, borderWidth: 1, borderColor: colors.line, borderLeftWidth: 4, borderLeftColor: color }}>
         {/* NATO name badge */}
         {natoName && (
@@ -514,6 +539,7 @@ function JobCard({ gig, onPress, natoName, categoryColor }: { gig: Gig; onPress:
           )}
         </View>
       </Card>
+      </Animated.View>
     </TouchableOpacity>
   );
 }

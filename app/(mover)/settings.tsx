@@ -3,6 +3,7 @@ import { View, Text, TextInput, ScrollView, TouchableOpacity, Alert } from 'reac
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
+import { uploadToStorage } from '../../hooks/useUploadPhoto';
 import { Button, Avatar } from '../../components/primitives';
 import { colors, radii } from '../../lib/theme';
 import { useAuth } from '../../hooks/useAuth';
@@ -19,10 +20,13 @@ export default function MoverSettings() {
   const [phone, setPhone] = useState('');
   const [bio, setBio] = useState('');
   const [vehicleType, setVehicleType] = useState('');
+  const [vehicleMakeModel, setVehicleMakeModel] = useState('');
+  const [vehicleSuggestions, setVehicleSuggestions] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [reviews, setReviews] = useState<any[]>([]);
+  const [blockedUsers, setBlockedUsers] = useState<any[]>([]);
   const [categoryColors, setCategoryColors] = useState<Record<string, string>>({
     moving: '#F59E0B',
     cleaning: '#3B82F6',
@@ -46,12 +50,14 @@ export default function MoverSettings() {
     async function loadMoverProfile() {
       if (!profile?.id) return;
       const [{ data: mp }, { data: rv }] = await Promise.all([
-        supabase.from('mover_profiles').select('bio, vehicle_type').eq('id', profile.id).maybeSingle(),
+        supabase.from('mover_profiles').select('bio, vehicle_type, vehicle_make_model').eq('id', profile.id).maybeSingle(),
         supabase.from('reviews').select('*, reviewer:reviewer_id(full_name)').eq('reviewee_id', profile.id).order('created_at', { ascending: false }),
       ]);
-      if (mp) { setBio(mp.bio || ''); setVehicleType(mp.vehicle_type || ''); }
+      if (mp) { setBio(mp.bio || ''); setVehicleType(mp.vehicle_type || ''); setVehicleMakeModel(mp.vehicle_make_model || ''); }
       if (rv) setReviews(rv);
       if (profile?.category_colors) setCategoryColors({ ...categoryColors, ...profile.category_colors });
+      const { data: blocks } = await supabase.from('user_blocks').select('*, blocked:blocked_id(id, full_name, avatar_url)').eq('blocker_id', profile?.id || '');
+      if (blocks) setBlockedUsers(blocks);
     }
     loadMoverProfile();
   }, [profile]);
@@ -72,7 +78,7 @@ export default function MoverSettings() {
           .eq('id', profile.id),
         supabase
           .from('mover_profiles')
-          .update({ bio, vehicle_type: vehicleType })
+          .update({ bio, vehicle_type: vehicleType, vehicle_make_model: vehicleMakeModel || null })
           .eq('id', profile.id),
       ]);
       if (profileRes.error) throw profileRes.error;
@@ -102,12 +108,9 @@ export default function MoverSettings() {
     setUploading(true);
     try {
       const asset = result.assets[0];
-      const ext = asset.uri.split('.').pop() || 'jpg';
+      const ext = (asset.uri.split('.').pop() || 'jpg').toLowerCase();
       const path = `${profile.id}/avatar.${ext}`;
-      const response = await fetch(asset.uri);
-      const blob = await response.blob();
-      const { error: uploadError } = await supabase.storage.from('avatars').upload(path, blob, { upsert: true, contentType: `image/${ext}` });
-      if (uploadError) throw uploadError;
+      await uploadToStorage(asset.uri, 'avatars', path);
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path);
       await supabase.from('profiles').update({ avatar_url: publicUrl }).eq('id', profile.id);
       setAvatarUrl(publicUrl);
@@ -263,15 +266,60 @@ export default function MoverSettings() {
           }}
         />
 
-        {/* Vehicle type */}
+        {/* Vehicle */}
         <Text style={{ ...labelStyle, marginTop: 16 }}>Vehicle type</Text>
-        <TextInput
-          value={vehicleType}
-          onChangeText={setVehicleType}
-          placeholder="e.g. Pickup truck, Box truck"
-          placeholderTextColor={colors.ink4}
-          style={inputStyle}
-        />
+        <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 10 }}>
+          {[
+            { id: 'own-truck', label: 'Truck owner' },
+            { id: 'own-van', label: 'Van owner' },
+            { id: 'rent', label: 'Rents trucks' },
+            { id: 'muscle', label: 'No vehicle' },
+          ].map((o) => {
+            const active = vehicleType === o.id;
+            return (
+              <TouchableOpacity
+                key={o.id}
+                onPress={() => { setVehicleType(o.id); if (o.id === 'muscle') setVehicleMakeModel(''); }}
+                style={{
+                  paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
+                  backgroundColor: active ? colors.accent.base : colors.surface,
+                  borderWidth: 1.5, borderColor: active ? colors.accent.base : colors.line,
+                }}
+              >
+                <Text style={{ fontSize: 13, fontWeight: '600', color: active ? '#fff' : colors.ink2 }}>{o.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+        {vehicleType && vehicleType !== 'muscle' && (
+          <>
+            <TextInput
+              value={vehicleMakeModel}
+              onChangeText={(v) => {
+                setVehicleMakeModel(v);
+                setVehicleSuggestions(
+                  v.length >= 1
+                    ? ['Ford F-150','Ford F-250','Ford Transit Cargo Van','Chevrolet Silverado 1500','GMC Sierra 1500','Ram 1500','Ram 2500','Ram ProMaster','Mercedes-Benz Sprinter','Isuzu NPR','10ft Box Truck','16ft Box Truck','20ft Box Truck','26ft Box Truck','Toyota Tundra','Ram 3500']
+                        .filter(s => s.toLowerCase().includes(v.toLowerCase())).slice(0, 5)
+                    : []
+                );
+              }}
+              placeholder="Make & model (e.g. Ford F-150)"
+              placeholderTextColor={colors.ink4}
+              style={inputStyle}
+            />
+            {vehicleSuggestions.length > 0 && (
+              <View style={{ borderRadius: 10, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.card, overflow: 'hidden', marginTop: 2 }}>
+                {vehicleSuggestions.map((s) => (
+                  <TouchableOpacity key={s} onPress={() => { setVehicleMakeModel(s); setVehicleSuggestions([]); }}
+                    style={{ paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: colors.line }}>
+                    <Text style={{ fontSize: 14, color: colors.ink }}>{s}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </>
+        )}
 
         {/* Category colors */}
         <Text style={{ ...labelStyle, marginTop: 24 }}>Job category colors</Text>
@@ -348,11 +396,63 @@ export default function MoverSettings() {
           </View>
         )}
 
+        {/* Blocked Users */}
+        <View style={{ marginTop: 36 }}>
+          <Text style={{ ...labelStyle, marginBottom: 12 }}>Blocked Users</Text>
+          {blockedUsers.length === 0 ? (
+            <Text style={{ fontSize: 14, color: colors.ink4, paddingVertical: 8 }}>No blocked users.</Text>
+          ) : (
+            <View style={{ gap: 10 }}>
+              {blockedUsers.map((b: any) => (
+                <View key={b.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12, borderRadius: radii.md, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.line }}>
+                  <View style={{ width: 36, height: 36, borderRadius: 18, backgroundColor: colors.surface, alignItems: 'center', justifyContent: 'center' }}>
+                    <Ionicons name="person-outline" size={18} color={colors.ink3} />
+                  </View>
+                  <Text style={{ flex: 1, fontSize: 15, fontWeight: '600', color: colors.ink }}>{b.blocked?.full_name || 'Unknown user'}</Text>
+                  <TouchableOpacity
+                    onPress={() => {
+                      Alert.alert('Unblock', `Unblock ${b.blocked?.full_name || 'this user'}?`, [
+                        { text: 'Cancel', style: 'cancel' },
+                        { text: 'Unblock', onPress: async () => {
+                          await supabase.from('user_blocks').delete().eq('id', b.id);
+                          setBlockedUsers(prev => prev.filter((x: any) => x.id !== b.id));
+                        }},
+                      ]);
+                    }}
+                    style={{ paddingHorizontal: 12, paddingVertical: 6, borderRadius: radii.md, backgroundColor: colors.surface }}
+                  >
+                    <Text style={{ fontSize: 13, fontWeight: '600', color: colors.ink2 }}>Unblock</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+        </View>
+
+        {/* Legal */}
+        <View style={{ marginTop: 40 }}>
+          <Text style={{ ...labelStyle, marginBottom: 12 }}>Legal</Text>
+          <TouchableOpacity
+            onPress={() => router.push('/terms')}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderTopWidth: 1, borderTopColor: 'rgba(26,23,20,0.08)' }}
+          >
+            <Text style={{ fontSize: 15, color: colors.ink }}>Terms & Conditions</Text>
+            <Text style={{ fontSize: 18, color: colors.ink4 }}>›</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            onPress={() => router.push('/privacy-policy')}
+            style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 14, borderTopWidth: 1, borderTopColor: 'rgba(26,23,20,0.08)' }}
+          >
+            <Text style={{ fontSize: 15, color: colors.ink }}>Privacy Policy</Text>
+            <Text style={{ fontSize: 18, color: colors.ink4 }}>›</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Sign out */}
         <TouchableOpacity
           onPress={handleSignOut}
           style={{
-            marginTop: 40,
+            marginTop: 20,
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'center',

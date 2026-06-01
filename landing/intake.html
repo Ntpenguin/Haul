@@ -1,0 +1,2673 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Get a Moving Quote — Fast Fix Work</title>
+<meta name="description" content="Get an instant moving quote in about 2 minutes. Tell us about your move and we'll match you with a vetted local mover." />
+<!-- Content Security Policy: restrict resource loading to trusted origins -->
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://unpkg.com; style-src 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://joiukvttuamaanrgzfrz.supabase.co https://*.stripe.com https://server.arcgisonline.com; connect-src https://joiukvttuamaanrgzfrz.supabase.co https://nominatim.openstreetmap.org https://api.stripe.com https://router.project-osrm.org; frame-src https://js.stripe.com https://hooks.stripe.com; object-src 'none';" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://js.stripe.com/v3/"></script>
+<style>
+:root {
+  --amber:     #C98B3F;
+  --amber-deep:#8B5E2B;
+  --amber-soft:#F5EDE0;
+  --amber-mid: #E8C48A;
+  --ink:       #1A1714;
+  --ink2:      #534C44;
+  --ink3:      #8B8379;
+  --ink4:      #B8B0A4;
+  --bg:        #FAF7F2;
+  --card:      #FFFFFF;
+  --surface:   #F2EEE7;
+  --line:      rgba(26,23,20,0.08);
+  --line2:     rgba(26,23,20,0.18);
+  --success:   #4A8066;
+  --radius:    18px;
+  --shadow:    5px 5px 0 var(--ink);
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  min-height: 100dvh;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: 'Inter', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.5;
+  /* Prevent accidental pull-to-refresh on mobile */
+  overscroll-behavior: contain;
+}
+body {
+  background-image: radial-gradient(rgba(26,23,20,0.045) 1px, transparent 1px);
+  background-size: 22px 22px;
+  /* Remove 300ms tap delay on all elements */
+  touch-action: manipulation;
+}
+
+/* ── Layout ── */
+.shell {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px 20px 80px;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ── Header ── */
+header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+.logo-mark {
+  width: 38px; height: 38px;
+  border-radius: 11px;
+  background: var(--amber);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 900; color: #fff; letter-spacing: -0.5px;
+}
+.logo-text {
+  font-weight: 700; font-size: 15px; color: var(--ink);
+  line-height: 1.2;
+}
+.logo-text small {
+  display: block;
+  font-size: 11px; font-weight: 400; color: var(--ink3);
+}
+.header-cta {
+  text-decoration: none;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 2px;
+  background: var(--amber-soft); border: 1.5px solid var(--amber);
+  border-radius: 10px; padding: 7px 12px;
+}
+.header-cta-label {
+  font-size: 10px; font-weight: 700; color: var(--amber-deep);
+  letter-spacing: .4px; text-transform: uppercase;
+}
+.header-cta-number {
+  font-size: 14px; font-weight: 700; color: var(--ink);
+  display: flex; align-items: center; gap: 5px;
+}
+.header-cta:hover { background: #EDD9B8; }
+
+/* ── Phase stepper ── */
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+}
+.step {
+  display: inline-flex; align-items: center; gap: 6px;
+  border: 1.5px solid var(--ink);
+  padding: 5px 10px; border-radius: 999px;
+  background: var(--card);
+  cursor: pointer;
+  font-size: 11px; font-weight: 600;
+  letter-spacing: 0.03em;
+  transition: background .12s;
+  white-space: nowrap;
+}
+.step:hover { background: var(--surface); }
+.step .dot {
+  width: 9px; height: 9px; border-radius: 50%;
+  border: 1.5px solid var(--ink); display: inline-block;
+  flex-shrink: 0;
+}
+.step.done { background: var(--surface); }
+.step.done .dot { background: var(--ink); }
+.step.now  { background: var(--amber); color: #fff; border-color: var(--amber-deep); }
+.step.now .dot { background: #fff; border-color: rgba(255,255,255,0.6); }
+.step-line { flex: 0 0 12px; height: 2px; background: var(--line2); border-radius: 2px; }
+
+/* ── Progress bar ── */
+.pbar-wrap { margin-bottom: 20px; }
+.pbar-label {
+  display: flex; justify-content: space-between; align-items: baseline;
+  margin-bottom: 7px; font-size: 12px; color: var(--ink3);
+}
+.pbar-pct {
+  font-family: 'Fraunces', serif;
+  font-size: 22px; color: var(--ink); line-height: 1;
+}
+.pbar-pct b { color: var(--amber); }
+.pbar {
+  position: relative; height: 16px;
+  border: 1.5px solid var(--line2);
+  border-radius: 999px; background: var(--surface);
+  overflow: visible;
+}
+.pbar-fill {
+  position: absolute; inset: 0 auto 0 0;
+  background: linear-gradient(90deg, var(--amber) 0%, var(--amber-mid) 100%);
+  border-radius: 999px 0 0 999px;
+  transition: width .35s cubic-bezier(.4,1.4,.5,1);
+}
+.pbar-fill::after {
+  content: "";
+  position: absolute; inset: 0;
+  background-image: repeating-linear-gradient(
+    45deg, transparent 0, transparent 6px,
+    rgba(255,255,255,0.25) 6px, rgba(255,255,255,0.25) 12px
+  );
+  border-radius: inherit;
+  animation: stripeShift 1.4s linear infinite;
+}
+@keyframes stripeShift { from{background-position:0 0} to{background-position:17px 0} }
+.pbar-fill.full { border-radius: 999px; }
+.pbar-notches {
+  position: absolute; inset: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 4px; pointer-events: none;
+}
+.pbar-notch {
+  width: 3px; height: 7px;
+  background: var(--line2); border-radius: 2px;
+  pointer-events: auto; cursor: pointer;
+  transition: all .12s;
+}
+.pbar-notch.done { background: rgba(255,255,255,0.8); }
+.pbar-notch.partial { background: var(--amber-mid); }
+.pbar-notch.skipped { background: rgba(255,255,255,0.5); height: 4px; }
+.pbar-notch.locked { background: var(--line2); opacity: 0.4; cursor: not-allowed; }
+.step.locked { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+.pbar-notch:hover { transform: scaleY(1.5); }
+.pbar-marker {
+  position: absolute; top: -26px;
+  transform: translateX(-50%);
+  transition: left .35s cubic-bezier(.4,1.4,.5,1);
+  pointer-events: none; z-index: 2;
+}
+.pbar-marker .pin-label {
+  font-size: 10px; font-weight: 600; color: var(--ink);
+  background: var(--card); padding: 2px 6px; border-radius: 4px;
+  border: 1px solid var(--line2);
+  white-space: nowrap; text-align: center; margin-bottom: 2px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+}
+.pbar-marker .pin {
+  width: 0; height: 0;
+  border-left: 5px solid transparent; border-right: 5px solid transparent;
+  border-top: 7px solid var(--ink2); margin: 0 auto;
+}
+
+/* ── Card stage ── */
+.stage {
+  display: flex; gap: 16px;
+  align-items: center; justify-content: center;
+  margin-top: 8px; flex: 1;
+}
+.stack {
+  position: relative; width: 480px; height: 520px; flex-shrink: 0;
+}
+.card {
+  position: absolute; inset: 0;
+  background: var(--card);
+  border: 1.5px solid var(--line2);
+  border-radius: var(--radius);
+  padding: 26px 28px;
+  box-shadow: var(--shadow);
+  display: flex; flex-direction: column;
+  transition: transform .22s ease, opacity .22s ease;
+}
+.card.back-2 { transform: rotate(-2.2deg) translate(-12px, 8px); opacity: .35; z-index: 1; }
+.card.back-1 { transform: rotate(1.6deg) translate(7px, 4px);  opacity: .6; z-index: 2; }
+.card.front  { z-index: 3; }
+/* Spring-like cubic-bezier: fast start, slight overshoot, settle */
+.card.slide-r { animation: slideR .32s cubic-bezier(0.16, 1, 0.3, 1); }
+.card.slide-l { animation: slideL .32s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes slideR { from{transform:translateX(56px) rotate(1.5deg) scale(0.98);opacity:0} to{transform:none;opacity:1} }
+@keyframes slideL { from{transform:translateX(-56px) rotate(-1.5deg) scale(0.98);opacity:0} to{transform:none;opacity:1} }
+
+/* Staggered chip entrance — each chip fades/slides up sequentially */
+@keyframes chipIn { from{opacity:0;transform:translateY(10px)} to{opacity:1;transform:none} }
+.chip { animation: chipIn .22s cubic-bezier(0.16,1,0.3,1) both; }
+.chip:nth-child(1){animation-delay:.04s} .chip:nth-child(2){animation-delay:.08s}
+.chip:nth-child(3){animation-delay:.12s} .chip:nth-child(4){animation-delay:.16s}
+.chip:nth-child(5){animation-delay:.20s} .chip:nth-child(6){animation-delay:.24s}
+.chip:nth-child(7){animation-delay:.28s} .chip:nth-child(8){animation-delay:.32s}
+.chip:nth-child(9){animation-delay:.36s}
+
+.qnum  { font-size: 10px; font-weight: 700; color: var(--ink3); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 4px; }
+.qtitle {
+  font-family: 'Fraunces', serif;
+  font-size: 34px; line-height: 1.05; font-weight: 700;
+  color: var(--ink); margin-bottom: 4px;
+}
+.qhelp { font-size: 13px; color: var(--ink3); margin-bottom: 14px; line-height: 1.45; }
+.qbody { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
+.grow  { flex: 1; min-height: 4px; }
+.section-label { font-size: 12px; font-weight: 700; color: var(--ink3); text-transform: uppercase; letter-spacing: .06em; margin-top: 6px; }
+
+/* ── Controls ── */
+.field-input, .field-textarea {
+  width: 100%; border: 1.5px solid var(--line2);
+  background: var(--bg); font-family: 'Inter', sans-serif;
+  font-size: 15px; padding: 10px 12px; border-radius: 10px;
+  color: var(--ink); transition: border-color .12s, box-shadow .12s;
+}
+.field-input:focus, .field-textarea:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 3px rgba(201,139,63,0.18);
+  transform: translateY(-1px);
+  transition: border-color .15s, box-shadow .15s, transform .15s cubic-bezier(0.16,1,0.3,1);
+}
+.field-label {
+  display: block; font-size: 11px; font-weight: 700;
+  color: var(--ink3); text-transform: uppercase; letter-spacing: .06em;
+  margin-bottom: 5px;
+}
+.field-input.error { border-color: #c0392b; }
+.field-textarea { min-height: 80px; resize: vertical; }
+
+.chips { display: flex; flex-wrap: wrap; gap: 7px; }
+.chips.col { flex-direction: column; align-items: stretch; }
+.chip {
+  border: 1.5px solid var(--line2);
+  border-radius: 999px; padding: 8px 14px;
+  font-family: 'Inter', sans-serif; font-size: 14px;
+  background: var(--card); cursor: pointer;
+  display: inline-flex; align-items: center; gap: 8px;
+  transition: background .1s, border-color .1s, box-shadow .1s;
+  text-align: left; color: var(--ink);
+  touch-action: manipulation; /* instant tap, no 300ms delay */
+}
+.chip:hover { background: var(--amber-soft); border-color: var(--amber-mid); }
+.chip:active { transform: scale(0.97); transition: transform .1s; } /* tactile press */
+.chip.checked {
+  background: var(--amber-soft); border-color: var(--amber);
+  box-shadow: 2px 2px 0 var(--amber);
+}
+.chip .box {
+  width: 13px; height: 13px; border: 1.5px solid var(--line2);
+  border-radius: 3px; display: inline-block; position: relative;
+  flex-shrink: 0;
+}
+.chip.checked .box {
+  background: var(--amber); border-color: var(--amber);
+}
+.chip.checked .box::after {
+  content: ""; position: absolute;
+  left: 2px; top: -2px;
+  width: 6px; height: 9px;
+  border-right: 2px solid #fff; border-bottom: 2px solid #fff;
+  transform: rotate(40deg);
+}
+.chip.notsure { border-style: dashed; color: var(--ink3); font-style: italic; }
+.chip.notsure.checked { font-style: normal; color: var(--ink); }
+.chip.booked {
+  background: var(--surface); border-color: var(--line2); color: var(--ink4);
+  cursor: not-allowed; opacity: 0.6; text-decoration: line-through;
+}
+.chip.booked .booked-tag {
+  font-size: 10px; font-weight: 600; color: #c0392b; text-decoration: none;
+  margin-left: 4px; text-transform: uppercase; letter-spacing: 0.5px;
+}
+
+/* qty stepper for special items */
+.chip .qty-stepper {
+  display: inline-flex; align-items: center; gap: 0; margin-left: 6px;
+  border: 1.5px solid var(--amber); border-radius: 999px; overflow: hidden;
+  background: var(--card);
+}
+.chip .qty-stepper button {
+  width: 28px; height: 26px; border: none; background: transparent;
+  font-size: 16px; font-weight: 700; color: var(--amber-deep);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  touch-action: manipulation; padding: 0;
+}
+.chip .qty-stepper button:hover { background: var(--amber-soft); }
+.chip .qty-stepper button:active { background: var(--amber-mid); }
+.chip .qty-stepper button:disabled { color: var(--ink4); cursor: default; }
+.chip .qty-stepper button:disabled:hover { background: transparent; }
+.chip .qty-stepper .qty-val {
+  min-width: 22px; text-align: center; font-size: 14px; font-weight: 700;
+  color: var(--ink); padding: 0 2px; user-select: none;
+}
+/* full-width special item rows with stepper on the right */
+.chip.spec-row {
+  cursor: default; justify-content: flex-start; padding: 7px 10px 7px 14px;
+}
+.chip.spec-row .spec-name { flex: 1; }
+.chip.spec-row .qty-stepper { margin-left: auto; }
+
+/* common-item attribute counters */
+.common-attrs {
+  display: flex; flex-direction: column; gap: 5px;
+  margin: -2px 0 8px 18px; padding-left: 10px;
+  border-left: 2px solid var(--amber-mid);
+  animation: chipIn .22s cubic-bezier(0.16,1,0.3,1) both;
+}
+.chip.attr-chip {
+  min-height: 0; padding: 5px 8px 5px 12px; font-size: 13px; border-radius: 9px;
+  justify-content: flex-start; cursor: default; animation: none;
+}
+.chip.attr-chip .spec-name { flex: 1; }
+.chip.attr-chip .qty-stepper { margin-left: auto; }
+
+/* date-time */
+.date-row { display: flex; gap: 8px; }
+.date-row .field-input { flex: 1; }
+
+/* address */
+.place-chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.place-chips .chip { border-radius: 8px; font-size: 13px; padding: 5px 11px; }
+.addr-wrap { position: relative; }
+.addr-suggestions {
+  position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 100;
+  background: var(--card); border: 1.5px solid var(--line2); border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(26,23,20,0.12); overflow: hidden;
+}
+.addr-suggestion {
+  padding: 11px 14px; font-size: 14px; color: var(--ink); cursor: pointer;
+  border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 10px;
+}
+.addr-suggestion:last-child { border-bottom: none; }
+.addr-suggestion:hover, .addr-suggestion.focused { background: var(--amber-soft); }
+.addr-suggestion-icon { font-size: 16px; flex-shrink: 0; }
+.addr-suggestion-text { flex: 1; min-width: 0; }
+.addr-suggestion-main { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* route map */
+.route-map-wrap { margin-top: 14px; border-radius: 14px; overflow: hidden; height: 200px; display: none; }
+.route-map-wrap.visible { display: block; }
+#route-map { width: 100%; height: 100%; }
+.route-map-wrap .leaflet-pickup {
+  width: 24px; height: 24px; border-radius: 12px;
+  background: #ffffff; border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+.route-map-wrap .leaflet-dropoff {
+  width: 24px; height: 24px; border-radius: 6px;
+  background: var(--amber); border: 3px solid #fff;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+.addr-suggestion-sub { font-size: 12px; color: var(--ink3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* photos */
+.upload-zone {
+  border: 2px dashed var(--line2);
+  border-radius: 14px; padding: 20px;
+  text-align: center; cursor: pointer;
+  background: var(--surface);
+  transition: border-color .12s, background .12s;
+  position: relative;
+}
+.upload-zone:hover, .upload-zone.drag-over {
+  border-color: var(--amber); background: var(--amber-soft);
+}
+.upload-zone input[type=file] {
+  position: absolute; inset: 0; opacity: 0;
+  cursor: pointer; width: 100%; height: 100%;
+}
+.upload-icon {
+  font-family: 'Fraunces', serif; font-size: 28px;
+  color: var(--ink); display: block; margin-bottom: 4px;
+}
+.upload-hint { font-size: 13px; color: var(--ink3); }
+.thumbs-row {
+  display: flex; gap: 8px; flex-wrap: wrap;
+  margin-top: 12px; justify-content: flex-start;
+}
+.thumb-wrap { position: relative; }
+.thumb {
+  width: 60px; height: 60px; border-radius: 10px;
+  object-fit: cover; border: 1.5px solid var(--line2);
+  display: block;
+}
+.thumb-del {
+  position: absolute; top: -6px; right: -6px;
+  width: 18px; height: 18px; border-radius: 50%;
+  background: var(--ink); color: #fff;
+  font-size: 11px; line-height: 18px; text-align: center;
+  cursor: pointer; border: 1.5px solid var(--card);
+}
+
+/* note */
+.note-toggle {
+  font-size: 13px; color: var(--amber-deep); cursor: pointer;
+  border: 1.5px dashed var(--amber); border-radius: 8px;
+  padding: 5px 12px; background: var(--amber-soft);
+  display: inline-flex; align-items: center; gap: 5px; font-weight: 600;
+}
+.note-toggle:hover { background: #EDD9B8; }
+.note-remove {
+  font-size: 12px; color: var(--ink3); cursor: pointer;
+  border: 1px solid var(--line2); border-radius: 7px;
+  padding: 4px 10px; background: var(--card);
+  display: inline-flex; align-items: center; gap: 4px;
+  font-family: 'Inter', sans-serif;
+}
+.note-remove:hover { color: var(--ink); border-color: var(--ink3); }
+
+/* card footer */
+.cfoot {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-top: 12px; padding-top: 10px;
+  border-top: 1px solid var(--line);
+}
+.skip-btn {
+  font-size: 13px; color: var(--ink2); cursor: pointer;
+  background: var(--surface); border: 1.5px solid var(--line2);
+  border-radius: 8px; padding: 8px 14px; font-weight: 600;
+  font-family: 'Inter', sans-serif;
+  min-height: 44px; display: inline-flex; align-items: center;
+}
+.skip-btn:hover { background: #E8E4DC; }
+.photo-quick {
+  font-size: 13px; font-weight: 600; color: var(--amber-deep); cursor: pointer;
+  border: 1.5px solid var(--amber); border-radius: 8px;
+  padding: 8px 14px; background: var(--amber-soft);
+  display: inline-flex; align-items: center; gap: 6px;
+  font-family: 'Inter', sans-serif; min-height: 44px;
+  box-shadow: 0 1px 3px rgba(201,139,63,0.18);
+}
+.photo-quick:hover { background: #EDD9B8; border-color: var(--amber-deep); }
+.photo-quick.attached { color: #fff; background: var(--amber); border-color: var(--amber-deep); }
+
+/* ── Nav buttons ── */
+.nav {
+  display: flex; flex-direction: column; align-items: center;
+  gap: 6px; font-size: 11px; color: var(--ink3); font-weight: 600;
+  letter-spacing: .04em;
+}
+.roundbtn {
+  width: 52px; height: 52px; border-radius: 50%;
+  border: 1.5px solid var(--line2); background: var(--card);
+  cursor: pointer; font-size: 20px;
+  box-shadow: 3px 3px 0 var(--line2);
+  display: flex; align-items: center; justify-content: center;
+  transition: transform .1s, box-shadow .1s, background .1s;
+  color: var(--ink); touch-action: manipulation;
+}
+.roundbtn:hover:not(:disabled) { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--line2); }
+.roundbtn:active:not(:disabled) { transform: scale(0.95) !important; box-shadow: 1px 1px 0 var(--line2) !important; }
+.roundbtn:disabled { opacity: .3; cursor: not-allowed; }
+.roundbtn.primary {
+  background: var(--amber); color: #fff;
+  border-color: var(--amber-deep);
+  box-shadow: 3px 3px 0 var(--amber-deep);
+}
+.roundbtn.primary:hover:not(:disabled) { box-shadow: 4px 4px 0 var(--amber-deep); }
+.roundbtn.lg { width: 62px; height: 62px; font-size: 24px; }
+
+/* ── Validation error ── */
+.err-msg { font-size: 12px; color: #c0392b; font-weight: 500; margin-top: 4px; }
+
+/* ── Review card ── */
+.review-row {
+  display: flex; gap: 10px; align-items: flex-start;
+  padding: 6px 0; border-bottom: 1px dotted var(--line2);
+}
+.review-row .rk {
+  font-size: 12px; font-weight: 600; color: var(--ink3);
+  width: 35%; flex-shrink: 0;
+}
+.review-row .rv { font-size: 13px; color: var(--ink); flex: 1; }
+.review-row .rv.empty { color: var(--ink4); font-style: italic; }
+.review-row .edit-link {
+  font-size: 11px; color: var(--amber-deep); cursor: pointer;
+  text-decoration: underline dashed; white-space: nowrap;
+  font-weight: 600;
+}
+.review-list { flex: 1; overflow-y: auto; padding-right: 4px; }
+.q-row { display:flex; justify-content:space-between; align-items:center; font-size:13px; color:var(--ink2); margin-bottom:4px; }
+.submit-btn {
+  background: var(--amber); color: #fff;
+  border: none; border-radius: 12px;
+  padding: 12px 22px; font-size: 16px; font-weight: 700;
+  cursor: pointer; font-family: 'Fraunces', serif;
+  box-shadow: 3px 3px 0 var(--amber-deep);
+  transition: transform .1s, box-shadow .1s;
+}
+.submit-btn:hover { transform: translate(-1px,-1px); box-shadow: 4px 4px 0 var(--amber-deep); }
+.submit-btn:disabled { opacity: .6; cursor: not-allowed; transform: none; box-shadow: none; }
+
+/* ── Payment step ── */
+#payment-element { min-height: 120px; margin: 16px 0; }
+.pay-error { color: #c0392b; font-size: 13px; margin-top: 8px; display: none; }
+.deposit-summary {
+  background: var(--amber-soft); border: 1.5px solid var(--amber-mid);
+  border-radius: 12px; padding: 16px; margin-bottom: 12px;
+}
+.deposit-summary .ds-row { display: flex; justify-content: space-between; font-size: 14px; color: var(--ink2); margin-bottom: 4px; }
+.deposit-summary .ds-row.total { font-weight: 700; font-size: 16px; color: var(--ink); border-top: 1px solid var(--line2); padding-top: 8px; margin-top: 8px; }
+.deposit-summary .ds-note { font-size: 12px; color: var(--ink3); margin-top: 8px; line-height: 1.4; }
+
+/* ── Confirmation ── */
+.confirm-wrap {
+  display: none; flex-direction: column; align-items: center;
+  justify-content: center; text-align: center; flex: 1;
+  padding: 40px 20px;
+}
+.confirm-wrap.visible { display: flex; animation: confirmIn .5s cubic-bezier(0.16,1,0.3,1) both; }
+@keyframes confirmIn { from{opacity:0;transform:translateY(24px) scale(0.96)} to{opacity:1;transform:none} }
+@keyframes overlayIn { from{opacity:0} to{opacity:1} }
+@keyframes modalIn { from{opacity:0;transform:scale(0.95) translateY(8px)} to{opacity:1;transform:none} }
+.confirm-icon { animation: iconPop .6s cubic-bezier(0.16,1,0.3,1) .1s both; }
+@keyframes iconPop { from{transform:scale(0.4);opacity:0} to{transform:scale(1);opacity:1} }
+.confirm-title { animation: confirmIn .5s cubic-bezier(0.16,1,0.3,1) .2s both; }
+.confirm-sub   { animation: confirmIn .5s cubic-bezier(0.16,1,0.3,1) .3s both; }
+.confirm-phone { animation: confirmIn .5s cubic-bezier(0.16,1,0.3,1) .4s both; }
+.confirm-icon {
+  width: 80px; height: 80px; border-radius: 40px;
+  background: var(--amber-soft); border: 2px solid var(--amber);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 36px; margin-bottom: 20px;
+}
+.confirm-title {
+  font-family: 'Fraunces', serif; font-size: 40px;
+  font-weight: 700; color: var(--ink); margin-bottom: 8px;
+}
+.confirm-sub { font-size: 15px; color: var(--ink2); max-width: 380px; line-height: 1.5; }
+.confirm-phone {
+  margin-top: 20px; font-size: 22px; font-weight: 700;
+  color: var(--amber-deep);
+  letter-spacing: -0.3px;
+}
+
+/* ── Footer ── */
+.page-footer {
+  margin-top: 18px; text-align: center;
+  font-size: 12px; color: var(--ink4);
+}
+.page-footer a { color: var(--ink3); text-decoration: underline dashed; }
+
+/* ── Fixed bottom nav (mobile only) ── */
+.mob-nav-row {
+  display: none;
+}
+.mob-back-btn {
+  width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0;
+  border: 1.5px solid var(--line2); background: var(--card);
+  font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: var(--ink); box-shadow: 2px 2px 0 var(--line2);
+  transition: transform .1s, box-shadow .1s;
+}
+.mob-back-btn:hover:not(:disabled) { transform: translate(-1px,-1px); box-shadow: 3px 3px 0 var(--line2); }
+.mob-back-btn:active:not(:disabled) { transform: scale(0.94); box-shadow: 1px 1px 0 var(--line2); }
+.mob-back-btn:disabled { opacity: .25; cursor: not-allowed; }
+.mob-continue-btn {
+  flex: 1; height: 56px; border-radius: 16px;
+  background: var(--amber); color: #fff; border: none;
+  font-size: 18px; font-weight: 700; font-family: 'Fraunces', serif;
+  cursor: pointer; box-shadow: 0 4px 0 var(--amber-deep);
+  transition: transform .12s cubic-bezier(0.16,1,0.3,1), box-shadow .12s;
+  position: relative; overflow: hidden;
+}
+.mob-continue-btn:active { transform: scale(0.97) translateY(2px); box-shadow: 0 1px 0 var(--amber-deep); }
+.mob-continue-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+.ripple {
+  position: absolute; border-radius: 50%;
+  background: rgba(255,255,255,0.3);
+  transform: scale(0); animation: rippleOut .5s linear;
+  pointer-events: none;
+}
+@keyframes rippleOut { to { transform: scale(4); opacity: 0; } }
+
+/* ── Reduced motion: respect user preference ── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
+}
+
+/* ── Mobile ── */
+@media (max-width: 700px) {
+  html { -webkit-text-size-adjust: 100%; }
+
+  .shell { padding: 14px 14px 100px; }
+
+  /* Header */
+  .logo-text small { display: none; }
+  .header-cta-label { display: none; }
+  .header-cta { padding: 8px 12px; flex-direction: row; align-items: center; gap: 6px; }
+  .header-cta-number { font-size: 13px; }
+
+  /* Stepper — show as scrollable row */
+  .stepper { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 4px; gap: 3px; -webkit-overflow-scrolling: touch; scrollbar-width: none; }
+  .stepper::-webkit-scrollbar { display: none; }
+  .step { padding: 5px 10px; font-size: 10px; }
+  .step-line { flex: 0 0 8px; }
+
+  /* Stage — full width, no side buttons */
+  .stage { flex-direction: column; gap: 0; align-items: stretch; }
+  .stage > .nav { display: none; }
+
+  /* Card stack — full width, auto height */
+  .stack { width: 100%; height: auto; min-height: 400px; }
+  .card {
+    position: relative; inset: auto;
+    padding: 20px 18px 16px;
+    height: auto; min-height: 380px;
+    box-shadow: 4px 4px 0 var(--line2);
+  }
+  .card.back-1 { display: none; }
+  .card.back-2 { display: none; }
+
+  /* Type */
+  .qtitle { font-size: 26px; }
+  .qhelp  { font-size: 12px; }
+
+  /* Touch-friendly inputs */
+  .field-input { height: 50px; font-size: 16px; /* prevents iOS zoom */ }
+  .field-textarea { font-size: 16px; }
+  .chip { padding: 10px 14px; font-size: 14px; min-height: 44px; }
+  .chips.col .chip { min-height: 48px; }
+
+  .qbody { max-height: none; }
+
+  /* Time chips — 2 per row */
+  .chips:not(.col) { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* Place chips */
+  .place-chips { gap: 8px; }
+  .place-chips .chip { min-height: 44px; border-radius: 10px; }
+
+  /* Review card */
+  .review-row { flex-wrap: wrap; }
+  .review-row .rk { width: 100%; margin-bottom: 2px; }
+
+  /* Submit btn */
+  .submit-btn { width: 100%; padding: 15px; font-size: 17px; }
+
+  /* Confirm */
+  .confirm-title { font-size: 32px; }
+
+  /* Fixed bottom nav bar */
+  .mob-nav-row {
+    display: flex;
+    position: fixed; bottom: 0; left: 0; right: 0;
+    gap: 10px; align-items: center;
+    padding: 12px 16px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom));
+    background: var(--card);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -6px 24px rgba(26,23,20,0.07);
+    z-index: 50;
+  }
+
+  /* Address suggestions — full viewport width */
+  .addr-suggestions { position: fixed; left: 14px; right: 14px; top: auto; }
+}
+</style>
+</head>
+<body>
+
+<div class="shell" id="shell">
+
+  <!-- Header -->
+  <header>
+    <a class="logo" href="/">
+      <div class="logo-mark">FFX</div>
+      <div class="logo-text">Fast Fix Work<small>Moving &amp; Labor · Austin, TX</small></div>
+    </a>
+    <a class="header-cta" href="tel:5127771628">
+      <span class="header-cta-label">Call or text us</span>
+      <span class="header-cta-number">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 014.69 10.5a19.79 19.79 0 01-3.07-8.67A2 2 0 013.63 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L7.91 7.57a16 16 0 006.29 6.29l.95-.96a2 2 0 012.11-.45 12.84 12.84 0 002.81.7A2 2 0 0122 15.08z"/></svg>
+        512-777-1628
+      </span>
+    </a>
+  </header>
+
+  <!-- Phase stepper -->
+  <div class="stepper" id="stepper"></div>
+
+  <!-- Progress bar -->
+  <div class="pbar-wrap">
+    <div class="pbar-label">
+      <span id="pbar-text">Ready when you are — about 2 min</span>
+      <span class="pbar-pct"><b id="pbar-pct">0%</b> done</span>
+    </div>
+    <div class="pbar" id="pbar">
+      <div class="pbar-fill" id="pbar-fill" style="width:0%"></div>
+      <div class="pbar-notches" id="pbar-notches"></div>
+      <div class="pbar-marker" id="pbar-marker" style="left:3%">
+        <div class="pin-label">start</div>
+        <div class="pin"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden file input for quick photo attach from any question -->
+  <input type="file" id="photo-quick-input" accept="image/*,video/*" multiple style="display:none" />
+
+  <!-- Honeypot: hidden from real users, bots fill it automatically -->
+  <div style="position:absolute;left:-9999px;top:-9999px;opacity:0;pointer-events:none" aria-hidden="true">
+    <label for="hp-field">Leave this blank</label>
+    <input type="text" id="hp-field" name="website" tabindex="-1" autocomplete="off" />
+  </div>
+
+  <!-- Card stage (hidden during confirmation) -->
+  <div class="stage" id="stage">
+    <div class="nav">
+      <button class="roundbtn" id="btn-back" title="Back" aria-label="Previous question">←</button>
+      <span>back</span>
+    </div>
+    <div class="stack" id="stack"></div>
+    <div class="nav">
+      <button class="roundbtn primary lg" id="btn-next" title="Next" aria-label="Next question">→</button>
+      <span id="next-label">next</span>
+    </div>
+  </div>
+
+  <!-- Fixed mobile nav bar (hidden on desktop) -->
+  <div class="mob-nav-row" id="mob-nav" aria-hidden="true">
+    <button class="mob-back-btn" id="mob-back-btn" disabled>←</button>
+    <button class="mob-continue-btn" id="mob-continue-btn">Continue →</button>
+  </div>
+
+  <!-- Confirmation (shown after submit) -->
+  <div class="confirm-wrap" id="confirm">
+    <div class="confirm-icon">🙏</div>
+    <div class="confirm-title">Thank you!</div>
+    <div class="confirm-sub">
+      We received your info and will contact you shortly to get your move set up.
+    </div>
+    <div class="confirm-phone">512-777-1628</div>
+    <p style="margin-top:10px;font-size:12px;color:var(--ink4)">Mon–Sat, 7 AM – 9 PM</p>
+  </div>
+
+  <div class="page-footer">
+    Questions? <a href="tel:5127771628">Call us</a> · <a href="/">fastfixwork.com</a>
+  </div>
+
+</div><!-- .shell -->
+
+<script>
+(function(){
+'use strict';
+
+// ── Supabase config ──────────────────────────────────────────────────────────
+// NOTE: The anon key is intentionally public — it only allows INSERT on quote_requests
+// (enforced by Supabase RLS). Never put the service_role key here.
+const SB_URL  = 'https://joiukvttuamaanrgzfrz.supabase.co';
+const SB_KEY  = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvaXVrdnR0dWFtYWFucmd6ZnJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNTY5ODksImV4cCI6MjA5NDYzMjk4OX0.TcpzGaMihyKUZNtuRncasXImyv6bb0De1lf_wQa61Ew';
+// LIVE MODE (production). Test key (for local HTTP testing) is:
+// pk_test_51TYF6FDqX9WoayuatiPF3TOEsqSiTBuM6RzT36MlNwDfReCZAwrbJlO10eNADcX76RkMkVAOLr5vofBbcjWP1SOy00c0lctzk5
+const STRIPE_PK = 'pk_live_51TYF63DzksslYekxu84A1Bz7lXLQZRle0Hz3S7t7fZwzYC6Hyla8YssbFSTMjQ0GTXGScsgm63rgVvG88qAtl50G00xsZfuaq4';
+const stripePromise = typeof Stripe !== 'undefined' ? Stripe(STRIPE_PK) : null;
+
+// ── Security helpers ─────────────────────────────────────────────────────────
+// Client-side rate limit: max 3 submissions per session (backs up server-side RLS limit)
+const _submits = { count: 0, max: 3 };
+function rateLimitOk() {
+  if (_submits.count >= _submits.max) return false;
+  _submits.count++;
+  return true;
+}
+// Strip all HTML tags from a string to prevent stored XSS
+function stripHtml(s) { return String(s || '').replace(/<[^>]*>/g, '').trim(); }
+// Clamp string length
+function clamp(s, max) { return String(s || '').slice(0, max); }
+
+// ── Booked-slot detection ────────────────────────────────────────────────────
+const LEAD_HOURS = { 'Just a few items':1.5, 'Studio':2, '1 BR':3, '2 BR':4, '3 BR':5, '4+ BR / full house':7 };
+function estimateLeadHours(lead) {
+  let hrs = LEAD_HOURS[lead.items_size] || 2;
+  const sp = lead.stairs_pickup || '', sd = lead.stairs_dropoff || '';
+  if (sp.includes('Stairs')) hrs += 0.5;
+  if (sd.includes('Stairs')) hrs += 0.5;
+  const special = lead.special_items || {};
+  const specialCount = Array.isArray(special)
+    ? special.filter(x => x !== 'Nope — just regular stuff').length
+    : Object.entries(special).filter(([k]) => k !== 'Nope — just regular stuff').reduce((s,[,v]) => s + v, 0);
+  hrs += specialCount * 0.25;
+  if ((lead.parking || '').includes('100+')) hrs += 0.25;
+  return Math.ceil(hrs * 2) / 2;
+}
+// Parse "3:00 PM" → 15 etc.
+function parseHour(label) {
+  if (!label) return null;
+  const m = label.match(/^(\d{1,2}):00\s*(AM|PM)$/i);
+  if (!m) return null;
+  let h = parseInt(m[1]);
+  if (m[2].toUpperCase() === 'PM' && h < 12) h += 12;
+  if (m[2].toUpperCase() === 'AM' && h === 12) h = 0;
+  return h;
+}
+// Cache: { '2026-05-28': Set([10,11,12,...]) }
+const bookedCache = {};
+async function fetchBookedSlots(dateStr) {
+  if (bookedCache[dateStr]) return bookedCache[dateStr];
+  try {
+    const res = await fetch(`${SB_URL}/rest/v1/rpc/get_booked_slots`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${SB_KEY}`, 'apikey':SB_KEY },
+      body: JSON.stringify({ p_date: dateStr })
+    });
+    if (!res.ok) { bookedCache[dateStr] = new Set(); return bookedCache[dateStr]; }
+    const leads = await res.json();
+    const blocked = new Set();
+    for (const lead of leads) {
+      const startH = parseHour(lead.preferred_time);
+      if (startH == null) continue;
+      const dur = estimateLeadHours(lead);
+      // Block each hour the job spans
+      for (let h = startH; h < startH + dur; h++) {
+        blocked.add(Math.floor(h)); // floor handles half-hours
+      }
+    }
+    bookedCache[dateStr] = blocked;
+    return blocked;
+  } catch(e) {
+    bookedCache[dateStr] = new Set();
+    return bookedCache[dateStr];
+  }
+}
+
+// ── Questions ────────────────────────────────────────────────────────────────
+const PHASES = ['You', 'The move', 'Your stuff', 'Details'];
+
+const QUESTIONS = [
+  { id:'contact', phase:0, num:1, title:"Let's start with you",
+    help:"We'll only reach out about your move.", type:'contact', required:true },
+
+  { id:'service', phase:1, num:2, title:"What are we helping with?", type:'single', required:true,
+    allowNotSure:false,
+    options:[
+      {icon:'🏙️', label:'Local move (same city)'},
+      {icon:'🛣️', label:'Long distance'},
+      {icon:'📦', label:'Just a few items'},
+      {icon:'🚛', label:'Loading / unloading help only'},
+      {icon:'🏢', label:'Moving in or out of storage'},
+      {icon:'🔄', label:'Rearranging within same address'},
+    ]},
+
+  { id:'date', phase:1, num:3, title:"When's the move?",
+    help:"Pick a date and preferred start time.", type:'date-time', required:true },
+
+  { id:'addresses', phase:1, num:4, title:"Where are we going?",
+    help:"Pickup is required. Drop-off can be approximate.", type:'addresses', required:true },
+
+  { id:'stuff', phase:2, num:5, title:"What are we moving?",
+    help:"Pick the closest size and flag anything heavy or special.", type:'stuff', required:true },
+
+  { id:'photos', phase:2, num:6, title:"Show us what we're moving",
+    help:"A short phone video gets you the most accurate quote.", type:'photos', required:true },
+
+  { id:'access', phase:3, num:7, title:"Access details",
+    help:"Stairs, elevators, and parking at each location.", type:'access', required:true },
+
+  { id:'extras', phase:3, num:8, title:"Anything else?",
+    help:"Packing prep and notes for the crew.", type:'extras', required:true },
+];
+
+// ── State ────────────────────────────────────────────────────────────────────
+const S = {
+  idx: 0, maxIdx: 0, dir: 'r',
+  answers: {}, notSure: {}, skipped: {}, notes: {}, showNote: {},
+  photoFiles: {},  // id -> File[]
+  photoPreviews: {}, // id -> dataURL[]
+  bookedHours: new Set(), // hours blocked on selected date
+  submitting: false,
+};
+
+// ── DOM refs ─────────────────────────────────────────────────────────────────
+const stepperEl  = document.getElementById('stepper');
+const pbarFillEl = document.getElementById('pbar-fill');
+const pbarNotchEl= document.getElementById('pbar-notches');
+const pbarMarkEl = document.getElementById('pbar-marker');
+const pbarPctEl  = document.getElementById('pbar-pct');
+const pbarTextEl = document.getElementById('pbar-text');
+const stackEl    = document.getElementById('stack');
+const backBtn    = document.getElementById('btn-back');
+const nextBtn    = document.getElementById('btn-next');
+const nextLabel  = document.getElementById('next-label');
+const stageEl    = document.getElementById('stage');
+const confirmEl  = document.getElementById('confirm');
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+function esc(s){ return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function isAnswered(q){
+  if(S.notSure[q.id] || S.skipped[q.id]) return true;
+  const v = S.answers[q.id];
+  if(q.type==='contact') return v && v.name && v.name.trim() && v.phone && v.email;
+  if(q.type==='addresses') return v && v.pickup?.addr?.trim();
+  if(q.type==='stuff') return v && v.size;
+  if(q.type==='access') {
+    const isSameAddr = S.answers['service'] === 'Rearranging within same address';
+    return v && v.stairs_pickup && (isSameAddr || v.stairs_dropoff) && v.parking;
+  }
+  if(q.type==='extras') return v && v.boxed && Array.isArray(v.prep) && v.prep.length > 0;
+  if(q.type==='photos'){
+    const ph = S.answers[q.id] || {};
+    return ph.commonNone === true || (ph.common && Object.keys(ph.common).length > 0);
+  }
+  if(q.type==='date-time') return v && v.date;
+  if(q.type==='single'||q.type==='single-icon') return v != null && v !== '';
+  if(q.type==='text'||q.type==='freeform') return v && v.trim();
+  if(q.type==='multi') return Array.isArray(v) && v.length > 0;
+  return false;
+}
+
+function formatPhone(raw){
+  const d = raw.replace(/\D/g,'').slice(0,10);
+  if(d.length < 4) return d;
+  if(d.length < 7) return `(${d.slice(0,3)}) ${d.slice(3)}`;
+  return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;
+}
+
+function validate(q){
+  if(!q.required) return null;
+  const v = S.answers[q.id];
+  if(q.id === 'contact'){
+    if(!v) return 'Please fill in your contact info.';
+    const name = (v.name||'').trim();
+    if(!name) return 'Please enter your name.';
+    if(!/^[a-zA-Z\u00C0-\u024F\s'\-\.]+$/.test(name)) return 'Name can only contain letters, spaces, hyphens, and apostrophes.';
+    if(name.split(/\s+/).filter(Boolean).length < 2) return 'Please enter your first and last name.';
+    const digits = (v.phone||'').replace(/\D/g,'');
+    if(digits.length < 10) return 'Please enter a valid 10-digit phone number.';
+    const email = (v.email||'').trim();
+    if(!email) return 'Please enter your email address.';
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return 'Please enter a valid email address.';
+    return null;
+  }
+  if(q.id === 'addresses'){
+    if(!v || !v.pickup || !(v.pickup.addr||'').trim()) return 'Please enter a pickup address.';
+    return null;
+  }
+  if(q.id === 'stuff'){
+    if(!v || !v.size) return 'Please select a move size.';
+    return null;
+  }
+  if(q.id === 'date'){
+    if(!v || !v.date) return 'Please pick a date.';
+    return null;
+  }
+  if(q.id === 'access'){
+    if(!v) return 'Please answer all sections, or tap "Not sure".';
+    if(!v.stairs_pickup) return 'Please select pickup stairs.';
+    const isSameAddr = S.answers['service'] === 'Rearranging within same address';
+    if(!isSameAddr && !v.stairs_dropoff) return 'Please select drop-off stairs.';
+    if(!v.parking) return 'Please select a parking situation.';
+    return null;
+  }
+  if(q.id === 'extras'){
+    if(!v) return 'Please answer all sections, or tap "Not sure".';
+    if(!v.boxed) return 'Please select whether items are boxed.';
+    if(!Array.isArray(v.prep) || !v.prep.length) return 'Please select at least one prep option.';
+    return null;
+  }
+  if(q.id === 'photos'){
+    const hasCommon = v && ((v.commonNone === true) || (v.common && Object.keys(v.common).length > 0));
+    if(!hasCommon) return 'Please count your common items, or tap "None of the above".';
+    return null;
+  }
+  if(!isAnswered(q)) return 'This field is required before continuing.';
+  return null;
+}
+
+// ── Render progress ──────────────────────────────────────────────────────────
+// Returns 0–1 for how "filled in" each question is (granular per sub-field)
+function questionProgress(q){
+  if(S.notSure[q.id]) return 1;
+  if(S.skipped[q.id]) return 1;
+  // If it passes validation, it's complete
+  if(isAnswered(q)) return 1;
+  // Partial progress for in-progress fields
+  const v = S.answers[q.id];
+  if(q.type === 'contact'){
+    if(!v) return 0;
+    let n = 0;
+    if((v.name||'').trim()) n++;
+    if((v.phone||'').replace(/\D/g,'').length >= 10) n++;
+    if((v.email||'').includes('@')) n++;
+    return n / 3;
+  }
+  if(q.type === 'addresses'){
+    if(!v) return 0;
+    return v.pickup?.addr?.trim() ? 0.5 : 0;
+  }
+  if(q.type === 'access'){
+    if(!v) return 0;
+    const isSameAddr = S.answers['service'] === 'Rearranging within same address';
+    const total = isSameAddr ? 2 : 3;
+    let n = 0;
+    if(v.stairs_pickup) n++;
+    if(!isSameAddr && v.stairs_dropoff) n++;
+    if(v.parking) n++;
+    return n / total;
+  }
+  if(q.type === 'extras'){
+    if(!v) return 0;
+    let n = 0;
+    if(v.boxed) n++;
+    if(Array.isArray(v.prep) && v.prep.length) n++;
+    return n / 2;
+  }
+  if(q.type === 'date-time'){
+    if(!v) return 0;
+    return v.date ? 0.5 : 0;
+  }
+  return 0;
+}
+
+function renderProgress(){
+  const total = QUESTIONS.length;
+  const q = QUESTIONS[S.idx];
+
+  const requiredQs = QUESTIONS.filter(x => x.required);
+  const reqTotal = requiredQs.length;
+  const totalProgress = requiredQs.reduce((s, x) => s + questionProgress(x), 0);
+  const pct = Math.round((totalProgress / reqTotal) * 100);
+  const filledCount = requiredQs.filter(x => questionProgress(x) >= 1).length;
+  const skippedCount = QUESTIONS.filter(x => S.skipped[x.id]).length;
+
+  pbarFillEl.style.width = pct + '%';
+  pbarFillEl.classList.toggle('full', pct === 100);
+  pbarPctEl.textContent = pct + '%';
+
+  const markerPct = ((S.idx + 0.5) / total) * 100;
+  pbarMarkEl.style.left = markerPct + '%';
+  pbarMarkEl.querySelector('.pin-label').textContent = `Q ${q.num}`;
+
+  if(totalProgress === 0) pbarTextEl.textContent = `Let's start — Q ${q.num} of ${total}`;
+  else if(filledCount === reqTotal) pbarTextEl.textContent = `All required answered — ready to review!`;
+  else pbarTextEl.textContent = `${filledCount} of ${reqTotal} required answered${skippedCount ? ` · ${skippedCount} skipped` : ''}`;
+
+  let nHtml = '';
+  QUESTIONS.forEach((x,i) => {
+    const p = questionProgress(x);
+    const locked = i > S.maxIdx;
+    let cls = '';
+    if(locked) cls = 'locked';
+    else if(S.skipped[x.id]) cls = 'skipped';
+    else if(p >= 1) cls = 'done';
+    else if(p > 0) cls = 'partial';
+    nHtml += `<button class="pbar-notch ${cls}" data-i="${i}" title="Q${x.num}: ${x.title}"${locked?' disabled':''}></button>`;
+  });
+  pbarNotchEl.innerHTML = nHtml;
+  pbarNotchEl.querySelectorAll('.pbar-notch:not([disabled])').forEach(n => {
+    n.addEventListener('click', () => goTo(+n.dataset.i));
+  });
+}
+
+function renderStepper(){
+  const cur = QUESTIONS[S.idx];
+  let html = '';
+  PHASES.forEach((p, i) => {
+    const phaseQs = QUESTIONS.filter(q => q.phase === i);
+    const firstIdx = QUESTIONS.findIndex(q => q.phase === i);
+    const done = phaseQs.every(isAnswered);
+    const isNow = cur.phase === i;
+    const locked = firstIdx > S.maxIdx;
+    let cls = isNow ? ' now' : done ? ' done' : '';
+    if(locked) cls = ' locked';
+    html += `<button class="step${cls}" data-phase="${i}"${locked?' disabled':''}><span class="dot"></span>${i+1} · ${p}</button>`;
+    if(i < PHASES.length-1) html += `<span class="step-line"></span>`;
+  });
+  stepperEl.innerHTML = html;
+  stepperEl.querySelectorAll('.step:not([disabled])').forEach(s => {
+    s.addEventListener('click', () => {
+      const first = QUESTIONS.findIndex(q => q.phase === +s.dataset.phase);
+      if(first >= 0) goTo(first);
+    });
+  });
+}
+
+// ── Render card body ─────────────────────────────────────────────────────────
+function renderBody(q){
+  const ns = S.notSure[q.id];
+  const a  = S.answers[q.id] || '';
+
+  // ── Contact (name + phone + email) ──
+  if(q.type === 'contact'){
+    const c = a || {};
+    return `
+      <label class="field-label" for="fi-contact-name">Your name</label>
+      <input class="field-input" id="fi-contact-name" type="text"
+        placeholder="e.g. Sam Rivera" value="${esc(c.name||'')}" data-bind="c-name" autocomplete="name" />
+      <label class="field-label" for="fi-contact-phone">Phone number</label>
+      <input class="field-input" id="fi-contact-phone" type="tel"
+        placeholder="(512) 000-0000" value="${esc(c.phone||'')}" data-bind="c-phone" autocomplete="tel" />
+      <label class="field-label" for="fi-contact-email">Email address</label>
+      <input class="field-input" id="fi-contact-email" type="email"
+        placeholder="you@example.com" value="${esc(c.email||'')}" data-bind="c-email" autocomplete="email" />
+      <div class="err-msg" id="err-${q.id}" style="display:none"></div>`;
+  }
+
+  // ── Addresses (pickup + dropoff) ──
+  if(q.type === 'addresses'){
+    const addr = a || {};
+    const pu = addr.pickup || {};
+    const dr = addr.dropoff || {};
+    const isSameAddr = S.answers['service'] === 'Rearranging within same address';
+    const placeTypes = ['House','Apartment / condo','Storage unit','Office / commercial'];
+    const puPlaces = placeTypes.map(p =>
+      `<button class="chip${pu.place===p?' checked':''}" data-bind="pu-place" data-val="${esc(p)}">${esc(p)}</button>`
+    ).join('');
+    const drPlaces = placeTypes.map(p =>
+      `<button class="chip${dr.place===p?' checked':''}" data-bind="dr-place" data-val="${esc(p)}">${esc(p)}</button>`
+    ).join('');
+    const dropoffSection = isSameAddr ? `
+      <div style="margin-top:12px;padding:10px 14px;background:var(--surface);border-radius:10px;font-size:13px;color:var(--ink3)">
+        🔄 Same address — no drop-off needed
+      </div>` : `
+      <div class="section-label" style="margin-top:12px">Drop-off address</div>
+      <div class="addr-wrap">
+        <input class="field-input" id="fi-addresses-dropoff" placeholder="456 Oak Ave, Austin TX 78704"
+          data-bind="dr-addr" value="${esc(dr.addr||'')}" autocomplete="off" />
+        <div class="addr-suggestions" id="sug-addresses-dropoff" style="display:none"></div>
+      </div>
+      <div class="place-chips">${drPlaces}
+        <button class="chip notsure${ns?' checked':''}" data-bind="notsure"><span class="box"></span>Don't know yet</button>
+      </div>`;
+    return `
+      <div class="section-label">${isSameAddr ? 'Address' : 'Pickup address'}</div>
+      <div class="addr-wrap">
+        <input class="field-input" id="fi-addresses-pickup" placeholder="123 Main St, Austin TX 78701"
+          data-bind="pu-addr" value="${esc(pu.addr||'')}" autocomplete="off" />
+        <div class="addr-suggestions" id="sug-addresses-pickup" style="display:none"></div>
+      </div>
+      <div class="place-chips">${puPlaces}</div>
+      ${dropoffSection}
+      <div class="err-msg" id="err-${q.id}" style="display:none"></div>`;
+  }
+
+  // ── Stuff (size + special items + item list) ──
+  if(q.type === 'stuff'){
+    const st = a || {};
+    const sizes = ['Just a few items','Studio','1 BR','2 BR','3 BR','4+ BR / full house'];
+    const sizeChips = sizes.map(s =>
+      `<button class="chip${st.size===s?' checked':''}" data-bind="size" data-val="${esc(s)}">${esc(s)}</button>`
+    ).join('');
+    const specialOpts = [
+      {icon:'🎹', label:'Upright piano only', val:'Piano'}, {icon:'🔒', label:'Safe / gun safe'},
+      {icon:'🎱', label:'Pool table'}, {icon:'🏋️', label:'Treadmill / Peloton'},
+      {icon:'📺', label:'Big TV (65"+)'}, {icon:'🖼️', label:'Artwork / mirror'},
+      {icon:'🐠', label:'Aquarium'}, {icon:'✅', label:'Nope — just regular stuff'},
+    ];
+    const sel = st.special || {};
+    const specChips = specialOpts.map(o => {
+      const key = o.val || o.label; // stored key (stable); o.label is display only
+      const isNope = key === 'Nope — just regular stuff';
+      if (isNope) {
+        const checked = sel[key] ? 'checked' : '';
+        return `<button class="chip${checked?' checked':''}" data-bind="spec-multi" data-val="${esc(key)}"><span class="box"></span><span style="font-size:17px;margin-right:4px">${o.icon}</span>${esc(o.label)}</button>`;
+      }
+      const qty = sel[key] || 0;
+      const checked = qty > 0 ? ' checked' : '';
+      return `<div class="chip spec-row${checked}"><span style="font-size:17px;margin-right:4px">${o.icon}</span><span class="spec-name">${esc(o.label)}</span><span class="qty-stepper"><button data-bind="spec-qty-dec" data-val="${esc(key)}"${qty===0?' disabled':''}>−</button><span class="qty-val">${qty}</span><button data-bind="spec-qty-inc" data-val="${esc(key)}">+</button></span></div>`;
+    }).join('');
+    return `
+      <div class="section-label">Move size</div>
+      <div class="chips">${sizeChips}</div>
+      <div class="section-label">Heavy / special items</div>
+      <div class="chips col">${specChips}</div>
+      <textarea class="field-textarea" style="margin-top:8px"
+        placeholder="Anything we should know about what we're moving?"
+        data-bind="list">${esc(st.list||'')}</textarea>
+      <div class="err-msg" id="err-${q.id}" style="display:none"></div>`;
+  }
+
+  // ── Access (stairs pickup + stairs dropoff + parking) ──
+  if(q.type === 'access'){
+    const ac = a || {};
+    const isSameAddr = S.answers['service'] === 'Rearranging within same address';
+    const stairOpts = [
+      {icon:'🏠', label:'Ground floor'},
+      {icon:'🪜', label:'Stairs'},
+      {icon:'🛗', label:'Elevator'},
+      {icon:'🪜🛗', label:'Both'},
+    ];
+    const parkOpts = [
+      {icon:'🚗', label:'Driveway / right at the door'},
+      {icon:'🚶', label:'Street parking — short walk'},
+      {icon:'🏃', label:'Long walk (100+ ft)'},
+      {icon:'🏭', label:'Loading dock / bay'},
+    ];
+    const hasStairs = lbl => lbl === 'Stairs' || lbl === 'Both';
+    const flightsStepper = (count, decBind, incBind) => `
+      <div class="chip spec-row${count>0?' checked':''}" style="margin-top:8px">
+        <span style="font-size:17px;margin-right:4px">🪜</span><span class="spec-name">How many flights?</span>
+        <span class="qty-stepper">
+          <button data-bind="${decBind}"${count<=1?' disabled':''}>−</button>
+          <span class="qty-val">${count}</span>
+          <button data-bind="${incBind}">+</button>
+        </span>
+      </div>
+      <div style="font-size:12px;color:var(--ink3);margin-top:4px">+${fmtMoney(STAIRS_SURCHARGE)} per flight</div>`;
+    const puStairs = stairOpts.map(o =>
+      `<button class="chip${ac.stairs_pickup===o.label?' checked':''}" data-bind="ac-stairs-pu" data-val="${esc(o.label)}">${o.icon} ${esc(o.label)}</button>`
+    ).join('');
+    const drStairs = stairOpts.map(o =>
+      `<button class="chip${ac.stairs_dropoff===o.label?' checked':''}" data-bind="ac-stairs-dr" data-val="${esc(o.label)}">${o.icon} ${esc(o.label)}</button>`
+    ).join('');
+    const parkChips = parkOpts.map(o =>
+      `<button class="chip${ac.parking===o.label?' checked':''}" data-bind="ac-parking" data-val="${esc(o.label)}">${o.icon} ${esc(o.label)}</button>`
+    ).join('');
+    const puFlightsUI = hasStairs(ac.stairs_pickup) ? flightsStepper(Math.max(1, ac.flights_pickup||1), 'ac-flights-pu-dec', 'ac-flights-pu-inc') : '';
+    const drFlightsUI = hasStairs(ac.stairs_dropoff) ? flightsStepper(Math.max(1, ac.flights_dropoff||1), 'ac-flights-dr-dec', 'ac-flights-dr-inc') : '';
+    const dropoffStairs = isSameAddr ? '' : `
+      <div class="section-label">Stairs at drop-off?</div>
+      <div class="chips">${drStairs}</div>
+      ${drFlightsUI}`;
+    return `
+      <div class="section-label">${isSameAddr ? 'Stairs?' : 'Stairs at pickup?'}</div>
+      <div class="chips">${puStairs}</div>
+      ${puFlightsUI}
+      ${dropoffStairs}
+      <div class="section-label">Parking</div>
+      <div class="chips">${parkChips}</div>
+      <button class="chip notsure${ns?' checked':''}" data-bind="notsure" style="margin-top:6px"><span class="box"></span>Not sure about these — call me</button>
+      <div class="err-msg" id="err-${q.id}" style="display:none"></div>`;
+  }
+
+  // ── Extras (boxed + prep + other notes) ──
+  if(q.type === 'extras'){
+    const ex = a || {};
+    const boxedOpts = [
+      {icon:'✅', label:'Yes — all boxed'},
+      {icon:'🤔', label:"Some are, some aren't"},
+      {icon:'📦', label:'Not yet'},
+    ];
+    const prepOpts = [
+      {icon:'🛋️', label:'Wrap / pad furniture'},
+      {icon:'🛏️', label:'Disassemble bed frame(s)'},
+      {icon:'🗄️', label:'Take apart shelving'},
+      {icon:'📺', label:'Unmount TV'},
+      {icon:'🍳', label:'Pack the kitchen'},
+      {icon:'👍', label:'None — ready to go'},
+    ];
+    const boxChips = boxedOpts.map(o =>
+      `<button class="chip${ex.boxed===o.label?' checked':''}" data-bind="ex-boxed" data-val="${esc(o.label)}">${o.icon} ${esc(o.label)}</button>`
+    ).join('');
+    const pSel = ex.prep || [];
+    const prepChips = prepOpts.map(o => {
+      const checked = pSel.includes(o.label) ? 'checked' : '';
+      return `<button class="chip${checked?' checked':''}" data-bind="ex-prep" data-val="${esc(o.label)}"><span class="box"></span>${o.icon} ${esc(o.label)}</button>`;
+    }).join('');
+    const boxCount = ex.boxCount || 0;
+    const boxCountUI = ex.boxed === 'Yes — all boxed' ? `
+      <div class="chip spec-row${boxCount>0?' checked':''}" style="margin-top:8px">
+        <span style="font-size:17px;margin-right:4px">📦</span><span class="spec-name">Roughly how many boxes?</span>
+        <span class="qty-stepper">
+          <button data-bind="ex-boxcount-dec"${boxCount===0?' disabled':''}>−</button>
+          <span class="qty-val">${boxCount}</span>
+          <button data-bind="ex-boxcount-inc">+</button>
+        </span>
+      </div>` : '';
+    const packingChecked = ex.packing !== false; // default on when "Not yet"
+    const packingUI = ex.boxed === 'Not yet' ? `
+      <div class="chips" style="margin-top:8px">
+        <button class="chip${packingChecked?' checked':''}" data-bind="ex-packing" data-val="1"><span class="box"></span>📦 Add full packing service (+25%)</button>
+      </div>
+      ${packingChecked
+        ? `<div style="margin-top:6px;padding:10px 12px;background:var(--amber-soft);border:1.5px solid var(--amber);border-radius:10px;font-size:12px;color:var(--ink2);line-height:1.45">We'll bring boxes, materials &amp; labor and pack everything for you — added at <b>+25%</b> of the move base.</div>`
+        : `<div style="margin-top:6px;font-size:12px;color:var(--ink3);line-height:1.45">No problem — please have everything boxed and ready before the crew arrives.</div>`}` : '';
+    return `
+      <div class="section-label">Items boxed up?</div>
+      <div class="chips">${boxChips}</div>
+      ${boxCountUI}${packingUI}
+      <div class="section-label">Need wrapping or disassembly?</div>
+      <div class="chips">${prepChips}</div>
+      <div class="section-label" style="margin-top:4px">Home staging</div>
+      <div class="chips">
+        <button class="chip${ex.staging?' checked':''}" data-bind="ex-staging" data-val="1"><span class="box"></span>🛋️ Arrange &amp; stage my furniture (+30%)</button>
+      </div>
+      <div class="section-label" style="margin-top:4px">Other notes</div>
+      <textarea class="field-textarea"
+        placeholder="Pets, gate codes, tight doorways, nervous plants…"
+        data-bind="ex-other">${esc(ex.other||'')}</textarea>
+      <button class="chip notsure${ns?' checked':''}" data-bind="notsure" style="margin-top:6px"><span class="box"></span>Not sure — call me to discuss</button>
+      <div class="err-msg" id="err-${q.id}" style="display:none"></div>`;
+  }
+
+  // ── Single select ──
+  if(q.type === 'single'){
+    const opts = q.options.map(o => {
+      const label = typeof o === 'string' ? o : o.label;
+      const icon  = typeof o === 'object' && o.icon ? `<span style="font-size:17px;margin-right:4px">${o.icon}</span>` : '';
+      const checked = a === label ? 'checked' : '';
+      return `<button class="chip${checked?' checked':''}" data-bind="single" data-val="${esc(label)}"><span class="box"></span>${icon}${esc(label)}</button>`;
+    }).join('');
+    const nsBtnIf = q.allowNotSure !== false
+      ? `<button class="chip notsure${ns?' checked':''}" data-bind="notsure"><span class="box"></span>🤷 Not sure — call me</button>` : '';
+    return `<div class="chips col">${opts}${nsBtnIf}</div>
+      <div class="err-msg" id="err-${q.id}" style="display:none"></div>`;
+  }
+
+  // ── Date-time ──
+  if(q.type === 'date-time'){
+    const dt = a || {};
+    const hours = [9,10,11,12,13,14,15,16,17,18];
+    const fmtH = h => { const ampm = h >= 12 ? 'PM' : 'AM'; const h12 = h > 12 ? h - 12 : h; return `${h12}:00 ${ampm}`; };
+    const booked = S.bookedHours;
+    const timeChips = hours.map(h => {
+      const label = fmtH(h);
+      const isBusy = booked.has(h);
+      if (isBusy) return `<button class="chip booked" disabled data-val="${label}">${label} <span class="booked-tag">Booked</span></button>`;
+      return `<button class="chip${dt.time===label?' checked':''}" data-bind="time" data-val="${label}">${label}</button>`;
+    }).join('');
+    return `
+      <input class="field-input" type="date" data-bind="date" value="${esc(dt.date||'')}"
+        min="${new Date().toISOString().split('T')[0]}" />
+      <div class="chips" style="margin-top:8px;flex-wrap:wrap;gap:6px">${timeChips}
+        <button class="chip notsure${ns?' checked':''}" data-bind="notsure"><span class="box"></span>Flexible</button>
+      </div>`;
+  }
+
+  // ── Photos ──
+  if(q.type === 'photos'){
+    const files = S.photoFiles[q.id] || [];
+    const previews = S.photoPreviews[q.id] || [];
+    const thumbs = previews.map((src, i) =>
+      `<div class="thumb-wrap">
+        <img class="thumb" src="${src}" alt="Photo ${i+1}" />
+        <div class="thumb-del" data-del="${i}">×</div>
+      </div>`
+    ).join('');
+    const hasPhotos = files.length > 0;
+    const commonOpts = [
+      {icon:'🛋️', label:'Couch / sofa'}, {icon:'🛏️', label:'Bed'},
+      {icon:'🪑', label:'Dining set'},    {icon:'🗄️', label:'Dresser'},
+      {icon:'🧊', label:'Refrigerator'},  {icon:'🧺', label:'Washer / dryer'},
+      {icon:'🪞', label:'Wardrobe / armoire'}, {icon:'📚', label:'Bookshelf'},
+    ];
+    const cSel = (a || {}).common || {};
+    const cAttrs = (a || {}).commonAttrs || {};
+    const commonNone = (a || {}).commonNone === true;
+    const commonAttrOpts = ['Heavy (250lb+)','Needs disassembly','Needs wrapping','Upstairs'];
+    const commonChips = commonOpts.map(o => {
+      const qty = cSel[o.label] || 0;
+      const checked = qty > 0 ? ' checked' : '';
+      const row = `<div class="chip spec-row common-row${checked}"><span style="font-size:17px;margin-right:4px">${o.icon}</span><span class="spec-name">${esc(o.label)}</span><span class="qty-stepper"><button data-bind="common-qty-dec" data-val="${esc(o.label)}"${qty===0?' disabled':''}>−</button><span class="qty-val">${qty}</span><button data-bind="common-qty-inc" data-val="${esc(o.label)}">+</button></span></div>`;
+      if (qty === 0) return row;
+      const sel = cAttrs[o.label] || {};
+      const attrRows = commonAttrOpts.map(at => {
+        const ac = sel[at] || 0;
+        return `<div class="chip attr-chip${ac>0?' checked':''}"><span class="spec-name">${esc(at)}</span><span class="qty-stepper"><button data-bind="common-attr-dec" data-item="${esc(o.label)}" data-val="${esc(at)}"${ac===0?' disabled':''}>−</button><span class="qty-val">${ac}</span><button data-bind="common-attr-inc" data-item="${esc(o.label)}" data-val="${esc(at)}"${ac>=qty?' disabled':''}>+</button></span></div>`;
+      }).join('');
+      return `${row}<div class="common-attrs">${attrRows}</div>`;
+    }).join('');
+    return `
+      <div class="section-label">Common items <span style="font-weight:400;color:var(--ink3)">(helps us size the crew)</span></div>
+      <div class="chips col">${commonChips}
+        <button class="chip${commonNone ? ' checked' : ''}" data-bind="common-none" style="justify-content:center">None of the above</button>
+      </div>
+      <div class="section-label">Photos / walkthrough video <span style="font-weight:400;color:var(--ink3)">(optional)</span></div>
+      <div class="upload-zone" id="upload-zone-${q.id}">
+        <input type="file" id="file-input-${q.id}" accept="image/*,video/*" multiple />
+        <span class="upload-icon">${hasPhotos ? `${files.length} file${files.length>1?'s':''} attached` : '📷'}</span>
+        <div class="upload-hint">${hasPhotos ? 'Tap to add more' : 'Tap to add photos or a walkthrough video'}</div>
+      </div>
+      ${hasPhotos ? `<div class="thumbs-row" id="thumbs-${q.id}">${thumbs}</div>` : ''}`;
+  }
+
+  return '';
+}
+
+// ── Address autocomplete ─────────────────────────────────────────────────────
+const addrTimers = {};
+function initAddrField(fieldId, onSelect) {
+  const input = document.getElementById('fi-' + fieldId);
+  const sugBox = document.getElementById('sug-' + fieldId);
+  if (!input || !sugBox) return;
+
+  function hideSuggestions() { sugBox.style.display = 'none'; sugBox.innerHTML = ''; }
+
+  input.addEventListener('input', () => {
+    const val = input.value.trim();
+    clearTimeout(addrTimers[fieldId]);
+    if (val.length < 3) { hideSuggestions(); return; }
+    addrTimers[fieldId] = setTimeout(async () => {
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(val)}&format=json&addressdetails=1&limit=5&countrycodes=us`;
+        const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
+        const results = await res.json();
+        if (!results.length) { hideSuggestions(); return; }
+        sugBox.innerHTML = results.map((r, i) => {
+          const a = r.address || {};
+          const main = [a.house_number, a.road].filter(Boolean).join(' ') || r.display_name.split(',')[0];
+          const sub = [a.city || a.town || a.village, a.state, a.postcode].filter(Boolean).join(', ');
+          const icon = r.type === 'house' ? '🏠' : r.class === 'place' ? '📍' : '📌';
+          return `<div class="addr-suggestion" data-idx="${i}" tabindex="-1">
+            <span class="addr-suggestion-icon">${icon}</span>
+            <div class="addr-suggestion-text">
+              <div class="addr-suggestion-main">${esc(main)}</div>
+              <div class="addr-suggestion-sub">${esc(sub)}</div>
+            </div>
+          </div>`;
+        }).join('');
+        sugBox.style.display = 'block';
+        sugBox.querySelectorAll('.addr-suggestion').forEach((el, i) => {
+          el.addEventListener('mousedown', (e) => {
+            e.preventDefault();
+            const r = results[i];
+            const a = r.address || {};
+            const main = [a.house_number, a.road].filter(Boolean).join(' ') || r.display_name.split(',')[0];
+            const sub = [a.city || a.town || a.village, a.state, a.postcode].filter(Boolean).join(', ');
+            const full = [main, sub].filter(Boolean).join(', ');
+            input.value = full;
+            onSelect(full, parseFloat(r.lat), parseFloat(r.lon));
+            hideSuggestions();
+            renderProgress(); renderStepper();
+          });
+        });
+      } catch { hideSuggestions(); }
+    }, 350);
+  });
+
+  input.addEventListener('blur', () => setTimeout(hideSuggestions, 150));
+}
+
+// ── Route map ────────────────────────────────────────────────────────────────
+let routeMap = null;
+let routeMapMarkers = [];
+let routeMapLine = null;
+
+function updateRouteMap() {
+  const wrap = document.getElementById('route-map-wrap');
+  const mapEl = document.getElementById('route-map');
+  if (!wrap || !mapEl) return;
+
+  const addr = S.answers['addresses'] || {};
+  const pu = addr.pickup, dr = addr.dropoff;
+  const hasPickup = pu?.lat != null && pu?.lng != null;
+  const hasDropoff = dr?.lat != null && dr?.lng != null;
+  const isSameAddr = S.answers['service'] === 'Rearranging within same address';
+
+  if (!hasPickup) { wrap.classList.remove('visible'); return; }
+  wrap.classList.add('visible');
+
+  // Tear down old map to avoid Leaflet re-init errors
+  if (routeMap) { routeMap.remove(); routeMap = null; }
+  routeMapMarkers = [];
+  routeMapLine = null;
+
+  const pickupIcon = L.divIcon({ className: '', html: '<div class="leaflet-pickup"></div>', iconSize: [24, 24], iconAnchor: [12, 12] });
+  const dropoffIcon = L.divIcon({ className: '', html: '<div class="leaflet-dropoff"></div>', iconSize: [24, 24], iconAnchor: [12, 12] });
+
+  let center = [pu.lat, pu.lng];
+  let zoom = 14;
+
+  if (hasDropoff && !isSameAddr) {
+    center = [(pu.lat + dr.lat) / 2, (pu.lng + dr.lng) / 2];
+    const maxDiff = Math.max(Math.abs(dr.lat - pu.lat), Math.abs(dr.lng - pu.lng));
+    if (maxDiff > 0.5) zoom = 10;
+    else if (maxDiff > 0.2) zoom = 11;
+    else if (maxDiff > 0.1) zoom = 12;
+    else if (maxDiff > 0.05) zoom = 13;
+    else if (maxDiff > 0.02) zoom = 14;
+    else zoom = 15;
+  }
+
+  routeMap = L.map(mapEl, {
+    zoomControl: false, attributionControl: false,
+    dragging: false, touchZoom: false, scrollWheelZoom: false,
+    doubleClickZoom: false, boxZoom: false
+  }).setView(center, zoom);
+
+  L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }).addTo(routeMap);
+  L.marker([pu.lat, pu.lng], { icon: pickupIcon }).addTo(routeMap);
+
+  if (hasDropoff && !isSameAddr) {
+    L.marker([dr.lat, dr.lng], { icon: dropoffIcon }).addTo(routeMap);
+    fetch('https://router.project-osrm.org/route/v1/driving/' + pu.lng + ',' + pu.lat + ';' + dr.lng + ',' + dr.lat + '?overview=full&geometries=geojson')
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (!routeMap) return;
+        if (data.routes && data.routes.length > 0) {
+          var coords = data.routes[0].geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
+          routeMapLine = L.polyline(coords, { color: '#C98B3F', weight: 4, opacity: 0.8 }).addTo(routeMap);
+          routeMap.fitBounds(routeMapLine.getBounds(), { padding: [40, 40] });
+        } else {
+          var latlngs = [[pu.lat, pu.lng], [dr.lat, dr.lng]];
+          L.polyline(latlngs, { color: '#C98B3F', weight: 3, opacity: 0.7, dashArray: '8, 8' }).addTo(routeMap);
+          routeMap.fitBounds(latlngs, { padding: [40, 40] });
+        }
+      })
+      .catch(function() {
+        if (!routeMap) return;
+        var latlngs = [[pu.lat, pu.lng], [dr.lat, dr.lng]];
+        L.polyline(latlngs, { color: '#C98B3F', weight: 3, opacity: 0.7, dashArray: '8, 8' }).addTo(routeMap);
+        routeMap.fitBounds(latlngs, { padding: [40, 40] });
+      });
+  }
+}
+
+// ── Render card ──────────────────────────────────────────────────────────────
+function renderCard(animate = true){
+  const q = QUESTIONS[S.idx];
+  const total = QUESTIONS.length;
+  const isLast = S.idx === total - 1;
+
+  // peeked background cards
+  let bgCards = '';
+  const n1 = QUESTIONS[S.idx+1], n2 = QUESTIONS[S.idx+2];
+  if(n2) bgCards += `<div class="card back-2"><div class="qnum">Q ${n2.num} / ${total}</div><div class="qtitle">${n2.title}</div></div>`;
+  if(n1) bgCards += `<div class="card back-1"><div class="qnum">Q ${n1.num} / ${total}</div><div class="qtitle">${n1.title}</div></div>`;
+
+  const phaseLabel = PHASES[q.phase];
+  const showNoteInput = S.showNote[q.id] || S.notes[q.id];
+
+  stackEl.innerHTML = bgCards + `
+    <div class="card front ${animate ? `slide-${S.dir}` : ''}" id="card-front">
+      <div class="qnum">Q ${q.num} / ${total} · ${phaseLabel}</div>
+      <div class="qtitle">${q.title}</div>
+      ${q.help ? `<div class="qhelp">${q.help}</div>` : ''}
+      <div class="qbody" id="qbody">${renderBody(q)}</div>
+      ${q.id === 'addresses' ? '<div class="route-map-wrap" id="route-map-wrap"><div id="route-map"></div></div>' : ''}
+      ${showNoteInput ? `<textarea class="field-textarea" style="margin-top:8px"
+        placeholder="Add a note for the crew…" data-bind="note">${esc(S.notes[q.id]||'')}</textarea>` : ''}
+      <div class="grow"></div>
+      <div class="cfoot">
+        ${q.required ? '<div></div>' : '<button class="skip-btn" id="skip-btn">Skip</button>'}
+        <div style="display:flex;gap:8px;align-items:center">
+          ${showNoteInput
+            ? `<button class="note-remove" id="note-remove-btn">✕ remove note</button>`
+            : `<button class="note-toggle" id="note-toggle-btn">✏️ add a note</button>`}
+        </div>
+      </div>
+    </div>`;
+
+  bindCard();
+  backBtn.disabled = S.idx === 0;
+  nextBtn.disabled = false; nextBtn.style.opacity = '1';
+  nextBtn.innerHTML = isLast ? '✓' : '→';
+  nextLabel.textContent = isLast ? 'review' : 'next';
+
+  // Sync fixed mobile nav bar
+  const mobNav = document.getElementById('mob-nav');
+  const mobBack = document.getElementById('mob-back-btn');
+  const mobContinue = document.getElementById('mob-continue-btn');
+  if (mobNav) mobNav.style.display = '';
+  if (mobBack) mobBack.disabled = S.idx === 0;
+  if (mobContinue) mobContinue.textContent = isLast ? '✓ Review' : 'Continue →';
+
+  // Auto-focus first text input on mobile (avoids user having to tap twice)
+  if(q.type === 'text' || q.type === 'address-place'){
+    const firstInput = document.getElementById('fi-' + q.id);
+    if(firstInput && window.innerWidth <= 700){
+      setTimeout(() => firstInput.focus(), 350); // after slide animation
+    }
+  }
+}
+
+// ── Bind card interactions ───────────────────────────────────────────────────
+function bindCard(){
+  const q = QUESTIONS[S.idx];
+  const card = document.getElementById('card-front');
+  if(!card) return;
+
+  card.querySelectorAll('[data-bind]').forEach(el => {
+    const bind = el.dataset.bind;
+    const ev = (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') ? 'input' : 'click';
+    el.addEventListener(ev, e => { e.stopPropagation(); handleBind(q, bind, el); });
+  });
+
+  // photo upload
+  const fileInput = document.getElementById('file-input-' + q.id);
+  if(fileInput){
+    fileInput.addEventListener('change', () => handleFiles(q, fileInput.files));
+    const zone = document.getElementById('upload-zone-' + q.id);
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('drag-over'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('drag-over'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('drag-over');
+      handleFiles(q, e.dataTransfer.files);
+    });
+  }
+
+  // delete thumbs
+  card.querySelectorAll('[data-del]').forEach(btn => {
+    btn.addEventListener('click', e => {
+      e.stopPropagation();
+      const i = +btn.dataset.del;
+      S.photoFiles[q.id] = (S.photoFiles[q.id]||[]).filter((_,j) => j !== i);
+      S.photoPreviews[q.id] = (S.photoPreviews[q.id]||[]).filter((_,j) => j !== i);
+      renderCard(false); renderProgress(); renderStepper();
+    });
+  });
+
+  document.getElementById('skip-btn')?.addEventListener('click', () => {
+    S.skipped[q.id] = true; goNext();
+  });
+  document.getElementById('note-toggle-btn')?.addEventListener('click', () => {
+    S.showNote[q.id] = true; renderCard(false);
+  });
+  document.getElementById('note-remove-btn')?.addEventListener('click', () => {
+    S.showNote[q.id] = false; S.notes[q.id] = ''; renderCard(false);
+  });
+
+  if (q.type === 'addresses') {
+    initAddrField('addresses-pickup', (v, lat, lng) => {
+      S.answers['addresses'] = {...(S.answers['addresses']||{}), pickup: {...(S.answers['addresses']?.pickup||{}), addr: v, lat, lng}};
+      updateRouteMap();
+    });
+    if (document.getElementById('fi-addresses-dropoff')) {
+      initAddrField('addresses-dropoff', (v, lat, lng) => {
+        S.answers['addresses'] = {...(S.answers['addresses']||{}), dropoff: {...(S.answers['addresses']?.dropoff||{}), addr: v, lat, lng}};
+        updateRouteMap();
+      });
+    }
+    updateRouteMap();
+  }
+
+}
+
+function initMobNav() {
+  const mobBack = document.getElementById('mob-back-btn');
+  const mobContinue = document.getElementById('mob-continue-btn');
+  mobBack?.addEventListener('click', goBack);
+  mobContinue?.addEventListener('click', goNext);
+  mobContinue?.addEventListener('pointerdown', e => {
+    const btn = mobContinue;
+    const r = btn.getBoundingClientRect();
+    const size = Math.max(r.width, r.height);
+    const x = e.clientX - r.left - size/2;
+    const y = e.clientY - r.top - size/2;
+    const ripple = document.createElement('span');
+    ripple.className = 'ripple';
+    ripple.style.cssText = `width:${size}px;height:${size}px;left:${x}px;top:${y}px`;
+    btn.appendChild(ripple);
+    ripple.addEventListener('animationend', () => ripple.remove());
+  });
+}
+
+// In-place update of special-item steppers (avoids replaying chip entrance animations on every +/−)
+function updateSpecUI(qid){
+  const sel = (S.answers[qid]||{}).special || {};
+  const card = document.getElementById('card-front');
+  if(!card) return;
+  card.querySelectorAll('.spec-row').forEach(row => {
+    const incBtn = row.querySelector('[data-bind="spec-qty-inc"]');
+    if(!incBtn) return;
+    const qty = sel[incBtn.dataset.val] || 0;
+    const valEl = row.querySelector('.qty-val'); if(valEl) valEl.textContent = qty;
+    const decBtn = row.querySelector('[data-bind="spec-qty-dec"]'); if(decBtn) decBtn.disabled = qty === 0;
+    row.classList.toggle('checked', qty > 0);
+  });
+  const nopeBtn = card.querySelector('[data-bind="spec-multi"]');
+  if(nopeBtn) nopeBtn.classList.toggle('checked', !!sel['Nope — just regular stuff']);
+}
+
+function handleBind(q, bind, el){
+  const val = el.dataset.val !== undefined ? el.dataset.val : el.value;
+  // ── Contact fields ──
+  if(bind === 'c-name'){
+    const cleaned = el.value.replace(/[^a-zA-Z\u00C0-\u024F\s'\-\.]/g, '');
+    if(el.value !== cleaned){ const pos = el.selectionStart; el.value = cleaned; el.setSelectionRange(pos,pos); }
+    S.answers[q.id] = {...(S.answers[q.id]||{}), name: cleaned};
+  }
+  else if(bind === 'c-phone'){
+    const formatted = formatPhone(el.value);
+    if(el.value !== formatted){ el.value = formatted; }
+    S.answers[q.id] = {...(S.answers[q.id]||{}), phone: formatted};
+  }
+  else if(bind === 'c-email'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), email: el.value};
+  }
+  // ── Address fields ──
+  else if(bind === 'pu-addr'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), pickup: {...(S.answers[q.id]?.pickup||{}), addr: val}};
+  }
+  else if(bind === 'pu-place'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), pickup: {...(S.answers[q.id]?.pickup||{}), place: val}};
+    renderCard(false);
+  }
+  else if(bind === 'dr-addr'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), dropoff: {...(S.answers[q.id]?.dropoff||{}), addr: val}};
+  }
+  else if(bind === 'dr-place'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), dropoff: {...(S.answers[q.id]?.dropoff||{}), place: val}};
+    renderCard(false);
+  }
+  // ── Stuff fields ──
+  else if(bind === 'size'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), size: val};
+    S.notSure[q.id] = false; renderCard(false);
+  }
+  else if(bind === 'spec-multi'){
+    // Only "Nope — just regular stuff" uses this toggle — clears all item quantities
+    const cur = {...((S.answers[q.id]||{}).special || {})};
+    if (cur[val]) { delete cur[val]; }
+    else { Object.keys(cur).forEach(k => delete cur[k]); cur[val] = 1; }
+    S.answers[q.id] = {...(S.answers[q.id]||{}), special: cur};
+    updateSpecUI(q.id);
+  }
+  else if(bind === 'spec-qty-inc'){
+    const cur = {...((S.answers[q.id]||{}).special || {})};
+    delete cur['Nope — just regular stuff']; // adding an item clears "Nope"
+    cur[val] = (cur[val] || 0) + 1;
+    S.answers[q.id] = {...(S.answers[q.id]||{}), special: cur};
+    updateSpecUI(q.id);
+  }
+  else if(bind === 'spec-qty-dec'){
+    const cur = {...((S.answers[q.id]||{}).special || {})};
+    const next = (cur[val] || 0) - 1;
+    if (next <= 0) { delete cur[val]; } else { cur[val] = next; }
+    S.answers[q.id] = {...(S.answers[q.id]||{}), special: cur};
+    updateSpecUI(q.id);
+  }
+  else if(bind === 'common-none'){
+    // mutually exclusive with item counts — clears everything
+    S.answers[q.id] = {...(S.answers[q.id]||{}), common: {}, commonAttrs: {}, commonNone: !((S.answers[q.id]||{}).commonNone)};
+    renderCard(false);
+  }
+  else if(bind === 'common-qty-inc'){
+    const cur = {...((S.answers[q.id]||{}).common || {})};
+    cur[val] = (cur[val] || 0) + 1;
+    S.answers[q.id] = {...(S.answers[q.id]||{}), common: cur, commonNone: false};
+    renderCard(false);
+  }
+  else if(bind === 'common-qty-dec'){
+    const cur = {...((S.answers[q.id]||{}).common || {})};
+    const next = (cur[val] || 0) - 1;
+    if (next <= 0) { delete cur[val]; } else { cur[val] = next; }
+    S.answers[q.id] = {...(S.answers[q.id]||{}), common: cur};
+    // clamp/drop attribute counts to the new item quantity
+    const cAttrs = {...((S.answers[q.id]||{}).commonAttrs || {})};
+    if (cAttrs[val]) {
+      if (next <= 0) { delete cAttrs[val]; }
+      else {
+        const sub = {};
+        for (const [k,v] of Object.entries(cAttrs[val])) { const c = Math.min(v, next); if (c > 0) sub[k] = c; }
+        if (Object.keys(sub).length) cAttrs[val] = sub; else delete cAttrs[val];
+      }
+      S.answers[q.id] = {...(S.answers[q.id]||{}), commonAttrs: cAttrs};
+    }
+    renderCard(false);
+  }
+  else if(bind === 'common-attr-inc'){
+    const item = el.dataset.item;
+    const itemQty = ((S.answers[q.id]||{}).common || {})[item] || 0;
+    const cur = {...((S.answers[q.id]||{}).commonAttrs || {})};
+    const sub = {...(cur[item] || {})};
+    sub[val] = Math.min((sub[val] || 0) + 1, itemQty);
+    cur[item] = sub;
+    S.answers[q.id] = {...(S.answers[q.id]||{}), commonAttrs: cur};
+    renderCard(false);
+  }
+  else if(bind === 'common-attr-dec'){
+    const item = el.dataset.item;
+    const cur = {...((S.answers[q.id]||{}).commonAttrs || {})};
+    const sub = {...(cur[item] || {})};
+    const next = (sub[val] || 0) - 1;
+    if (next <= 0) { delete sub[val]; } else { sub[val] = next; }
+    if (Object.keys(sub).length === 0) { delete cur[item]; } else { cur[item] = sub; }
+    S.answers[q.id] = {...(S.answers[q.id]||{}), commonAttrs: cur};
+    renderCard(false);
+  }
+  else if(bind === 'list'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), list: val};
+  }
+  // ── Access fields ──
+  else if(bind === 'ac-stairs-pu'){
+    const hasStairs = val === 'Stairs' || val === 'Both';
+    const next = {...(S.answers[q.id]||{}), stairs_pickup: val};
+    if(hasStairs){ if(!(next.flights_pickup >= 1)) next.flights_pickup = 1; }
+    else { next.flights_pickup = 0; }
+    S.answers[q.id] = next; renderCard(false);
+  }
+  else if(bind === 'ac-stairs-dr'){
+    const hasStairs = val === 'Stairs' || val === 'Both';
+    const next = {...(S.answers[q.id]||{}), stairs_dropoff: val};
+    if(hasStairs){ if(!(next.flights_dropoff >= 1)) next.flights_dropoff = 1; }
+    else { next.flights_dropoff = 0; }
+    S.answers[q.id] = next; renderCard(false);
+  }
+  else if(bind === 'ac-flights-pu-inc'){
+    const cur = Math.max(1, (S.answers[q.id]||{}).flights_pickup || 1);
+    S.answers[q.id] = {...(S.answers[q.id]||{}), flights_pickup: Math.min(cur + 1, 20)}; renderCard(false);
+  }
+  else if(bind === 'ac-flights-pu-dec'){
+    const cur = Math.max(1, (S.answers[q.id]||{}).flights_pickup || 1);
+    S.answers[q.id] = {...(S.answers[q.id]||{}), flights_pickup: Math.max(1, cur - 1)}; renderCard(false);
+  }
+  else if(bind === 'ac-flights-dr-inc'){
+    const cur = Math.max(1, (S.answers[q.id]||{}).flights_dropoff || 1);
+    S.answers[q.id] = {...(S.answers[q.id]||{}), flights_dropoff: Math.min(cur + 1, 20)}; renderCard(false);
+  }
+  else if(bind === 'ac-flights-dr-dec'){
+    const cur = Math.max(1, (S.answers[q.id]||{}).flights_dropoff || 1);
+    S.answers[q.id] = {...(S.answers[q.id]||{}), flights_dropoff: Math.max(1, cur - 1)}; renderCard(false);
+  }
+  else if(bind === 'ac-parking'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), parking: val}; renderCard(false);
+  }
+  // ── Extras fields ──
+  else if(bind === 'ex-boxed'){
+    const next = {...(S.answers[q.id]||{}), boxed: val};
+    if(val === 'Not yet' && next.packing === undefined) next.packing = true; // default packing on
+    S.answers[q.id] = next; renderCard(false);
+  }
+  else if(bind === 'ex-packing'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), packing: !((S.answers[q.id]||{}).packing !== false)}; renderCard(false);
+  }
+  else if(bind === 'ex-prep'){
+    const cur = (S.answers[q.id]||{}).prep || [];
+    const next = cur.includes(val) ? cur.filter(x=>x!==val) : [...cur, val];
+    S.answers[q.id] = {...(S.answers[q.id]||{}), prep: next};
+    renderCard(false);
+  }
+  else if(bind === 'ex-staging'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), staging: !(S.answers[q.id]||{}).staging};
+    renderCard(false);
+  }
+  else if(bind === 'ex-boxcount-inc'){
+    const cur = (S.answers[q.id]||{}).boxCount || 0;
+    S.answers[q.id] = {...(S.answers[q.id]||{}), boxCount: Math.min(cur + 1, 200)};
+    renderCard(false);
+  }
+  else if(bind === 'ex-boxcount-dec'){
+    const cur = (S.answers[q.id]||{}).boxCount || 0;
+    S.answers[q.id] = {...(S.answers[q.id]||{}), boxCount: Math.max(cur - 1, 0)};
+    renderCard(false);
+  }
+  else if(bind === 'ex-other'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), other: val};
+  }
+  // ── Standard bindings ──
+  else if(bind === 'single'){
+    S.answers[q.id] = val; S.notSure[q.id] = false; renderCard(false);
+  }
+  else if(bind === 'notsure'){
+    S.notSure[q.id] = !S.notSure[q.id];
+    if(S.notSure[q.id]){ S.answers[q.id] = q.type==='multi'?[]:undefined; }
+    renderCard(false);
+  }
+  else if(bind === 'date'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), date: val};
+    // Clear any previously selected time that's now booked
+    if (val) {
+      fetchBookedSlots(val).then(blocked => {
+        S.bookedHours = blocked;
+        // If current time selection is now blocked, clear it
+        const curTime = S.answers[q.id]?.time;
+        if (curTime) {
+          const h = parseHour(curTime);
+          if (h != null && blocked.has(h)) {
+            S.answers[q.id] = {...S.answers[q.id], time: undefined};
+          }
+        }
+        renderCard(false);
+      });
+    } else {
+      S.bookedHours = new Set();
+    }
+  }
+  else if(bind === 'time'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), time: val};
+    S.notSure[q.id] = false; renderCard(false);
+  }
+  else if(bind === 'note'){ S.notes[q.id] = val; }
+  renderProgress(); renderStepper();
+}
+
+const ALLOWED_MIME = new Set(['image/jpeg','image/png','image/webp','image/heic','image/heif','video/mp4','video/quicktime','video/x-msvideo']);
+const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20 MB per file
+const MAX_FILES_TOTAL = 10;
+
+function handleFiles(q, fileList){
+  if(!fileList || !fileList.length) return;
+  const existing = S.photoFiles[q.id] || [];
+  const existPrev = S.photoPreviews[q.id] || [];
+
+  // Security: validate file type and size before accepting
+  const newFiles = Array.from(fileList).filter(f => {
+    if(!ALLOWED_MIME.has(f.type)){ alert(`"${f.name}" is not a supported file type. Please upload images or videos only.`); return false; }
+    if(f.size > MAX_FILE_BYTES){ alert(`"${f.name}" is too large (max 20 MB).`); return false; }
+    return true;
+  });
+  if(existing.length + newFiles.length > MAX_FILES_TOTAL){
+    alert(`You can attach up to ${MAX_FILES_TOTAL} files total.`);
+    return;
+  }
+  S.photoFiles[q.id] = [...existing, ...newFiles];
+
+  let loaded = 0;
+  newFiles.forEach((f, i) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      existPrev.push(e.target.result);
+      S.photoPreviews[q.id] = existPrev;
+      loaded++;
+      if(loaded === newFiles.length){ renderCard(false); renderProgress(); renderStepper(); }
+    };
+    // Show video thumbnail placeholder for video files
+    if(f.type.startsWith('video/')){
+      existPrev.push('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><rect width="60" height="60" rx="8" fill="%23F5EDE0"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="24">🎥</text></svg>');
+      S.photoPreviews[q.id] = existPrev;
+      loaded++;
+      if(loaded === newFiles.length){ renderCard(false); renderProgress(); renderStepper(); }
+    } else {
+      reader.readAsDataURL(f);
+    }
+  });
+}
+
+// ── Navigation ───────────────────────────────────────────────────────────────
+function goNext(){
+  const q = QUESTIONS[S.idx];
+  // Validate required fields
+  const errMsg = validate(q);
+  if(errMsg && !S.notSure[q.id] && !S.skipped[q.id]){
+    const errEl = document.getElementById('err-' + q.id);
+    if(errEl){ errEl.textContent = errMsg; errEl.style.display = 'block'; }
+    const input = document.getElementById('fi-' + q.id);
+    if(input) input.classList.add('error');
+    return;
+  }
+  if(S.idx < QUESTIONS.length - 1){
+    S.dir = 'r'; S.idx++;
+    if(S.idx > S.maxIdx) S.maxIdx = S.idx;
+    renderAll();
+    autosaveProgress(); // fire-and-forget — records the step they're now on
+  } else {
+    showReview();
+  }
+}
+
+function goBack(){
+  if(S.idx > 0){ S.dir = 'l'; S.idx--; renderAll(); }
+}
+
+function goTo(i){
+  if(i < 0 || i >= QUESTIONS.length) return;
+  if(i > S.maxIdx) return; // can't skip ahead past unanswered questions
+  S.dir = i > S.idx ? 'r' : 'l';
+  S.idx = i;
+  renderAll();
+}
+
+function renderAll(){
+  renderStepper(); renderProgress(); renderCard();
+}
+
+// ── Review screen ────────────────────────────────────────────────────────────
+function formatAnswer(q){
+  const a = S.answers[q.id];
+  if(S.notSure[q.id]) return '<span class="empty">Not sure — we\'ll call to confirm</span>';
+  if(S.skipped[q.id]) return '<span class="empty">Skipped</span>';
+  if(q.type==='contact') return [a?.name, a?.phone, a?.email].filter(Boolean).join(' · ');
+  if(q.type==='addresses'){
+    const parts = [];
+    if(a?.pickup?.addr) parts.push('From: ' + a.pickup.addr);
+    if(a?.dropoff?.addr) parts.push('To: ' + a.dropoff.addr);
+    return parts.join(' · ') || '';
+  }
+  if(q.type==='stuff'){
+    const parts = [a?.size];
+    const sp = Object.entries(a?.special||{}).filter(([k])=>k!=='Nope — just regular stuff');
+    if(sp.length) parts.push(sp.map(([k,v])=>v>1?`${k} ×${v}`:k).join(', '));
+    if(a?.list) parts.push(a.list);
+    return parts.filter(Boolean).join(' · ');
+  }
+  if(q.type==='access'){
+    const stairLbl = (lbl, n) => (lbl === 'Stairs' || lbl === 'Both') && n ? `${lbl} (${n} flight${n>1?'s':''})` : lbl;
+    return [a?.stairs_pickup ? 'PU: '+stairLbl(a.stairs_pickup, a.flights_pickup) : '', a?.stairs_dropoff ? 'DO: '+stairLbl(a.stairs_dropoff, a.flights_dropoff) : '', a?.parking].filter(Boolean).join(' · ');
+  }
+  if(q.type==='extras'){
+    const parts = [a?.boxed];
+    if(Array.isArray(a?.prep) && a.prep.length) parts.push(a.prep.join(', '));
+    if(a?.other) parts.push(a.other);
+    return parts.filter(Boolean).join(' · ');
+  }
+  if(q.type==='date-time') return [a?.date, a?.time].filter(Boolean).join(' · ');
+  if(q.type==='photos'){
+    const parts = [];
+    const cm = Object.entries(a?.common || {});
+    if(cm.length) parts.push(cm.map(([k,v])=>v>1?`${k} ×${v}`:k).join(', '));
+    else if(a?.commonNone) parts.push('No common items');
+    const n = (S.photoFiles[q.id]||[]).length;
+    if(n > 0) parts.push(`${n} file${n>1?'s':''} attached`);
+    return parts.join(' · ');
+  }
+  return a || '';
+}
+
+// ── Instant quote engine (mirrors lib/pricing.ts) ────────────────────────────
+const BASE_PRICES = { 'Just a few items':17500, 'Studio':35000, '1 BR':50000, '2 BR':80000, '3 BR':135000, '4+ BR / full house':160000 };
+const STAIRS_SURCHARGE = 3000;
+const LONG_CARRY = 5000;
+const HEAVY_PRICES = { 'Piano':25000, 'Safe / gun safe':15000, 'Pool table':30000, 'Treadmill / Peloton':7500, 'Big TV (65"+)':7500, 'Aquarium':7500, 'Artwork / mirror':7500 };
+const TAX = 0.0825;
+const DISTANCE_FREE_MILES = 15;
+const DISTANCE_PER_MILE = 125; // $1.25/mile over 15 free miles
+const LONG_DISTANCE_MULTIPLIER = 1.5; // 50% surcharge for long distance moves
+const STAGING_SURCHARGE_PCT = 0.30;   // +30% of base for home staging (crew arranges/styles furniture)
+const PACKING_SURCHARGE_PCT = 0.25;   // +25% of base for full packing service (items not yet boxed)
+
+function haversineDistance(lat1, lng1, lat2, lng2) {
+  const R = 3959; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat/2)**2 + Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) * Math.sin(dLng/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+}
+
+function calcDistance() {
+  const addr = S.answers['addresses'] || {};
+  const pu = addr.pickup, dr = addr.dropoff;
+  if (!pu?.lat || !dr?.lat) return null;
+  return Math.round(haversineDistance(pu.lat, pu.lng, dr.lat, dr.lng));
+}
+
+function calcQuote(){
+  const size   = S.answers['stuff']?.size;
+  const base   = BASE_PRICES[size];
+  if(!base) return null; // can't quote without size
+
+  const service  = S.answers['service'] || '';
+  const special  = S.answers['stuff']?.special || {};
+  const access   = S.answers['access'] || {};
+  const stairs_p = access.stairs_pickup  || '';
+  const stairs_d = access.stairs_dropoff || '';
+  const parking  = access.parking || '';
+
+  const hasStairs  = lbl => lbl === 'Stairs' || lbl === 'Both';
+  const flightsFrom = hasStairs(stairs_p) ? Math.max(1, access.flights_pickup || 1) : 0;
+  const flightsTo   = hasStairs(stairs_d) ? Math.max(1, access.flights_dropoff || 1) : 0;
+  const longCarry  = parking.includes('100+');
+
+  const flights = flightsFrom + flightsTo;
+  const stairsCents  = flights * STAIRS_SURCHARGE;
+  const carryCents   = longCarry ? LONG_CARRY : 0;
+  const specialEntries = Object.entries(special).filter(([k]) => k !== 'Nope — just regular stuff');
+  const heavyCents   = specialEntries.reduce((s,[k,qty]) => s + (HEAVY_PRICES[k] || 7500) * qty, 0);
+
+  // Distance surcharge — $1.25/mile over 15 free miles
+  const miles = calcDistance();
+  const distanceCents = (miles && miles > DISTANCE_FREE_MILES) ? (miles - DISTANCE_FREE_MILES) * DISTANCE_PER_MILE : 0;
+
+  // Long distance — selected manually OR auto-detected at 50+ miles
+  const LONG_DISTANCE_THRESHOLD = 50;
+  const isLongDistance = service === 'Long distance' || (miles != null && miles >= LONG_DISTANCE_THRESHOLD);
+  const ldMultiplier = isLongDistance ? LONG_DISTANCE_MULTIPLIER : 1;
+
+  // Home staging — crew arranges/styles furniture (+30% of the move base)
+  const staging      = !!(S.answers['extras']?.staging);
+  const adjustedBase = base * ldMultiplier;
+  const stagingCents = staging ? Math.round(adjustedBase * STAGING_SURCHARGE_PCT) : 0;
+
+  // Packing service — items not yet boxed AND customer opted in (+25% of the move base)
+  const needsPacking = S.answers['extras']?.boxed === 'Not yet' && S.answers['extras']?.packing !== false;
+  const packingCents = needsPacking ? Math.round(adjustedBase * PACKING_SURCHARGE_PCT) : 0;
+
+  const subtotal = Math.round(adjustedBase + stairsCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents);
+  const tax      = Math.round(subtotal * TAX);
+  const total    = subtotal + tax;
+  const deposit  = total; // 100% upfront
+
+  const heavyCount = specialEntries.reduce((s,[,qty]) => s + qty, 0);
+  return { base, stairsCents, carryCents, heavyCents, distanceCents, stagingCents, packingCents, miles, isLongDistance, subtotal, tax, total, deposit, flights, longCarry, heavyCount };
+}
+
+function fmtMoney(cents){ return '$' + (cents/100).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}); }
+
+function renderQuoteBlock(){
+  const q = calcQuote();
+  if(!q) return `<div style="background:var(--amber-soft);border:1.5px dashed var(--amber);border-radius:12px;padding:14px 16px;margin-bottom:14px;font-size:13px;color:var(--ink2);">
+    📦 Answer <b>Q5 (What are we moving?)</b> to get an instant estimate.
+  </div>`;
+
+  const rows = [
+    q.isLongDistance ? `<div class="q-row"><span>Long distance${q.miles >= 50 && S.answers['service'] !== 'Long distance' ? ' (auto — '+q.miles+' mi)' : ''} (50%)</span><span>+${fmtMoney(Math.round(q.base * 0.5))}</span></div>` : '',
+    q.distanceCents ? `<div class="q-row"><span>Distance (${q.miles} mi, ${q.miles - DISTANCE_FREE_MILES} over ${DISTANCE_FREE_MILES} free)</span><span>+${fmtMoney(q.distanceCents)}</span></div>` : '',
+    q.stairsCents  ? `<div class="q-row"><span>Stairs (${q.flights} flight${q.flights>1?'s':''})</span><span>+${fmtMoney(q.stairsCents)}</span></div>` : '',
+    q.carryCents   ? `<div class="q-row"><span>Long carry</span><span>+${fmtMoney(q.carryCents)}</span></div>` : '',
+    q.stagingCents ? `<div class="q-row"><span>Home staging (+30%)</span><span>+${fmtMoney(q.stagingCents)}</span></div>` : '',
+    q.packingCents ? `<div class="q-row"><span>Packing service (+25%)</span><span>+${fmtMoney(q.packingCents)}</span></div>` : '',
+    q.heavyCents   ? `<div class="q-row"><span>Special items (${q.heavyCount})</span><span>+${fmtMoney(q.heavyCents)}</span></div>${Object.entries(S.answers['stuff']?.special||{}).filter(([k])=>k!=='Nope — just regular stuff').filter(([,v])=>v>1).map(([k,v])=>`<div class="q-row" style="font-size:12px;color:var(--ink3);padding-left:10px"><span>${esc(k)} ×${v}</span><span>${fmtMoney((HEAVY_PRICES[k]||7500)*v)}</span></div>`).join('')}` : '',
+    `<div class="q-row"><span>Tax (8.25%)</span><span>+${fmtMoney(q.tax)}</span></div>`,
+  ].filter(Boolean).join('');
+
+  return `<div style="background:var(--amber-soft);border:2px solid var(--amber);border-radius:14px;padding:16px;margin-bottom:14px;">
+    <div style="font-size:11px;font-weight:700;color:var(--amber-deep);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">Your estimate</div>
+    <div class="q-row" style="margin-bottom:6px"><span style="font-size:14px;color:var(--ink2)">Base (${S.answers['stuff']?.size})</span><span style="font-size:14px">${fmtMoney(q.base)}</span></div>
+    ${rows}
+    <div style="border-top:1.5px solid var(--amber);margin:10px 0 8px"></div>
+    <div style="display:flex;justify-content:space-between;align-items:baseline">
+      <span style="font-size:18px;font-weight:800;font-family:'Fraunces',serif;color:var(--ink)">Total</span>
+      <span style="font-size:26px;font-weight:800;font-family:'Fraunces',serif;color:var(--ink)">${fmtMoney(q.total)}</span>
+    </div>
+    <div style="font-size:12px;color:var(--ink3);margin-top:4px">Full payment due at booking · 80% refundable if cancelled 48+ hours before move</div>
+    <div style="font-size:11px;color:var(--ink3);margin-top:6px;line-height:1.4;font-style:italic">* This estimate is subject to change based on actual move conditions. If anything about your move changes, please call or text <a href="tel:5127771628" style="color:var(--amber-deep);font-weight:600">512-777-1628</a> for a manual review of your quote.</div>
+  </div>`;
+}
+
+function showLegalModal(type) {
+  const isTerms = type === 'terms';
+  const title = isTerms ? 'Moving Services Agreement' : 'Privacy Policy';
+  const body = isTerms ? `
+<p><strong>Last updated: May 27, 2026</strong></p>
+<h3>1. Scope of Services</h3>
+<p>Fast Fix Work LLC ("Company," "we," "us") agrees to provide loading, transporting, and unloading of the Customer's belongings as specified ("Services"). The Company will provide appropriately trained personnel and necessary equipment for the move.</p>
+<h3>2. Fees and Payment Terms</h3>
+<p><strong>Hourly rate.</strong> Where applicable, the Customer agrees to pay the Company the agreed hourly rate, which includes workers, a truck or trailer as needed, applicable taxes, fees, and charges. Otherwise, the agreed flat rate applies.</p>
+<p><strong>Payment.</strong> The full estimated total is collected via credit card at the time of booking. Payment in full secures the Customer's appointment. An appointment is not secured without payment.</p>
+<p><strong>Refund policy.</strong> If the Customer cancels more than 48 hours before the scheduled move date, 80% of the amount paid will be refunded. Cancellations within 48 hours of the scheduled move date are non-refundable. No-shows forfeit the full payment.</p>
+<p><strong>Price adjustments.</strong> The online estimate is based on information provided by the Customer and is subject to change. The final price may increase if the actual scope of work (number of items, stairs, distance, time) differs from what was described. The Company will communicate any changes before proceeding.</p>
+<p><strong>Payment processing.</strong> Credit card payments are processed securely by Stripe, Inc. The Company does not store, access, or retain full credit card numbers. All payment data is handled in accordance with PCI-DSS standards by Stripe. By providing payment information, the Customer authorizes the Company to charge the card for the full estimated amount.</p>
+<h3>3. Customer Responsibilities</h3>
+<p>• <strong>Packing:</strong> The Customer is responsible for ensuring all items are properly packed and ready for transport unless packing services are included.<br>
+• <strong>Disclosure:</strong> The Customer must disclose any fragile, valuable, or hazardous items before the move.<br>
+• <strong>Premises access:</strong> The Customer must ensure adequate access to the premises for the moving vehicle and personnel.<br>
+• <strong>Hostile environment:</strong> The Company reserves the right to terminate services immediately in the event of a hostile or verbally abusive environment. Movers shall not be required to work under such conditions.</p>
+<h3>4. Prohibited Items</h3>
+<p>The Company does not transport, and is not liable for damage, injury, or loss caused by inflammable, explosive, or hazardous materials, including gasoline, propane tanks, fireworks, chemicals, and aerosol cans. Customers must ensure these items are not included in their belongings. If discovered, such items will be removed, and delays or additional charges may apply. By using our services, the Customer accepts full responsibility for compliance.</p>
+<h3>5. Limitations of Liability</h3>
+<p><strong>Packing issues:</strong> The Company is not liable for damages to items not properly packed by the Customer. The Company is not responsible for items that were packed before our service or were already damaged.</p>
+<p><strong>Cheap, particleboard &amp; IKEA-style furniture:</strong> The Company is not responsible for damage to furniture made of particleboard, pressboard, MDF, or similar composite materials (including but not limited to IKEA, Wayfair, and similar flat-pack/budget furniture). These items are inherently fragile and not designed to withstand the stress of disassembly, reassembly, or transport. Customers move these items at their own risk.</p>
+<p><strong>Pre-existing damage:</strong> The Company is not responsible for items that were damaged, worn, or in weakened condition prior to the move. This includes furniture with existing cracks, loose joints, chipped veneer, water damage, or structural wear.</p>
+<p><strong>Waiver of liability:</strong> If the Company advises the Customer that an item may cause damage due to not fitting in the desired location, the Customer waives all claims for property or item damage resulting from attempting to place it there.</p>
+<p><strong>Delays:</strong> The Company is not liable for delays caused by circumstances beyond its control, including but not limited to weather, traffic, or road conditions. Delays may also occur if required information (stairs, quantity of items) is not provided in advance.</p>
+<p><strong>Item liability:</strong> The Company's liability for loss or damage is limited to $0.60 per pound per item unless otherwise agreed upon in writing. Minor damages such as tiny scratches are not reimbursable. Repairs take priority over the $0.60/lb liability.</p>
+<p><strong>Exclusions:</strong> No coverage for items not packed by the mover, pressboard/particleboard furniture, fragile items not crated, or electronics left inside drawers.</p>
+<p><strong>Claims:</strong> Customers must prove: (i) the item was in good condition before the move; (ii) the item was damaged while in the Company's custody; (iii) the damage was not due to improper packing by the Customer, inherent defect, pre-existing damage, or acts of God. Claims must be submitted within 72 hours of job completion.</p>
+<h3>6. Undisclosed Items</h3>
+<p>The Company shall be obligated to transport only those items disclosed prior to the commencement of services. The Company reserves the right to refuse movement of any undisclosed or additional items.</p>
+<h3>7. Safety</h3>
+<p>Customer shall not be responsible for any injury sustained by the Company's employees while performing moving services, except where such injury is caused by hazardous conditions on the Customer's premises that the Customer knew, or reasonably should have known, existed and failed to remedy or disclose.</p>
+<h3>8. Dispute Resolution</h3>
+<p>Both parties agree to resolve disputes through good faith negotiations. The Customer must provide the Company with written notice of any dispute within 72 hours, including a detailed description of the issue.</p>
+<h3>9. Cancellation and Rescheduling</h3>
+<p><strong>By Customer:</strong> Cancellations must be made in writing (email or text). Cancellations more than 48 hours before the scheduled move date receive an 80% refund. Cancellations within 48 hours of the scheduled move date are non-refundable. No-shows forfeit the full payment.</p>
+<p><strong>By Company:</strong> The Company reserves the right to cancel or reschedule due to weather, safety concerns, equipment issues, or circumstances beyond its control. In such cases, the Customer's payment will be fully credited toward the rescheduled date or refunded.</p>
+<p><strong>Rescheduling:</strong> The Customer may reschedule at no additional charge with at least 48 hours' notice, subject to availability. The original payment carries over to the new date.</p>
+<h3>10. Governing Law</h3>
+<p>This Agreement is governed by the laws of the State of Texas. Any disputes shall be resolved in the state or federal courts located in Travis County, Texas.</p>
+<h3>11. Contact</h3>
+<p>Fast Fix Work LLC · Austin, Texas · support@fastfixwork.com</p>
+` : `
+<p><strong>Last updated: May 20, 2026</strong></p>
+<h3>1. Who We Are</h3>
+<p>Fast Fix Work ("FFW") operates a two-sided marketplace connecting customers with independent movers in the Austin, Texas area. Contact: support@fastfixwork.com.</p>
+<h3>2. Information We Collect</h3>
+<p><strong>Quote request info.</strong> When you submit a quote request, we collect your name, email, phone number, addresses, move details, photos, and scheduling preferences.</p>
+<p><strong>Account info.</strong> If you create an app account, we also collect a profile photo (optional) and payment information (processed by Stripe — we never store card numbers).</p>
+<p><strong>Location data.</strong> Addresses are used for job matching and mapping. Movers who tap "I'm on my way" share real-time GPS with the matched customer for that trip only.</p>
+<p><strong>Messages.</strong> Chat messages between customers and movers are stored to deliver them within the app.</p>
+<h3>3. How We Use Your Information</h3>
+<p>• Match you with available movers based on location and job requirements.<br>
+• Generate a price estimate for your move.<br>
+• Contact you about your quote request via phone, text, or email.<br>
+• Process the full booking payment via Stripe.<br>
+• Send push notifications about job status (if you grant permission).<br>
+• Improve the app through aggregated, anonymized analytics.</p>
+<h3>4. Information We Share</h3>
+<p><strong>With movers.</strong> When a job is matched, your name, phone, and job address are visible to the assigned mover.</p>
+<p><strong>With Stripe.</strong> Transaction details are shared with Stripe, Inc. for payment processing (stripe.com/privacy).</p>
+<p><strong>With Supabase.</strong> Our database and storage is hosted by Supabase, Inc. on servers in the United States.</p>
+<p><strong>Legal requirements.</strong> We may disclose information if required by law or to protect the rights and safety of our users.</p>
+<h3>5. Data Retention</h3>
+<p>We retain your information as long as needed to provide our services and comply with legal obligations. You can request deletion of your account and associated data by emailing support@fastfixwork.com.</p>
+<h3>6. Your Rights</h3>
+<p>You may request access to, correction of, or deletion of your personal information. Texas residents may have additional rights under the Texas Data Privacy and Security Act. Contact support@fastfixwork.com.</p>
+<h3>7. Security</h3>
+<p>We use industry-standard security measures including encrypted connections (HTTPS/TLS), Supabase Row Level Security policies, and secure authentication. No system is 100% secure.</p>
+<h3>8. Children</h3>
+<p>Our services are not directed to individuals under 18. We do not knowingly collect information from minors.</p>
+<h3>9. Contact</h3>
+<p>Fast Fix Work · Austin, Texas · support@fastfixwork.com</p>
+`;
+
+  const overlay = document.createElement('div');
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(26,23,20,0.5);display:flex;align-items:center;justify-content:center;z-index:200;animation:overlayIn .18s ease';
+  overlay.innerHTML = `
+    <div style="background:var(--card);border-radius:20px;padding:28px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 16px 48px rgba(26,23,20,0.2);animation:modalIn .28s cubic-bezier(0.16,1,0.3,1);position:relative;font-size:14px;color:var(--ink2);line-height:1.6" onclick="event.stopPropagation()">
+      <button style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:16px;border:none;background:var(--surface);cursor:pointer;font-size:16px;color:var(--ink2)" id="legal-close">&times;</button>
+      <h2 style="font-size:20px;font-weight:700;color:var(--ink);margin-bottom:16px">${title}</h2>
+      ${body}
+    </div>`;
+  overlay.addEventListener('click', () => overlay.remove());
+  overlay.querySelector('#legal-close').addEventListener('click', () => overlay.remove());
+  document.body.appendChild(overlay);
+}
+
+function showReview(){
+  const total = QUESTIONS.length;
+  const answered = QUESTIONS.filter(isAnswered).length;
+  const skipped  = QUESTIONS.filter(q => S.skipped[q.id]).length;
+  const notSure  = QUESTIONS.filter(q => S.notSure[q.id]).length;
+
+  const rows = QUESTIONS.map(q => {
+    const v = formatAnswer(q);
+    return `<div class="review-row">
+      <div class="rk">Q${q.num}. ${q.title}</div>
+      <div class="rv${v?'':' empty'}">${v || '—'}</div>
+      <div class="edit-link" data-go="${QUESTIONS.indexOf(q)}">edit</div>
+    </div>`;
+  }).join('');
+
+  stackEl.innerHTML = `
+    <div class="card front slide-r" style="overflow-y:auto">
+      <div class="qnum">Review · last step</div>
+      <div class="qtitle">Look good?</div>
+      <div class="review-list">${rows}</div>
+      ${renderQuoteBlock()}
+      <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;margin-top:8px;background:var(--surface);border-radius:10px;cursor:pointer;font-size:13px;color:var(--ink2);line-height:1.45;user-select:none">
+        <input type="checkbox" id="agree-cb" style="margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:var(--amber);cursor:pointer" />
+        <span>I agree to the <a href="#" id="terms-link" style="color:var(--amber-deep);font-weight:600;text-decoration:underline">Moving Services Agreement</a> and <a href="#" id="privacy-link" style="color:var(--amber-deep);font-weight:600;text-decoration:underline">Privacy Policy</a>. I authorize Fast Fix Work to charge my card for the full estimated amount. 80% is refundable if cancelled 48+ hours before the move; non-refundable within 48 hours. The estimate may change based on actual move conditions. The Company is not responsible for damage to particleboard, IKEA-style, or pre-damaged items.</span>
+      </label>
+      <div class="cfoot" style="margin-top:10px">
+        <button class="skip-btn" id="back-to-qs">&larr; back</button>
+        <button class="submit-btn" id="submit-btn" disabled>Continue to payment &rarr;</button>
+      </div>
+    </div>`;
+
+  stackEl.querySelectorAll('[data-go]').forEach(e => {
+    e.addEventListener('click', () => goTo(+e.dataset.go));
+  });
+  document.getElementById('back-to-qs').addEventListener('click', () => goTo(QUESTIONS.length - 1));
+  const submitBtn = document.getElementById('submit-btn');
+  const agreeCb = document.getElementById('agree-cb');
+  agreeCb.addEventListener('change', () => { submitBtn.disabled = !agreeCb.checked; });
+  // Also listen for click on the label area in case change doesn't fire on some mobile browsers
+  agreeCb.addEventListener('click', () => { setTimeout(() => { submitBtn.disabled = !agreeCb.checked; }, 10); });
+  submitBtn.addEventListener('click', handleSubmit);
+  document.getElementById('terms-link').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showLegalModal('terms'); });
+  document.getElementById('privacy-link').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showLegalModal('privacy'); });
+
+  backBtn.disabled = false;
+  nextBtn.disabled = true;
+  nextBtn.style.opacity = '.3';
+  // Hide mobile nav bar so it doesn't overlap the review card buttons
+  const mobNav = document.getElementById('mob-nav');
+  if (mobNav) mobNav.style.display = 'none';
+}
+
+// ── Submit to Supabase ───────────────────────────────────────────────────────
+function buildPayload(){
+  const getA = id => S.answers[id];
+  const VALID_SERVICES = new Set(['Local move (same city)','Long distance','Just a few items','Loading / unloading help only','Moving in or out of storage','Rearranging within same address']);
+  const VALID_SIZES    = new Set(['Just a few items','Studio','1 BR','2 BR','3 BR','4+ BR / full house']);
+  const VALID_STAIRS   = new Set(['Ground floor','Stairs','Elevator','Both','Ground floor — easy in/out','Stairs only','Both stairs and elevator']);
+  const VALID_PARKING  = new Set(['Driveway / right at the door','Street parking — short walk','Long walk (100+ ft)','Loading dock / bay','Permit might be needed','Not sure — call me']);
+  const VALID_SPECIAL  = new Set(['Piano','Safe / gun safe','Pool table','Treadmill / Peloton','Big TV (65"+)','Artwork / mirror','Aquarium','Nope — just regular stuff','Not sure']);
+  const VALID_COMMON   = new Set(['Couch / sofa','Bed','Dining set','Dresser','Refrigerator','Washer / dryer','Wardrobe / armoire','Bookshelf']);
+  const VALID_COMMON_ATTRS = new Set(['Heavy (250lb+)','Needs disassembly','Needs wrapping','Upstairs']);
+  const VALID_BOXED    = new Set(['Yes — all boxed','Yes — all boxed and labeled',"Some are, some aren't",'Not yet']);
+  const VALID_PREP     = new Set(['Wrap / pad furniture','Disassemble bed frame(s)','Take apart shelving','Unmount TV','Pack the kitchen','None — ready to go']);
+  const sanitizeEnum = (val, validSet) => (val && validSet.has(val)) ? val : null;
+  const sanitizeMulti = (arr, validSet) => Array.isArray(arr) ? arr.filter(x => validSet.has(x)).slice(0, 20) : [];
+  const sanitizeSpecial = (obj, validSet) => {
+    if (!obj || typeof obj !== 'object') return [];
+    // Flatten to array with repeats: {Piano:2} → ['Piano','Piano']
+    const result = [];
+    for (const [k, v] of Object.entries(obj)) {
+      if (!validSet.has(k)) continue;
+      const qty = Math.min(Math.max(1, parseInt(v) || 1), 20);
+      for (let i = 0; i < qty; i++) result.push(k);
+    }
+    return result.slice(0, 50);
+  };
+  const sanitizeCommonAttrs = (obj, validItems, validAttrs) => {
+    if (!obj || typeof obj !== 'object') return null;
+    const result = {};
+    for (const [k, v] of Object.entries(obj)) {
+      if (!validItems.has(k) || !v || typeof v !== 'object') continue;
+      const sub = {};
+      for (const [a, c] of Object.entries(v)) {
+        if (!validAttrs.has(a)) continue;
+        const n = Math.min(Math.max(0, parseInt(c) || 0), 50);
+        if (n > 0) sub[a] = n;
+      }
+      if (Object.keys(sub).length) result[k] = sub;
+    }
+    return Object.keys(result).length ? result : null;
+  };
+
+  const contact   = getA('contact') || {};
+  const addresses = getA('addresses') || {};
+  const stuff     = getA('stuff') || {};
+  const access    = getA('access') || {};
+  const extras    = getA('extras') || {};
+  const photos    = getA('photos') || {};
+
+  return {
+    id:                 crypto.randomUUID(),
+    name:               clamp(stripHtml(contact.name), 120) || null,
+    phone:              clamp(stripHtml(contact.phone), 20)  || null,
+    email:              clamp(stripHtml(contact.email), 200) || null,
+    service_type:       sanitizeEnum(getA('service'), VALID_SERVICES),
+    preferred_date:     clamp(stripHtml(getA('date')?.date), 20) || null,
+    preferred_time:     clamp(stripHtml(getA('date')?.time), 20) || null,
+    pickup_address:     clamp(stripHtml(addresses.pickup?.addr), 300) || null,
+    pickup_place_type:  clamp(stripHtml(addresses.pickup?.place), 60) || null,
+    dropoff_address:    clamp(stripHtml(addresses.dropoff?.addr), 300) || null,
+    dropoff_place_type: clamp(stripHtml(addresses.dropoff?.place), 60) || null,
+    items_size:         sanitizeEnum(stuff.size, VALID_SIZES),
+    items_list:         clamp(stripHtml(stuff.list), 1000) || null,
+    stairs_pickup:      sanitizeEnum(access.stairs_pickup, VALID_STAIRS),
+    stairs_dropoff:     sanitizeEnum(access.stairs_dropoff, VALID_STAIRS),
+    flights_pickup:     (access.stairs_pickup === 'Stairs' || access.stairs_pickup === 'Both') ? Math.min(Math.max(1, parseInt(access.flights_pickup) || 1), 20) : null,
+    flights_dropoff:    (access.stairs_dropoff === 'Stairs' || access.stairs_dropoff === 'Both') ? Math.min(Math.max(1, parseInt(access.flights_dropoff) || 1), 20) : null,
+    parking:            sanitizeEnum(access.parking, VALID_PARKING),
+    special_items:      sanitizeSpecial(stuff.special, VALID_SPECIAL),
+    common_items:       sanitizeSpecial(photos.common, VALID_COMMON),
+    common_item_details: sanitizeCommonAttrs(photos.commonAttrs, VALID_COMMON, VALID_COMMON_ATTRS),
+    items_boxed:        sanitizeEnum(extras.boxed, VALID_BOXED),
+    box_count:          extras.boxed === 'Yes — all boxed' ? Math.min(Math.max(0, parseInt(extras.boxCount) || 0), 200) : null,
+    packing_service:    extras.boxed === 'Not yet' ? (extras.packing !== false) : false,
+    prep_needed:        sanitizeMulti(extras.prep, VALID_PREP),
+    staging:            !!extras.staging,
+    other_notes:        clamp(stripHtml(extras.other), 2000) || null,
+    photo_urls:         [],
+    estimated_price_cents: calcQuote()?.total || null,
+    answers: S.answers,
+    notes:   S.notes,
+  };
+}
+
+// All writes to quote_requests go through a SECURITY DEFINER upsert RPC
+// (save_quote_lead). The anon role has no direct SELECT/UPDATE on the table, so
+// the public anon key can't be used to dump or tamper with leads; the RPC also
+// ignores the payment columns. We keep one stable row id per session so every
+// progressive save upserts the same lead. NOTE: the RPC sets all allow-listed
+// columns from the payload, so callers must always send the FULL payload (a
+// partial payload would null the omitted fields).
+async function saveLead(payload){
+  if(!S.quoteRecordId) S.quoteRecordId = payload.id;
+  payload.id = S.quoteRecordId;
+  return fetch(`${SB_URL}/rest/v1/rpc/save_quote_lead`, {
+    method: 'POST',
+    headers: { 'Authorization':`Bearer ${SB_KEY}`, 'apikey':SB_KEY, 'Content-Type':'application/json', 'Prefer':'return=minimal' },
+    body: JSON.stringify({ p_data: payload }),
+    keepalive: true,
+  });
+}
+
+async function uploadPhotos(recordId) {
+  const photoFiles = S.photoFiles['photos'] || [];
+  if(!photoFiles.length) return;
+  const uploads = photoFiles.slice(0, MAX_FILES_TOTAL).map(async file => {
+    const ext = file.name.split('.').pop() || 'jpg';
+    const path = `intake/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    const r = await fetch(`${SB_URL}/storage/v1/object/quote-photos/${path}`, {
+      method: 'POST',
+      headers: { 'Authorization':`Bearer ${SB_KEY}`, 'apikey':SB_KEY, 'Content-Type': file.type || 'image/jpeg' },
+      body: file,
+    });
+    return r.ok ? `${SB_URL}/storage/v1/object/public/quote-photos/${path}` : null;
+  });
+  const results = await Promise.allSettled(uploads);
+  const photoUrls = results.filter(r => r.status === 'fulfilled' && r.value).map(r => r.value);
+  if(photoUrls.length){
+    // Re-send the full submitted payload with the resolved photo URLs (the RPC
+    // upsert would otherwise null the columns we omit).
+    const payload = buildPayload();
+    payload.status = 'submitted';
+    payload.progress_step = null;
+    payload.photo_urls = photoUrls;
+    await saveLead(payload);
+  }
+}
+
+// Best-effort autosave of partial progress so abandoned forms still show up
+// as "incomplete" leads with the step the person stopped on. Fires once we have
+// contact info (name + phone + email), then again on each step advance.
+async function autosaveProgress(){
+  const contact = S.answers['contact'] || {};
+  if(!contact.name || !contact.phone || !contact.email) return;
+  if(S.submitting) return; // don't race the final submit
+  const stepTitle = QUESTIONS[S.idx]?.title || '';
+  try {
+    const payload = buildPayload();
+    payload.status = 'incomplete';
+    payload.progress_step = stepTitle;
+    payload.photo_urls = []; // photos upload only on final submit
+    await saveLead(payload);
+  } catch(e){ /* best-effort — never block the user */ }
+}
+
+async function handleSubmit(){
+  if(S.submitting) return;
+
+  // Bot honeypot
+  const honeypot = document.getElementById('hp-field');
+  if(honeypot && honeypot.value) { showConfirmation(); return; }
+
+  if(!rateLimitOk()){
+    alert('Too many submissions. Please call us directly at 512-777-1628.');
+    return;
+  }
+
+  const btn = document.getElementById('submit-btn');
+  if(btn) btn.disabled = true, btn.textContent = 'Saving…';
+  S.submitting = true;
+
+  try {
+    const payload = buildPayload();
+    // Form completed — no longer an abandoned/incomplete lead.
+    payload.status = 'submitted';
+    payload.progress_step = null;
+    // Upsert the lead via the SECURITY DEFINER RPC (works whether this is the
+    // first write or a re-submit after going back from payment — same row id).
+    const res = await saveLead(payload);
+    if(!res.ok) throw new Error(await res.text());
+
+    // Upload photos in background
+    uploadPhotos(S.quoteRecordId);
+
+    // Show payment step
+    const quote = calcQuote();
+    if(quote && quote.deposit >= 50) {
+      showPaymentStep(S.quoteRecordId, quote);
+    } else {
+      showConfirmation();
+    }
+  } catch(err){
+    console.error('Submit error:', err);
+    if(btn){ btn.disabled = false; btn.textContent = 'Try again'; }
+    S.submitting = false;
+    alert('Something went wrong — please call us at 512-777-1628 and we\'ll take it from there.');
+  }
+}
+
+// ── Stripe payment step ──────────────────────────────────────────────────────
+// Restore the form chrome that showPaymentStep() hides, so the user can return to review.
+function restorePaymentChrome() {
+  const mobNav = document.getElementById('mob-nav');
+  if (mobNav) mobNav.style.display = '';
+  backBtn.style.display = '';
+  nextBtn.style.display = '';
+  stepperEl.style.display = '';
+  document.querySelector('.pbar-wrap').style.display = '';
+  stageEl.querySelectorAll('.nav').forEach(n => n.style.display = '');
+  stackEl.style.position = '';
+  stackEl.style.height = '';
+  stackEl.style.width = '';
+  stackEl.style.maxWidth = '';
+}
+
+async function showPaymentStep(recordId, quote) {
+  // Hide all chrome — stepper, progress, nav (but keep stageEl visible since it holds stackEl)
+  const mobNav = document.getElementById('mob-nav');
+  if (mobNav) mobNav.style.display = 'none';
+  backBtn.style.display = 'none';
+  nextBtn.style.display = 'none';
+  stepperEl.style.display = 'none';
+  document.querySelector('.pbar-wrap').style.display = 'none';
+  // Hide the side nav labels but keep stageEl visible
+  stageEl.querySelectorAll('.nav').forEach(n => n.style.display = 'none');
+
+  // Use stackEl as a normal flow container instead of position:relative fixed-height
+  stackEl.style.position = 'static';
+  stackEl.style.height = 'auto';
+  stackEl.style.width = '100%';
+  stackEl.style.maxWidth = '480px';
+  stackEl.innerHTML = `
+    <div style="background:var(--card);border:1.5px solid var(--line2);border-radius:var(--radius);padding:26px 28px;box-shadow:var(--shadow);animation:slideR .32s cubic-bezier(0.16,1,0.3,1)">
+      <div class="qnum">Payment</div>
+      <div class="qtitle">Secure your booking</div>
+      <div class="deposit-summary">
+        <div class="ds-row"><span>Estimated total</span><span>${fmtMoney(quote.total)}</span></div>
+        <div class="ds-row total"><span>Due now</span><span>${fmtMoney(quote.total)}</span></div>
+        <div class="ds-note">80% refundable if cancelled 48+ hours before your move; non-refundable within 48 hours.</div>
+        <div class="ds-note" style="font-style:italic">* Estimate subject to change based on actual move conditions. Call or text <a href="tel:5127771628" style="color:var(--amber-deep);font-weight:600">512-777-1628</a> if anything about your move changes.</div>
+      </div>
+      <div id="payment-element"></div>
+      <div class="pay-error" id="pay-error"></div>
+      <div class="cfoot" style="margin-top:10px">
+        <button class="skip-btn" id="pay-back">&larr; back</button>
+        <button class="submit-btn" id="pay-btn" disabled>Pay ${fmtMoney(quote.deposit)} &rarr;</button>
+      </div>
+    </div>`;
+
+  document.getElementById('pay-back').addEventListener('click', () => {
+    restorePaymentChrome();
+    S.submitting = false;
+    showReview();
+  });
+
+  if (!stripePromise) {
+    console.error('Stripe not loaded');
+    const payError = document.getElementById('pay-error');
+    payError.textContent = 'Payment form could not load. Tap "Skip" to continue — we\'ll collect payment by phone.';
+    payError.style.display = 'block';
+    return;
+  }
+
+  const payBtn = document.getElementById('pay-btn');
+  const payError = document.getElementById('pay-error');
+
+  try {
+    // Create PaymentIntent via edge function
+    const piRes = await fetch(`${SB_URL}/functions/v1/create-quote-payment`, {
+      method: 'POST',
+      headers: { 'Content-Type':'application/json', 'Authorization':`Bearer ${SB_KEY}`, 'apikey':SB_KEY },
+      body: JSON.stringify({ quote_request_id: recordId }),
+    });
+    if (!piRes.ok) throw new Error(await piRes.text());
+    const { clientSecret, lead_number } = await piRes.json();
+    if (lead_number) S.leadNumber = lead_number;
+
+    // Mount Stripe Payment Element
+    const elements = stripePromise.elements({
+      clientSecret,
+      appearance: {
+        theme: 'stripe',
+        variables: {
+          colorPrimary: '#C98B3F',
+          colorBackground: '#FFFFFF',
+          colorText: '#1A1714',
+          colorDanger: '#c0392b',
+          fontFamily: 'Inter, system-ui, sans-serif',
+          borderRadius: '10px',
+        },
+      },
+    });
+    const paymentElement = elements.create('payment');
+    paymentElement.mount('#payment-element');
+
+    paymentElement.on('ready', () => { payBtn.disabled = false; });
+    paymentElement.on('change', (event) => {
+      if (event.complete) {
+        payBtn.disabled = false;
+        payError.style.display = 'none';
+      }
+    });
+
+    payBtn.addEventListener('click', async () => {
+      payBtn.disabled = true;
+      payBtn.textContent = 'Processing…';
+      payError.style.display = 'none';
+
+      const { error } = await stripePromise.confirmPayment({
+        elements,
+        confirmParams: {
+          return_url: window.location.href,
+        },
+        redirect: 'if_required',
+      });
+
+      if (error) {
+        payError.textContent = error.message;
+        payError.style.display = 'block';
+        payBtn.disabled = false;
+        payBtn.textContent = `Pay ${fmtMoney(quote.deposit)} \u2192`;
+      } else {
+        // Payment succeeded
+        showConfirmation(true);
+      }
+    });
+
+  } catch(err) {
+    console.error('Payment setup error:', err);
+    payError.textContent = 'Could not load payment form: ' + (err.message || err) + '. You can skip — we\'ll call you.';
+    payError.style.display = 'block';
+  }
+}
+
+function showConfirmation(paid){
+  stageEl.style.display = 'none';
+  stepperEl.style.display = 'none';
+  document.querySelector('.pbar-wrap').style.display = 'none';
+  const mobNav = document.getElementById('mob-nav');
+  if (mobNav) mobNav.style.display = 'none';
+  backBtn.style.display = 'none';
+  nextBtn.style.display = 'none';
+  stackEl.innerHTML = '';
+  stackEl.style.display = 'none';
+  const leadRef = S.leadNumber ? `<div style="margin-top:12px;font-size:14px;color:var(--ink2)">Your reference number: <strong style="color:var(--amber-deep);font-size:18px">#${S.leadNumber}</strong></div>` : '';
+  if (paid) {
+    confirmEl.querySelector('.confirm-icon').textContent = '✅';
+    confirmEl.querySelector('.confirm-title').textContent = 'Booking confirmed!';
+    confirmEl.querySelector('.confirm-sub').innerHTML = 'Your payment has been received. We\'ll reach out shortly to finalize the details of your move.' + leadRef;
+  } else {
+    confirmEl.querySelector('.confirm-sub').innerHTML = 'We received your info and will contact you shortly to get your move set up.' + leadRef;
+  }
+  confirmEl.classList.add('visible');
+}
+
+// ── Keyboard nav ─────────────────────────────────────────────────────────────
+window.addEventListener('keydown', e => {
+  if(e.target.matches('input,textarea,select')) return;
+  if(e.key === 'ArrowRight' || e.key === 'Enter') goNext();
+  if(e.key === 'ArrowLeft') goBack();
+});
+
+nextBtn.addEventListener('click', goNext);
+backBtn.addEventListener('click', goBack);
+
+// ── Boot ─────────────────────────────────────────────────────────────────────
+// Handle Stripe redirect return (3D Secure etc)
+(async function checkStripeReturn() {
+  const params = new URLSearchParams(window.location.search);
+  const clientSecret = params.get('payment_intent_client_secret');
+  if (clientSecret && stripePromise) {
+    const { paymentIntent } = await stripePromise.retrievePaymentIntent(clientSecret);
+    if (paymentIntent && paymentIntent.status === 'succeeded') {
+      showConfirmation(true);
+      window.history.replaceState({}, '', window.location.pathname);
+      return;
+    }
+  }
+})();
+renderAll();
+initMobNav();
+
+// Wire quick photo input — files always go into the dedicated photos question bucket
+document.getElementById('photo-quick-input').addEventListener('change', function() {
+  const photosQ = QUESTIONS.find(x => x.type === 'photos');
+  if (photosQ && this.files.length) {
+    handleFiles(photosQ, this.files);
+    this.value = ''; // reset so same file can be added again
+  }
+});
+
+})();
+</script>
+</body>
+</html>

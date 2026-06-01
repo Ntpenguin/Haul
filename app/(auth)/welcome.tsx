@@ -243,6 +243,27 @@ export default function WelcomeScreen() {
           </Text>
         </Text>
       </View>
+
+      {/* Legal */}
+      <View style={{ marginTop: 20, paddingHorizontal: 24, paddingBottom: 8 }}>
+        <Text style={{ textAlign: 'center', fontSize: 12, color: colors.ink4, lineHeight: 18 }}>
+          By continuing you agree to our{' '}
+          <Text
+            style={{ color: colors.ink3, textDecorationLine: 'underline' }}
+            onPress={() => router.push('/terms')}
+          >
+            Terms & Conditions
+          </Text>
+          {' '}and{' '}
+          <Text
+            style={{ color: colors.ink3, textDecorationLine: 'underline' }}
+            onPress={() => router.push('/privacy-policy')}
+          >
+            Privacy Policy
+          </Text>
+          .
+        </Text>
+      </View>
     </ScrollView>
   );
 }

@@ -37,7 +37,14 @@ export default function SignInScreen() {
       }
       router.replace('/(customer)/home');
     } catch (err: any) {
-      setError(err.message || 'Sign in failed');
+      const msg: string = err.message || '';
+      if (msg.toLowerCase().includes('email not confirmed') || msg.toLowerCase().includes('not verified')) {
+        // Resend confirmation and redirect to OTP screen
+        await supabase.auth.resend({ type: 'signup', email });
+        router.replace({ pathname: '/(auth)/verify-otp', params: { email, role: 'customer' } });
+        return;
+      }
+      setError(msg || 'Sign in failed');
     } finally {
       setLoading(false);
     }

@@ -25,7 +25,7 @@ serve(async (req) => {
   );
   const { error: deleteError } = await adminClient.auth.admin.deleteUser(user.id);
   if (deleteError) {
-    return new Response(JSON.stringify({ error: deleteError.message }), { status: 500 });
+    return new Response(JSON.stringify({ error: 'Account deletion failed' }), { status: 500 });
   }
 
   return new Response(JSON.stringify({ success: true }), { status: 200 });

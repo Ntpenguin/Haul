@@ -109,6 +109,28 @@ export function StepExtras() {
             last
           />
         </Card>
+
+        {/* Staging */}
+        <Card>
+          <AccessRow
+            icon="color-palette-outline"
+            label="Home staging"
+            sub="Crew arranges & styles your furniture (+30%)"
+            control={<Toggle value={draft.staging} onChange={(v) => updateDraft({ staging: v })} />}
+            last
+          />
+        </Card>
+
+        {/* Packing */}
+        <Card>
+          <AccessRow
+            icon="cube-outline"
+            label="Packing service"
+            sub="Crew brings boxes & materials and packs for you (+25%)"
+            control={<Toggle value={draft.packing_service} onChange={(v) => updateDraft({ packing_service: v })} />}
+            last
+          />
+        </Card>
       </View>
     </ScrollView>
   );

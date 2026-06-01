@@ -15,31 +15,25 @@ import { StepExtras } from '../../../components/wizard/StepExtras';
 import { StepSchedule } from '../../../components/wizard/StepSchedule';
 import { StepContact } from '../../../components/wizard/StepContact';
 import { StepReview } from '../../../components/wizard/StepReview';
-import { StepCategory } from '../../../components/wizard/StepCategory';
 import { formatCents, priceFor } from '../../../lib/pricing';
 
-function getSteps(homeSize: string, category: string) {
-  // Non-moving categories use a simplified flow
-  if (category !== 'moving') {
-    return ['category', 'locations', 'schedule', 'contact', 'review'] as const;
-  }
+function getSteps(homeSize: string) {
+  // Category is always 'moving' — other categories are coming soon
   if (homeSize === 'other') {
-    return ['category', 'locations', 'size', 'extras', 'schedule', 'contact', 'review'] as const;
+    return ['locations', 'size', 'extras', 'schedule', 'contact', 'review'] as const;
   }
-  if (homeSize === 'item') {
-    return ['category', 'locations', 'size', 'inventory', 'extras', 'schedule', 'contact', 'review'] as const;
-  }
-  return ['category', 'locations', 'size', 'inventory', 'crew', 'extras', 'schedule', 'contact', 'review'] as const;
+  return ['locations', 'size', 'inventory', 'crew', 'extras', 'schedule', 'contact', 'review'] as const;
 }
 
 export default function NewGigWizard() {
   const router = useRouter();
   const { draft, currentStep, setStep, resetDraft } = useGigDraftStore();
-  const STEPS = getSteps(draft.home_size, draft.gig_category);
-  const { createGig } = useGigs();
+  const STEPS = getSteps(draft.home_size);
+  const { createGig, saveDraft } = useGigs();
   const { uploadGigPhoto } = useUploadPhoto();
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [draftId, setDraftId] = useState<string | null>(null);
 
   const total = STEPS.length;
   const stepName = STEPS[currentStep];
@@ -87,7 +81,7 @@ export default function NewGigWizard() {
       setSubmitting(true);
       try {
         const photos = draft.photos;
-        const gigId = await createGig('flat');
+        const gigId = await createGig('flat', draftId);
 
         // Upload photos in parallel
         if (photos.length > 0) {
@@ -107,7 +101,13 @@ export default function NewGigWizard() {
         setSubmitting(false);
       }
     } else {
-      setStep(currentStep + 1);
+      const nextStep = currentStep + 1;
+      setStep(nextStep);
+      // Persist progress as a draft gig (best-effort) tagged with the step
+      // the user is now on, so abandonment is visible in admin.
+      saveDraft(draftId, STEPS[nextStep]).then((id) => {
+        if (id && id !== draftId) setDraftId(id);
+      });
     }
   }
 
@@ -166,7 +166,6 @@ export default function NewGigWizard() {
 
       {/* Step content */}
       <View style={{ flex: 1 }}>
-        {stepName === 'category' && <StepCategory />}
         {stepName === 'locations' && <StepLocations />}
         {stepName === 'size' && <StepSize />}
         {stepName === 'inventory' && <StepInventory />}

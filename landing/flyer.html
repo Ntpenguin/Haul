@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Fast Fix Work — Moving Flyer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,700;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --amber:      #C98B3F;
+    --amber-deep: #8B5E2B;
+    --cream:      #F2EAD8;
+    --ink:        #1A1209;
+    --ink2:       #4A3C2E;
+    --card:       #FFFFFF;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: #DDD5C4;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+    padding: 48px 24px;
+  }
+
+  /* ── Outer flyer: standard half-letter proportion 5.5×8.5 ── */
+  .flyer {
+    width: 520px;
+    background: var(--card);
+    border-radius: 20px;
+    overflow: hidden;
+    border: 1.5px solid rgba(26,18,9,0.15);
+    box-shadow: 5px 5px 0 rgba(26,18,9,0.15), 0 8px 32px rgba(0,0,0,0.12);
+  }
+
+  /* ── Header (white zone) ─────────────────────────── */
+  .header {
+    padding: 18px 18px 12px;
+  }
+
+  .header-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .logo-box {
+    width: 52px;
+    height: 52px;
+    flex-shrink: 0;
+    background: var(--amber);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 3px 3px 0 var(--amber-deep);
+  }
+
+  .logo-text {
+    font-family: 'Fraunces', serif;
+    font-size: 16px;
+    font-weight: 800;
+    color: #fff;
+  }
+
+  .brand-pill {
+    flex: 1;
+    height: 52px;
+    background: var(--amber);
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    padding: 0 20px;
+    box-shadow: 3px 3px 0 var(--amber-deep);
+  }
+
+  .brand-name {
+    font-family: 'Fraunces', serif;
+    font-size: 27px;
+    font-weight: 800;
+    color: #fff;
+    letter-spacing: -0.3px;
+  }
+
+  .tagline {
+    text-align: right;
+    font-size: 12.5px;
+    font-weight: 500;
+    color: var(--ink2);
+    margin-top: 9px;
+    letter-spacing: 0.02em;
+  }
+
+  /* ── Inner card (cream + dark footer combined) ───── */
+  .inner-card {
+    margin: 0 14px 14px;
+    border: 1.5px solid var(--ink);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  /* ── Content area ────────────────────────────────── */
+  .content {
+    background: var(--cream);
+    padding: 26px 24px 28px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  /* Dot grid — fades from bottom-right */
+  .content::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: radial-gradient(rgba(26,18,9,0.10) 1px, transparent 1px);
+    background-size: 15px 15px;
+    pointer-events: none;
+    mask-image: linear-gradient(to bottom left, rgba(0,0,0,0.55) 0%, transparent 52%);
+    -webkit-mask-image: linear-gradient(to bottom left, rgba(0,0,0,0.55) 0%, transparent 52%);
+  }
+
+  .headline {
+    font-family: 'Fraunces', serif;
+    font-size: 52px;
+    font-weight: 800;
+    color: var(--ink);
+    line-height: 1.0;
+    letter-spacing: -1.5px;
+    margin-bottom: 14px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .subtext {
+    font-size: 14.5px;
+    color: var(--ink2);
+    line-height: 1.65;
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* ── Feature boxes ───────────────────────────────── */
+  .features {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    position: relative;
+    z-index: 1;
+  }
+
+  .feat {
+    background: var(--card);
+    border: 1.5px solid rgba(26,18,9,0.13);
+    border-radius: 11px;
+    padding: 14px 6px 12px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    box-shadow: 2px 2px 0 rgba(26,18,9,0.07);
+  }
+
+  .feat svg {
+    width: 30px;
+    height: 30px;
+    color: var(--amber);
+    flex-shrink: 0;
+  }
+
+  .feat-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    color: var(--ink);
+    line-height: 1.3;
+    text-align: center;
+  }
+
+  /* ── Dark footer ─────────────────────────────────── */
+  .footer {
+    background: var(--ink);
+    padding: 20px 24px 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+  }
+
+  .footer-left {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .phone {
+    font-family: 'Fraunces', serif;
+    font-size: 30px;
+    font-weight: 800;
+    color: var(--amber);
+    letter-spacing: -0.5px;
+    line-height: 1;
+  }
+
+  .website {
+    font-size: 13.5px;
+    font-weight: 500;
+    color: rgba(255,255,255,0.65);
+  }
+
+  /* QR on the right — fully inside footer */
+  .footer-right {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  .qr-box {
+    background: white;
+    border-radius: 8px;
+    padding: 6px;
+  }
+
+  .qr-box img {
+    width: 90px;
+    height: 90px;
+    display: block;
+    border-radius: 3px;
+  }
+
+  .qr-label {
+    font-size: 8px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.5);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    text-align: center;
+  }
+
+  /* ── Print ───────────────────────────────────────── */
+  @media print {
+    @page { size: 5.5in 8.5in; margin: 0.3in; }
+
+    body {
+      background: white;
+      padding: 0;
+      min-height: unset;
+      display: block;
+    }
+
+    .flyer {
+      width: 100%;
+      box-shadow: none;
+    }
+
+    * {
+      -webkit-print-color-adjust: exact !important;
+      print-color-adjust: exact !important;
+    }
+  }
+</style>
+</head>
+<body>
+
+<div class="flyer">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-row">
+      <div class="logo-box">
+        <span class="logo-text">FFX</span>
+      </div>
+      <div class="brand-pill">
+        <span class="brand-name">Fast Fix Work</span>
+      </div>
+    </div>
+    <div class="tagline">Moving Services &middot; Austin, TX</div>
+  </div>
+
+  <!-- Inner card -->
+  <div class="inner-card">
+
+    <!-- Cream content -->
+    <div class="content">
+      <h1 class="headline">Reliable &amp;<br>Friendly Moving<br>Starts Here</h1>
+      <p class="subtext">Apartment, home, and single item moves<br>across Austin. Easy online booking.</p>
+
+      <div class="features">
+
+        <div class="feat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="12" y1="1" x2="12" y2="23"/>
+            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+          <span class="feat-label">Upfront<br>Pricing</span>
+        </div>
+
+        <div class="feat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+            <polyline points="9 12 11 14 15 10"/>
+          </svg>
+          <span class="feat-label">Vetted<br>Local Movers</span>
+        </div>
+
+        <div class="feat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+          <span class="feat-label">Easy Online<br>Booking</span>
+        </div>
+
+        <div class="feat">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+            <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+            <line x1="12" y1="22.08" x2="12" y2="12"/>
+          </svg>
+          <span class="feat-label">Careful<br>with Your Stuff</span>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Dark footer -->
+    <div class="footer">
+      <div class="footer-left">
+        <div class="phone">512-777-1628</div>
+        <div class="website">fastfixwork.com</div>
+      </div>
+      <div class="footer-right">
+        <div class="qr-box">
+          <div style="width:90px;height:90px;border:2px dashed rgba(201,139,63,0.5);border-radius:4px;"></div>
+        </div>
+        <span class="qr-label">Scan for free quote</span>
+      </div>
+    </div>
+
+  </div><!-- /inner-card -->
+
+</div><!-- /flyer -->
+
+</body>
+</html>

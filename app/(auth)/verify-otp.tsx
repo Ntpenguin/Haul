@@ -13,7 +13,7 @@ import { useAuthStore } from '../../stores/auth';
 const CODE_LENGTH = 6;
 
 export default function VerifyOtpScreen() {
-  const { email, role } = useLocalSearchParams<{ email: string; role?: string }>();
+  const { email, role, firstName, lastName, phone } = useLocalSearchParams<{ email: string; role?: string; firstName?: string; lastName?: string; phone?: string }>();
   const router = useRouter();
   const profile = useAuthStore((s) => s.profile);
 
@@ -78,8 +78,24 @@ export default function VerifyOtpScreen() {
         const { error } = await supabase.auth.verifyOtp({ email, token, type });
         if (!error) {
           if (role === 'mover') {
+            // Set role + ensure mover_profile row exists — bio step hasn't run yet when email confirmation required
+            const { data: { session: s } } = await supabase.auth.getSession();
+            if (s?.user?.id) {
+              await supabase.from('profiles').update({ role: 'mover' }).eq('id', s.user.id);
+              await supabase.from('mover_profiles').upsert({ id: s.user.id }, { onConflict: 'id', ignoreDuplicates: true });
+            }
             router.replace('/(mover)/home');
           } else {
+            // Save name + phone for customer if passed through params
+            if (firstName || lastName || phone) {
+              const { data: { session: s } } = await supabase.auth.getSession();
+              if (s?.user?.id) {
+                const updates: any = {};
+                if (firstName || lastName) updates.full_name = `${firstName || ''} ${lastName || ''}`.trim();
+                if (phone) updates.phone = phone;
+                await supabase.from('profiles').update(updates).eq('id', s.user.id);
+              }
+            }
             router.replace('/(customer)/home');
           }
           return;

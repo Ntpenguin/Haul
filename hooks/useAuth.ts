@@ -16,7 +16,13 @@ export function useAuth() {
     });
 
     // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'TOKEN_REFRESHED' && !session) {
+        // Refresh token invalid — clear session cleanly
+        setSession(null);
+        setProfile(null);
+        return;
+      }
       setSession(session);
       if (session?.user) fetchProfile(session.user.id);
       else setProfile(null);
