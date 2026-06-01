@@ -1,6 +1,11 @@
 // Supabase Edge Function — creates a Stripe PaymentIntent for full upfront payment
 // Used by the public intake form (no auth required, uses quote_request_id for verification)
 // Deploy: supabase functions deploy create-quote-payment --no-verify-jwt
+//
+// SECURITY: the charge amount is RECOMPUTED server-side from the saved move
+// details (items_size, stairs, distance, special items, staging, packing, …) —
+// it never trusts the client-supplied estimated_price_cents. This mirrors the
+// intake form's calcQuote() exactly (landing/intake.html). Keep the two in sync.
 
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
@@ -21,6 +26,74 @@ const ALLOWED_ORIGINS = [
   'http://localhost:3000',
   'http://127.0.0.1:3000',
 ];
+
+// ── Pricing constants — MUST stay in sync with landing/intake.html calcQuote() ──
+const BASE_PRICES: Record<string, number> = {
+  'Just a few items': 17500, 'Studio': 35000, '1 BR': 50000,
+  '2 BR': 80000, '3 BR': 135000, '4+ BR / full house': 160000,
+};
+const STAIRS_SURCHARGE = 3000;
+const LONG_CARRY = 5000;
+const HEAVY_PRICES: Record<string, number> = {
+  'Piano': 25000, 'Safe / gun safe': 15000, 'Pool table': 30000,
+  'Treadmill / Peloton': 7500, 'Big TV (65"+)': 7500, 'Aquarium': 7500, 'Artwork / mirror': 7500,
+};
+const HEAVY_DEFAULT = 7500;
+const TAX = 0.0825;
+const DISTANCE_FREE_MILES = 15;
+const DISTANCE_PER_MILE = 125;
+const LONG_DISTANCE_MULTIPLIER = 1.5;
+const LONG_DISTANCE_THRESHOLD = 50;
+const STAGING_SURCHARGE_PCT = 0.30;
+const PACKING_SURCHARGE_PCT = 0.25;
+
+function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
+  const R = 3959; // Earth radius in miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLng = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Recompute the quote total (in cents) from the saved move details. Mirrors
+// calcQuote() in landing/intake.html. Returns null when the move can't be
+// auto-quoted (e.g. custom / unknown size) — same as the intake form.
+function computeQuoteTotalCents(q: any): number | null {
+  const base = BASE_PRICES[q.items_size];
+  if (!base) return null;
+
+  const hasStairs = (lbl: string) => lbl === 'Stairs' || lbl === 'Both';
+  const flightsFrom = hasStairs(q.stairs_pickup) ? Math.max(1, q.flights_pickup || 1) : 0;
+  const flightsTo = hasStairs(q.stairs_dropoff) ? Math.max(1, q.flights_dropoff || 1) : 0;
+  const stairsCents = (flightsFrom + flightsTo) * STAIRS_SURCHARGE;
+
+  const carryCents = (q.parking || '').includes('100+') ? LONG_CARRY : 0;
+
+  const special = Array.isArray(q.special_items) ? q.special_items : [];
+  const heavyCents = special
+    .filter((k: string) => k && k !== 'Nope — just regular stuff')
+    .reduce((s: number, k: string) => s + (HEAVY_PRICES[k] || HEAVY_DEFAULT), 0);
+
+  // Distance from the stored Nominatim coords (answers jsonb). Absent coords → no
+  // distance surcharge, matching the intake form when geocoding is unavailable.
+  const addr = q.answers?.addresses || {};
+  const pu = addr.pickup, dr = addr.dropoff;
+  let miles: number | null = null;
+  if (pu?.lat != null && pu?.lng != null && dr?.lat != null && dr?.lng != null) {
+    miles = Math.round(haversineMiles(pu.lat, pu.lng, dr.lat, dr.lng));
+  }
+  const distanceCents = (miles && miles > DISTANCE_FREE_MILES) ? (miles - DISTANCE_FREE_MILES) * DISTANCE_PER_MILE : 0;
+
+  const isLongDistance = q.service_type === 'Long distance' || (miles != null && miles >= LONG_DISTANCE_THRESHOLD);
+  const adjustedBase = base * (isLongDistance ? LONG_DISTANCE_MULTIPLIER : 1);
+
+  const stagingCents = q.staging ? Math.round(adjustedBase * STAGING_SURCHARGE_PCT) : 0;
+  const packingCents = q.packing_service ? Math.round(adjustedBase * PACKING_SURCHARGE_PCT) : 0;
+
+  const subtotal = Math.round(adjustedBase + stairsCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents);
+  const tax = Math.round(subtotal * TAX);
+  return subtotal + tax;
+}
 
 serve(async (req) => {
   const origin = req.headers.get('origin') || '';
@@ -46,11 +119,34 @@ serve(async (req) => {
       );
     }
 
-    // Verify the quote request exists
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Rate limit PaymentIntent creation per client IP to curb abuse / Stripe cost.
+    // Fails open if the limiter RPC isn't available (e.g. migration not yet run).
+    const clientIp = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || quote_request_id;
+    const { data: rlAllowed, error: rlError } = await supabase.rpc('check_rate_limit', {
+      p_bucket: 'create-quote-payment',
+      p_key: clientIp,
+      p_max: 12,
+      p_window_seconds: 3600,
+    });
+    if (rlError) {
+      console.warn('Rate limiter unavailable, allowing request:', rlError.message);
+    } else if (rlAllowed === false) {
+      return new Response(
+        JSON.stringify({ error: 'Too many attempts. Please wait a few minutes and try again.' }),
+        { status: 429, headers },
+      );
+    }
+
+    // Load the lead with every column needed to recompute the price server-side.
     const { data: quote, error: quoteError } = await supabase
       .from('quote_requests')
-      .select('id, name, email, estimated_price_cents, payment_status, lead_number')
+      .select(
+        'id, name, email, lead_number, payment_status, estimated_price_cents, ' +
+        'items_size, service_type, stairs_pickup, stairs_dropoff, flights_pickup, ' +
+        'flights_dropoff, parking, special_items, staging, packing_service, answers',
+      )
       .eq('id', quote_request_id)
       .single();
 
@@ -61,25 +157,7 @@ serve(async (req) => {
       );
     }
 
-    // Use server-side price — never trust client-sent amounts.
-    // Customer pays 100% upfront; mover is paid out after the job.
-    const total_cents = quote.estimated_price_cents;
-    if (!total_cents || total_cents < 50) {
-      return new Response(
-        JSON.stringify({ error: 'Quote has no valid price' }),
-        { status: 400, headers },
-      );
-    }
-
-    // Cap at reasonable max ($50,000 job)
-    if (total_cents > 5000000) {
-      return new Response(
-        JSON.stringify({ error: 'Amount exceeds maximum' }),
-        { status: 400, headers },
-      );
-    }
-
-    // Don't allow double-payment
+    // Don't allow double-payment.
     if (quote.payment_status === 'paid') {
       return new Response(
         JSON.stringify({ error: 'Already paid' }),
@@ -87,7 +165,32 @@ serve(async (req) => {
       );
     }
 
-    // Create PaymentIntent using the DB price
+    // Recompute the charge from move details — NEVER trust the client's price.
+    const total_cents = computeQuoteTotalCents(quote);
+    if (!total_cents || total_cents < 50) {
+      return new Response(
+        JSON.stringify({ error: 'This move needs a manual quote — please call 512-777-1628.' }),
+        { status: 400, headers },
+      );
+    }
+
+    // Cap at a reasonable max ($50,000 job).
+    if (total_cents > 5000000) {
+      return new Response(
+        JSON.stringify({ error: 'Amount exceeds maximum' }),
+        { status: 400, headers },
+      );
+    }
+
+    // Log when the client-displayed price disagrees with the authoritative server
+    // price (possible tampering or a client/server pricing drift to investigate).
+    if (quote.estimated_price_cents && quote.estimated_price_cents !== total_cents) {
+      console.warn(
+        `Price mismatch for quote ${quote_request_id}: client=${quote.estimated_price_cents} server=${total_cents}`,
+      );
+    }
+
+    // Create the PaymentIntent for the server-computed amount.
     const paymentIntent = await stripe.paymentIntents.create({
       amount: total_cents,
       currency: 'usd',
@@ -96,15 +199,17 @@ serve(async (req) => {
         type: 'quote_full_payment',
         customer_name: quote.name || '',
         customer_email: quote.email || '',
-        total_price_cents: (quote.estimated_price_cents || 0).toString(),
+        total_price_cents: total_cents.toString(),
       },
       receipt_email: quote.email || undefined,
     });
 
-    // Update quote_requests with payment info
+    // Persist the authoritative price + payment info (corrects any tampered
+    // estimated_price_cents so downstream — admin, webhook, gig conversion — agrees).
     await supabase
       .from('quote_requests')
       .update({
+        estimated_price_cents: total_cents,
         deposit_cents: total_cents,
         stripe_payment_intent_id: paymentIntent.id,
         payment_status: 'pending',

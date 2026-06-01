@@ -1,7 +1,9 @@
 // Photo upload hook — compress + upload to Supabase Storage
 
 import { ImageManipulator } from 'expo-image-manipulator';
-import * as FileSystem from 'expo-file-system';
+// SDK 54 moved the classic uploadAsync / FileSystemUploadType API to the legacy
+// entry point; the new top-level API is class-based (File/Directory/Paths).
+import * as FileSystem from 'expo-file-system/legacy';
 import { supabase } from '../lib/supabase';
 import { APP_CONFIG } from '../lib/config';
 

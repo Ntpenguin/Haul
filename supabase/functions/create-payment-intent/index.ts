@@ -39,6 +39,23 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401, headers });
     }
 
+    // Rate limit PaymentIntent creation per user to curb abuse / Stripe cost.
+    // Fails open if the limiter RPC isn't available (e.g. migration not yet run).
+    const { data: rlAllowed, error: rlError } = await supabase.rpc('check_rate_limit', {
+      p_bucket: 'create-payment-intent',
+      p_key: user.id,
+      p_max: 15,
+      p_window_seconds: 3600,
+    });
+    if (rlError) {
+      console.warn('Rate limiter unavailable, allowing request:', rlError.message);
+    } else if (rlAllowed === false) {
+      return new Response(
+        JSON.stringify({ error: 'Too many attempts. Please wait a few minutes and try again.' }),
+        { status: 429, headers },
+      );
+    }
+
     // Parse request body — only gig_id needed; price comes from DB
     const { gig_id } = await req.json();
     if (!gig_id) {
