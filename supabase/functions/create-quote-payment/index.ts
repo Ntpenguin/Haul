@@ -121,18 +121,23 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Rate limit PaymentIntent creation per client IP to curb abuse / Stripe cost.
-    // Fails open if the limiter RPC isn't available (e.g. migration not yet run).
-    const clientIp = (req.headers.get('x-forwarded-for') || '').split(',')[0].trim() || quote_request_id;
-    const { data: rlAllowed, error: rlError } = await supabase.rpc('check_rate_limit', {
-      p_bucket: 'create-quote-payment',
-      p_key: clientIp,
-      p_max: 12,
-      p_window_seconds: 3600,
-    });
+    // Rate limit PaymentIntent creation to curb abuse / Stripe cost.
+    // Trust only proxy-set IP headers — the leftmost X-Forwarded-For value is
+    // client-spoofable. Supabase/Cloudflare sets cf-connecting-ip at the trusted
+    // edge; otherwise take the RIGHTMOST XFF entry (appended by the real proxy).
+    const xff = (req.headers.get('x-forwarded-for') || '').split(',').map((s) => s.trim()).filter(Boolean).pop();
+    const clientIp = req.headers.get('cf-connecting-ip') || xff || 'unknown';
+    // Limit per IP (abuse) AND per quote (so one lead can't be hammered from many
+    // IPs). Fails open only if the limiter RPC itself is unavailable.
+    const rlChecks = await Promise.all([
+      supabase.rpc('check_rate_limit', { p_bucket: 'create-quote-payment:ip', p_key: clientIp, p_max: 12, p_window_seconds: 3600 }),
+      supabase.rpc('check_rate_limit', { p_bucket: 'create-quote-payment:quote', p_key: quote_request_id, p_max: 8, p_window_seconds: 3600 }),
+    ]);
+    const rlError = rlChecks.find((r) => r.error)?.error;
+    const rlBlocked = rlChecks.some((r) => r.data === false);
     if (rlError) {
       console.warn('Rate limiter unavailable, allowing request:', rlError.message);
-    } else if (rlAllowed === false) {
+    } else if (rlBlocked) {
       return new Response(
         JSON.stringify({ error: 'Too many attempts. Please wait a few minutes and try again.' }),
         { status: 429, headers },
