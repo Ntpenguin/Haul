@@ -518,7 +518,7 @@ function showWorkerModal(id) {
         <div class="modal-row"><div class="modal-label">Rating</div><div class="modal-value">${profile.rating ? '⭐ ' + profile.rating : '—'} · ${profile.total_gigs || 0} jobs</div></div>
         <div class="modal-row"><div class="modal-label">Skills</div><div class="modal-value">
           <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center">
-            ${(m.skills || []).map(s => `<span class="skill-tag" style="display:inline-flex;align-items:center;gap:5px">${esc(s.replace(/-/g,' '))}<span onclick="removeMoverSkill('${id}','${escAttr(s)}')" title="Remove" style="cursor:pointer;font-weight:700;color:var(--ink3)">×</span></span>`).join('') || '<span style="color:var(--ink3);font-size:13px">No skills yet</span>'}
+            ${(m.skills || []).map(s => `<span class="skill-tag" style="display:inline-flex;align-items:center;gap:5px">${esc(s.replace(/-/g,' '))}<span class="skill-remove" data-id="${escAttr(id)}" data-skill="${escAttr(s)}" title="Remove" style="cursor:pointer;font-weight:700;color:var(--ink3)">×</span></span>`).join('') || '<span style="color:var(--ink3);font-size:13px">No skills yet</span>'}
           </div>
           <div style="display:flex;gap:6px;margin-top:8px">
             <input id="skill-input-${id}" type="text" placeholder="Add a skill (e.g. piano, packing)" onkeydown="if(event.key==='Enter'){event.preventDefault();addMoverSkill('${id}')}" style="flex:1;padding:5px 8px;border-radius:6px;border:1px solid var(--line);font-size:13px">
@@ -1028,6 +1028,13 @@ async function removeMoverSkill(id, skill) {
   if (m) m.skills = next;
   showWorkerModal(id);
 }
+
+// Delegated handler for skill-chip remove buttons — reads data-* attributes so no
+// user-controlled value is ever concatenated into an executable onclick (avoids XSS).
+document.addEventListener('click', (e) => {
+  const el = e.target.closest ? e.target.closest('.skill-remove') : null;
+  if (el) removeMoverSkill(el.dataset.id, el.dataset.skill);
+});
 
 // Admin assigns a mover to a gig by accepting their application. Backed by the
 // assign_mover_to_gig SECURITY DEFINER RPC (migration 034), which is admin-gated
