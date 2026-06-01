@@ -1,0 +1,26 @@
+# Fast Fix Work — static site cache policy (SiteGround / Apache)
+# Goal: visitors always get the latest HTML/CSS/JS without clearing cache or
+# going incognito. Place in public_html/ — Apache .htaccess cascades to all
+# subfolders, so this also covers public_html/admin-panel/.
+
+<IfModule mod_headers.c>
+  # Code files: always revalidate against the server before using a cached copy.
+  # Unchanged files come back as a cheap 304 Not Modified (no re-download), so
+  # this is safe even for the large index.html.
+  <FilesMatch "\.(html?|css|js|json|webmanifest)$">
+    Header set Cache-Control "no-cache, must-revalidate, max-age=0"
+  </FilesMatch>
+
+  # Media & fonts rarely change — let the browser cache them for a year.
+  # (If you ever edit an image in place, rename it or add ?v=2 to its URL.)
+  <FilesMatch "\.(png|jpe?g|gif|svg|ico|webp|avif|woff2?|ttf|eot|mp4)$">
+    Header set Cache-Control "public, max-age=31536000"
+  </FilesMatch>
+</IfModule>
+
+# Revalidate via Last-Modified; drop ETags (they can differ across SiteGround
+# nodes and cause needless cache misses / inconsistent 304s).
+<IfModule mod_headers.c>
+  Header unset ETag
+</IfModule>
+FileETag None
