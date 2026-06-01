@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, ScrollView, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { Button, Card, Avatar } from '../../components/primitives';
 import { colors } from '../../lib/theme';
 import { useAuth } from '../../hooks/useAuth';
+import { supabase, type Business, type FleetVehicle } from '../../lib/supabase';
 
 export default function MoverProfileScreen() {
   const router = useRouter();
@@ -13,6 +14,27 @@ export default function MoverProfileScreen() {
   const initials = profile?.full_name?.split(' ').map(n => n[0]).join('') || '?';
   const rating = profile?.rating ? profile.rating.toFixed(1) : null;
   const totalGigs = profile?.total_gigs ?? 0;
+
+  const [employer, setEmployer] = useState<Business | null>(null);
+  const [vehicles, setVehicles] = useState<FleetVehicle[]>([]);
+
+  useEffect(() => {
+    if (!profile?.id) return;
+    let active = true;
+    (async () => {
+      const { data: mp } = await supabase.from('mover_profiles').select('business_id').eq('id', profile.id).single();
+      if (!active) return;
+      if (mp?.business_id) {
+        const { data: biz } = await supabase.from('businesses').select('*').eq('id', mp.business_id).single();
+        if (active) setEmployer(biz ?? null);
+      } else if (active) {
+        setEmployer(null);
+      }
+      const { data: vs } = await supabase.from('fleet_vehicles').select('*').eq('assigned_mover_id', profile.id);
+      if (active) setVehicles(vs ?? []);
+    })();
+    return () => { active = false; };
+  }, [profile?.id]);
 
   function handleSignOut() {
     Alert.alert('Sign out', 'Are you sure?', [
@@ -65,6 +87,31 @@ export default function MoverProfileScreen() {
             </View>
           </View>
         </Card>
+
+        {(employer || vehicles.length > 0) && (
+          <Card style={{ marginTop: 16, padding: 16 }}>
+            {employer && (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+                <Ionicons name="business-outline" size={20} color={colors.accent.deep} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: colors.ink3 }}>Employer</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>{employer.name}</Text>
+                </View>
+              </View>
+            )}
+            {vehicles.map((v, i) => (
+              <View key={v.id} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: (employer || i > 0) ? 12 : 0 }}>
+                <Ionicons name="car-outline" size={20} color={colors.accent.deep} />
+                <View style={{ flex: 1 }}>
+                  <Text style={{ fontSize: 12, color: colors.ink3 }}>Assigned vehicle</Text>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: colors.ink }}>
+                    {[v.year, v.make, v.model].filter(Boolean).join(' ') || v.vehicle_type || 'Vehicle'}{v.license_plate ? ` · ${v.license_plate}` : ''}
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </Card>
+        )}
 
         <View style={{ marginTop: 24, gap: 10 }}>
           <Button variant="soft" onPress={() => router.push('/(mover)/earnings')}>View earnings</Button>
