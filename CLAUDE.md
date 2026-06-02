@@ -50,8 +50,9 @@ No tests. No linter. TypeScript via Expo transpilation only.
 | `app/_layout.tsx` | Root layout, StripeProvider, auth listener, push notification registration + tap handler, background location task import |
 | `app/index.tsx` | Auth redirect → customer or mover home |
 | `lib/theme.ts` | Design tokens: colors (amber accent, sage green), spacing, radii, shadows |
-| `lib/pricing.ts` | Pricing engine: `priceFor()`, `formatCents()`, `depositCents()`, `surchargesFromGig()` |
-| `lib/supabase.ts` | Supabase client + all DB type interfaces (Profile, Gig, Payment, etc.) |
+| `lib/pricing.ts` | Pricing engine: `priceFor()`, `formatCents()`, `surchargesFromGig()`, `estimatedDurationHours()` (size + drive time). Kept in parity with intake `calcQuote` + `create-quote-payment`. |
+| `lib/difficulty.ts` | Move difficulty 1–5 (`difficultyFor`/`difficultyLabel`). Mirror of `compute_gig_difficulty` SQL (migration 042) for app display. |
+| `lib/supabase.ts` | Supabase client + all DB type interfaces (Profile, Gig, Payment, Business, FleetVehicle, etc.) |
 | `lib/config.ts` | App config: service area, platform fee, photo constraints |
 | `lib/stripe.ts` | Stripe constants, deposit/remainder calculations |
 | `lib/nameFormat.ts` | `properCase()` for name auto-capitalization |
@@ -133,7 +134,11 @@ No tests. No linter. TypeScript via Expo transpilation only.
 | `supabase/functions/stripe-webhook/` | Stripe webhook — verifies signature, updates `payments` + `gigs` server-side on `payment_intent.succeeded`. Requires `STRIPE_WEBHOOK_SECRET` secret + endpoint configured in Stripe dashboard. |
 | `supabase/migrations/008_realtime_gigs.sql` | Enables Supabase Realtime on `gigs` and `gig_applications` tables |
 | `supabase/migrations/009_gig_categories.sql` | Adds `gig_category`, `gig_title`, `gig_description` to gigs; `category_colors` jsonb to profiles || `landing/index.html` | Static marketing landing page (NOT served by Expo) |
-| `admin/index.html` | Standalone admin dashboard — run with `npx serve admin -p 3001` |
+| `supabase/migrations/010–044` | Incremental. Notables: quote_requests/leads (017–038), payouts/Connect (032), admin RPCs + `is_admin()` (034), RLS hardening (039/040), rate limiter (041), **difficulty + duration + skill gate (042)**, **businesses + fleet (043/044)**. Forward-only; run manually in the SQL editor; use named `$func$` quoting. |
+| `supabase/functions/create-quote-payment/` | Web-intake PaymentIntent — **recomputes price server-side** (mirrors intake `calcQuote`) + per-IP rate limit |
+| `supabase/functions/{connect-onboard,connect-status,transfer-to-mover}/` | Stripe Connect Express payouts |
+| `landing/{privacy,terms,delete-account}.html` | Hosted legal + account-deletion pages (store-required URLs) → SiteGround `public_html/` |
+| `admin/index.html` | Standalone admin dashboard (`npx serve admin -p 3001`). **Deployed to SiteGround `public_html/admin-panel/` via manual upload.** |
 
 ## DB Tables & FK Order
 
@@ -142,6 +147,11 @@ Types in `lib/supabase.ts`. Delete order: notifications → reports → reviews 
 ## Key Business Logic
 
 - **Pricing**: Base by home_size → crew/truck multipliers → surcharges (stairs $30/flight, heavy items $75-350 each, distance $1.25/mi over 15mi, long carry $50). Tax 8.25%. Stair rate ($30/flight) matches intake form + admin.
+- **PARITY (critical)**: three pricing impls must stay identical — `lib/pricing.ts`, intake `calcQuote` (`landing/intake.html`), and `create-quote-payment` (which recomputes the charge server-side; never trusts client `estimated_price_cents`). Same for difficulty: `lib/difficulty.ts` ↔ `compute_gig_difficulty` SQL. NOTE `home_size` has two vocabularies — app `'2br'` vs intake `'2 BR'` — DB functions handle both.
+- **Difficulty (1–5)**: `gigs.difficulty` stamped by a BEFORE INSERT/UPDATE trigger (`compute_gig_difficulty`, migration 042) from size + stairs + specialty items + long-distance + staging + packing → Easy/Light/Moderate/Heavy/Expert. Shown in wizard review, gig detail, admin.
+- **Mover skill gate (admin-assign only)**: `mover_profiles.max_difficulty` (auto-seeded from years_experience; admin override in dashboard). `assign_mover_to_gig` refuses a mover below the gig's difficulty. Customer-accept + mover feed are intentionally NOT gated.
+- **Estimated duration**: `gigs.estimated_duration_hours` = size labor hours + one-way drive (`distance ÷ 45 mph`), set by the same trigger / `estimatedDurationHours()`.
+- **Businesses + fleet** (admin-managed orgs): `businesses` table; worker→employer via nullable `mover_profiles.business_id`; `fleet_vehicles` (each optionally `assigned_mover_id`). Admin-only RLS (043); movers read their own business/fleet via migration 044. All businesses are created from the admin Business tab. Mover profile shows employer + assigned vehicle.
 - **Payment**: Customer pays **100% upfront** via Stripe. Platform keeps a **15% service fee** (`PLATFORM_FEE_PERCENT` in `lib/pricing.ts`). The worker's share (`mover_payout_cents`) is paid out **after the job** via Stripe Connect (Express accounts) — `connect-onboard`/`connect-status`/`transfer-to-mover` edge functions; mover UI in `earnings.tsx` (+ `hooks/usePayouts.ts`).
 - **Gig status flow**: `draft` → `posted` → `matched` → `in_progress` (paid in full) → `completed`. Payout: `payout_status` `unpaid` → `pending` → `paid` (after `transfer-to-mover`).
 - **Leads vs gigs**: Website intake leads and in-app gig wizards autosave partial progress (`quote_requests.progress_step` / `gigs.draft_step`). Admin **Leads** tab shows only **abandoned** attempts (web `incomplete` + app `draft`) with the step they stopped on; **paid** leads convert to marketplace gigs (`stripe-webhook`) and appear under Gigs/Calendar. Leads are **soft-deleted** (`quote_requests.deleted_at`), shown in a Deleted tab.
@@ -160,6 +170,7 @@ Types in `lib/supabase.ts`. Delete order: notifications → reports → reviews 
 - **OTP flow**: After sign-up, user lands on `verify-otp.tsx`. Supabase email template must use `{{ .Token }}` not `{{ .ConfirmationURL }}`. Do NOT wrap template in `<!DOCTYPE html>`. No emojis in template body (Supabase silently drops emails with emoji). `verifyOtp` tries both `type: 'signup'` and `type: 'email'` to handle both resend paths.
 - **Background location**: `startLocationUpdatesAsync` requires EAS build and background entitlement — crashes in Expo Go. Use `watchPositionAsync` for foreground tracking instead.
 - **isPaid check**: Check `payment.status === 'captured'/'authorized'` OR `gig.status === 'in_progress'/'completed'` — payment record may lag.
+- **Photo upload (SDK 54)**: `useUploadPhoto` gets the uri via `expo-image-manipulator` `renderAsync().saveAsync()`, and imports `uploadAsync`/`FileSystemUploadType` from `expo-file-system/legacy` (the classic API moved there in SDK 54).
 - **Avatar upload**: `avatars/{userId}/avatar.{ext}` in Supabase Storage. RLS enforces `auth.uid()::text = storage.foldername(name)[1]`. Migration: `007_avatars_storage.sql`.
 - **Resend SMTP**: Sender must be a verified domain (not Gmail). Port 465, username `resend`. Use `noreply@fastfixwork.com`. Duplicate email signups — Supabase silently succeeds without sending email; delete user from Auth → Users before re-testing.
 - **Realtime home screens**: Both home screens subscribe to `gigs` table changes via Supabase Realtime (requires migration 008). Mover: new posted jobs appear live, accepted/completed jobs update. Customer: gig status updates live, `gig_applications` INSERT triggers a reload. Channels cleaned up on unmount.
@@ -184,6 +195,9 @@ Types in `lib/supabase.ts`. Delete order: notifications → reports → reviews 
 ## Admin Dashboard (admin/index.html)
 
 - **Sidebar active state**: The `pages` array in `showPage()` must exactly match sidebar `<a>` HTML order. Current order: `['overview','users','movers','businesses','gigs','applications','photos','leads','calendar']`. Mismatch causes wrong tab to highlight.
+- **Business tab**: `+ Create business` → `businesses`; per-business modal manages the worker roster (`mover_profiles.business_id`) + fleet (`fleet_vehicles`, assign to a worker). Vehicle entry = Type/Make `<select>` (`VEHICLE_MAKES` catalog) + Model `<datalist>` + Other fallback.
+- **Mover modal**: skill-level (`max_difficulty`) dropdown + editable skills chips; gig modal shows difficulty + est. duration; assign errors surface in the existing `alert`.
+- **XSS / deploy**: never build an `onclick` from user-controlled data — use `data-*` + a delegated listener. Admin is standalone HTML uploaded to SiteGround manually; before upload validate inline JS by extracting `<script>` blocks and running `node --check`.
 
 ## Environment Variables (.env)
 
