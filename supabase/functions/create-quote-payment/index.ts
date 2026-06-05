@@ -29,10 +29,11 @@ const ALLOWED_ORIGINS = [
 
 // ── Pricing constants — MUST stay in sync with landing/intake.html calcQuote() ──
 const BASE_PRICES: Record<string, number> = {
-  'Just a few items': 17500, 'Studio': 35000, '1 BR': 50000,
+  'Single item': 9375, 'Just a few items': 17500, 'Studio': 35000, '1 BR': 50000,
   '2 BR': 80000, '3 BR': 135000, '4+ BR / full house': 160000,
 };
-const STAIRS_SURCHARGE = 3000;
+const STAIRS_SURCHARGE = 5000;
+const ELEVATOR_SURCHARGE = 4000; // $40 per location that has an elevator
 const LONG_CARRY = 5000;
 const HEAVY_PRICES: Record<string, number> = {
   'Piano': 25000, 'Safe / gun safe': 15000, 'Pool table': 30000,
@@ -63,9 +64,13 @@ function computeQuoteTotalCents(q: any): number | null {
   if (!base) return null;
 
   const hasStairs = (lbl: string) => lbl === 'Stairs' || lbl === 'Both';
+  const hasElevator = (lbl: string) => lbl === 'Elevator' || lbl === 'Both';
   const flightsFrom = hasStairs(q.stairs_pickup) ? Math.max(1, q.flights_pickup || 1) : 0;
   const flightsTo = hasStairs(q.stairs_dropoff) ? Math.max(1, q.flights_dropoff || 1) : 0;
   const stairsCents = (flightsFrom + flightsTo) * STAIRS_SURCHARGE;
+
+  const elevators = (hasElevator(q.stairs_pickup) ? 1 : 0) + (hasElevator(q.stairs_dropoff) ? 1 : 0);
+  const elevatorCents = elevators * ELEVATOR_SURCHARGE;
 
   const carryCents = (q.parking || '').includes('100+') ? LONG_CARRY : 0;
 
@@ -90,7 +95,7 @@ function computeQuoteTotalCents(q: any): number | null {
   const stagingCents = q.staging ? Math.round(adjustedBase * STAGING_SURCHARGE_PCT) : 0;
   const packingCents = q.packing_service ? Math.round(adjustedBase * PACKING_SURCHARGE_PCT) : 0;
 
-  const subtotal = Math.round(adjustedBase + stairsCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents);
+  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents);
   const tax = Math.round(subtotal * TAX);
   return subtotal + tax;
 }
@@ -148,9 +153,10 @@ serve(async (req) => {
     const { data: quote, error: quoteError } = await supabase
       .from('quote_requests')
       .select(
-        'id, name, email, lead_number, payment_status, estimated_price_cents, ' +
+        'id, name, email, phone, lead_number, payment_status, estimated_price_cents, ' +
         'items_size, service_type, stairs_pickup, stairs_dropoff, flights_pickup, ' +
-        'flights_dropoff, parking, special_items, staging, packing_service, answers',
+        'flights_dropoff, parking, special_items, staging, packing_service, answers, ' +
+        'referral_code, referral_credit_cents',
       )
       .eq('id', quote_request_id)
       .single();
@@ -195,27 +201,74 @@ serve(async (req) => {
       );
     }
 
-    // Create the PaymentIntent for the server-computed amount.
+    // ── Referral credit (one-time $25 off for a referred customer) ────────────
+    // The credit is server-authoritative: the form shows it via the same
+    // referral_lookup() RPC, so the displayed total always equals the charge.
+    let creditCents = 0;
+    const refCode = (quote.referral_code || '').replace(/[^A-Za-z0-9-]/g, '').slice(0, 40);
+    if (refCode) {
+      // Idempotent: reuse an existing redemption row for this lead (back-nav re-submit).
+      const { data: existing } = await supabase
+        .from('referrals').select('id, credit_cents').eq('quote_request_id', quote.id).maybeSingle();
+      if (existing) {
+        creditCents = existing.credit_cents || 0;
+      } else {
+        const { data: look } = await supabase.rpc('referral_lookup', {
+          p_code: refCode, p_email: quote.email, p_phone: quote.phone, p_name: quote.name,
+        });
+        creditCents = Math.max(0, parseInt(look?.credit_cents) || 0);
+        if (creditCents > 0) {
+          const { data: rc } = await supabase
+            .from('referral_codes')
+            .select('code, referrer_name, referrer_email, referrer_phone, payout_handle, reward_cents')
+            .ilike('code', refCode).maybeSingle();
+          // Record the redemption (UNIQUE on quote_request_id makes this idempotent).
+          await supabase.from('referrals').insert({
+            referral_code: rc?.code || refCode,
+            referrer_name: rc?.referrer_name ?? null,
+            referrer_email: rc?.referrer_email ?? null,
+            referrer_phone: rc?.referrer_phone ?? null,
+            payout_handle: rc?.payout_handle ?? null,
+            referred_name: quote.name ?? null,
+            referred_email: quote.email ?? null,
+            referred_phone: quote.phone ?? null,
+            quote_request_id: quote.id,
+            credit_cents: creditCents,
+            reward_cents: rc?.reward_cents ?? 2000,
+            reward_status: 'pending',
+          });
+        }
+      }
+      // Never let the credit exceed the price (keep the charge above Stripe's $0.50 min).
+      if (creditCents > total_cents - 50) creditCents = Math.max(0, total_cents - 50);
+    }
+    const charge_cents = total_cents - creditCents;
+
+    // Create the PaymentIntent for the (credit-adjusted) server-computed amount.
     const paymentIntent = await stripe.paymentIntents.create({
-      amount: total_cents,
+      amount: charge_cents,
       currency: 'usd',
       metadata: {
         quote_request_id,
         type: 'quote_full_payment',
         customer_name: quote.name || '',
         customer_email: quote.email || '',
-        total_price_cents: total_cents.toString(),
+        gross_price_cents: total_cents.toString(),
+        referral_credit_cents: creditCents.toString(),
+        total_price_cents: charge_cents.toString(),
       },
       receipt_email: quote.email || undefined,
     });
 
-    // Persist the authoritative price + payment info (corrects any tampered
-    // estimated_price_cents so downstream — admin, webhook, gig conversion — agrees).
+    // Persist the authoritative price + payment info. estimated_price_cents = the
+    // gross move price; deposit_cents = what was actually charged (after credit);
+    // referral_credit_cents lets the webhook gross the mover payout back up.
     await supabase
       .from('quote_requests')
       .update({
         estimated_price_cents: total_cents,
-        deposit_cents: total_cents,
+        deposit_cents: charge_cents,
+        referral_credit_cents: creditCents,
         stripe_payment_intent_id: paymentIntent.id,
         payment_status: 'pending',
       })

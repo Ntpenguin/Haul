@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fast Fix Work — Admin Dashboard</title>
 <!-- CSP: allow supabase, jsdelivr CDN, google calendar links; block everything else -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src 'self' data: blob: https://joiukvttuamaanrgzfrz.supabase.co; connect-src https://joiukvttuamaanrgzfrz.supabase.co wss://joiukvttuamaanrgzfrz.supabase.co; frame-src 'none'; object-src 'none';" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src 'self' data: blob: https://joiukvttuamaanrgzfrz.supabase.co https://api.qrserver.com; connect-src https://joiukvttuamaanrgzfrz.supabase.co wss://joiukvttuamaanrgzfrz.supabase.co; frame-src 'none'; object-src 'none';" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
@@ -220,6 +220,9 @@
     <input type="email" id="login-email" placeholder="admin@fastfixwork.com">
     <label>Password</label>
     <input type="password" id="login-password" placeholder="Password" onkeydown="if(event.key==='Enter')doLogin()">
+    <label style="display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink2);text-transform:none;letter-spacing:0;font-weight:500;margin-bottom:18px;cursor:pointer">
+      <input type="checkbox" id="login-remember" checked style="width:18px;height:18px;margin:0;flex:0 0 auto;accent-color:var(--accent)"> Remember me on this device
+    </label>
     <button onclick="doLogin()">Sign in</button>
   </div>
 </div>
@@ -244,6 +247,9 @@
       <a onclick="showPage('photos')"><span class="nav-icon">&#9998;</span> Photos</a>
       <a onclick="showPage('leads')"><span class="nav-icon">&#9993;</span> Leads</a>
       <a onclick="showPage('calendar')"><span class="nav-icon">&#9776;</span> Calendar</a>
+      <a onclick="showPage('referrals')"><span class="nav-icon">&#9734;</span> Referrals</a>
+      <a onclick="showPage('bizjobs')"><span class="nav-icon">&#9670;</span> Business Jobs</a>
+      <a onclick="showPage('pricing')"><span class="nav-icon">&#36;</span> Pricing</a>
     </div>
     <div class="main" id="main-content"></div>
   </div>
@@ -256,7 +262,28 @@
 const SUPABASE_URL = 'https://joiukvttuamaanrgzfrz.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvaXVrdnR0dWFtYWFucmd6ZnJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNTY5ODksImV4cCI6MjA5NDYzMjk4OX0.TcpzGaMihyKUZNtuRncasXImyv6bb0De1lf_wQa61Ew';
 
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// "Remember me": when ON, the session lives in localStorage (persists across
+// browser restarts); when OFF, it lives in sessionStorage (cleared when the tab
+// closes). The flag itself is in localStorage so the choice is remembered.
+const REMEMBER_KEY = 'ffw_admin_remember';
+const authStore = {
+  _s: () => (localStorage.getItem(REMEMBER_KEY) === '0' ? sessionStorage : localStorage),
+  getItem: (k) => authStore._s().getItem(k),
+  setItem: (k, v) => authStore._s().setItem(k, v),
+  removeItem: (k) => { localStorage.removeItem(k); sessionStorage.removeItem(k); },
+};
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  auth: { persistSession: true, autoRefreshToken: true, storage: authStore },
+});
+// Prefill the saved email + remember choice on the login screen.
+(function restoreLogin() {
+  const remembered = localStorage.getItem(REMEMBER_KEY) !== '0';
+  const cb = document.getElementById('login-remember');
+  if (cb) cb.checked = remembered;
+  const savedEmail = localStorage.getItem('ffw_admin_email');
+  const emailEl = document.getElementById('login-email');
+  if (emailEl && savedEmail) emailEl.value = savedEmail;
+})();
 
 let cache = { profiles: [], moverProfiles: [], gigs: [], applications: [], photos: [], leads: [] };
 
@@ -267,6 +294,11 @@ async function doLogin() {
   const errEl = document.getElementById('login-error');
   errEl.style.display = 'none';
   if (!email || !pw) { errEl.textContent = 'Enter email and password'; errEl.style.display = 'block'; return; }
+  // Set the remember choice BEFORE signing in so the session is stored in the
+  // right place (local vs session storage).
+  const remember = (document.getElementById('login-remember') || {}).checked !== false;
+  localStorage.setItem(REMEMBER_KEY, remember ? '1' : '0');
+  if (remember) localStorage.setItem('ffw_admin_email', email); else localStorage.removeItem('ffw_admin_email');
   const { error } = await sb.auth.signInWithPassword({ email, password: pw });
   if (error) { errEl.textContent = error.message; errEl.style.display = 'block'; return; }
   await initApp();
@@ -290,7 +322,7 @@ async function initApp() {
 
 // ─── Data Loading ────────────────────────────
 async function loadAll() {
-  const [profiles, moverProfiles, gigs, applications, photos, leads, blockedSlots, businesses, fleetVehicles] = await Promise.all([
+  const [profiles, moverProfiles, gigs, applications, photos, leads, blockedSlots, businesses, fleetVehicles, referralCodes, referrals, businessJobs] = await Promise.all([
     sb.from('profiles').select('*').order('created_at', { ascending: false }),
     sb.from('mover_profiles').select('*').order('created_at', { ascending: false }),
     sb.from('gigs').select('*').order('created_at', { ascending: false }),
@@ -300,6 +332,9 @@ async function loadAll() {
     sb.from('blocked_slots').select('*').order('blocked_date', { ascending: true }),
     sb.from('businesses').select('*').order('created_at', { ascending: false }),
     sb.from('fleet_vehicles').select('*').order('created_at', { ascending: false }),
+    sb.from('referral_codes').select('*').order('created_at', { ascending: false }),
+    sb.from('referrals').select('*').order('created_at', { ascending: false }),
+    sb.from('business_jobs').select('*').order('created_at', { ascending: false }),
   ]);
   cache.profiles = profiles.data || [];
   cache.moverProfiles = moverProfiles.data || [];
@@ -310,6 +345,9 @@ async function loadAll() {
   cache.blockedSlots = blockedSlots.data || [];
   cache.businesses = businesses.data || [];
   cache.fleetVehicles = fleetVehicles.data || [];
+  cache.referralCodes = referralCodes.data || [];
+  cache.referrals = referrals.data || [];
+  cache.businessJobs = businessJobs.data || [];
 }
 
 // ─── Navigation ──────────────────────────────
@@ -318,7 +356,7 @@ function showPage(page) {
   currentPage = page;
   document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
   const links = document.querySelectorAll('.sidebar a');
-  const pages = ['overview','users','movers','businesses','gigs','applications','photos','leads','calendar'];
+  const pages = ['overview','users','movers','businesses','gigs','applications','photos','leads','calendar','referrals','bizjobs','pricing'];
   const idx = pages.indexOf(page);
   if (idx >= 0 && links[idx]) links[idx].classList.add('active');
 
@@ -333,7 +371,316 @@ function showPage(page) {
     case 'photos': main.innerHTML = renderPhotos(); break;
     case 'calendar': main.innerHTML = renderCalendar(); break;
     case 'leads': main.innerHTML = renderLeads(); break;
+    case 'referrals': main.innerHTML = renderReferrals(); break;
+    case 'bizjobs': main.innerHTML = renderBusinessJobs(); break;
+    case 'pricing': main.innerHTML = renderPricing(); break;
   }
+}
+
+// ─── Business Jobs (B2B intake) ──────────────
+// Submitted via landing/business.html -> submit-business-job edge fn, which already
+// decided accept/counter/pending. Admin reviews countered/pending here.
+function bizBadge(d) {
+  const m = { accepted: ['#1f7a4d', '#e6f6ee'], countered: ['#8B6914', '#FFF8E7'], pending: ['#534C44', '#F2EEE7'] };
+  const [c, bg] = m[d] || m.pending;
+  return `<span style="background:${bg};color:${c};padding:2px 9px;border-radius:6px;font-size:11px;font-weight:700">${esc(d || '—')}</span>`;
+}
+function renderBusinessJobs() {
+  const jobs = cache.businessJobs || [];
+  const open = jobs.filter(j => j.status !== 'declined' && j.status !== 'booked' && j.status !== 'completed');
+  const rows = jobs.length ? jobs.map(j => {
+    const stops = Array.isArray(j.stops) ? j.stops : [];
+    return `
+    <tr onclick="showBusinessJobModal('${j.id}')" style="cursor:pointer">
+      <td>#${j.job_number || '—'}</td>
+      <td>${esc(j.customer_name || '—')}<div style="font-size:11px;color:var(--ink3)">${esc(j.customer_phone || '')}</div></td>
+      <td>${esc(j.job_size || '—')}</td>
+      <td>${stops.length} stop${stops.length === 1 ? '' : 's'}<div style="font-size:11px;color:var(--ink3)">${j.distance_miles != null ? j.distance_miles + ' mi' : ''}${j.estimated_duration_hours != null ? ' · ~' + j.estimated_duration_hours + 'h' : ''}</div></td>
+      <td>${dollars(j.offered_price_cents)}</td>
+      <td>${dollars(j.recommended_price_cents)}</td>
+      <td>${j.counter_price_cents ? dollars(j.counter_price_cents) : '—'}</td>
+      <td>${bizBadge(j.decision)}<div style="font-size:11px;color:var(--ink3);max-width:180px">${esc(j.decision_reason || '')}</div></td>
+      <td>${j.requested_date ? esc(j.requested_date) + (j.requested_time ? ' ' + esc(j.requested_time) : '') : 'ASAP'}</td>
+      <td>${badge(j.status)}</td>
+      <td style="color:var(--ink3);font-size:12px">${j.gig_id ? '→ gig' : 'view →'}</td>
+    </tr>`;
+  }).join('') : `<tr><td colspan="11" class="empty">No business jobs yet.</td></tr>`;
+  return `
+    <h2 class="page-title">Business Jobs</h2>
+    <p class="page-sub">${jobs.length} total · ${open.length} open · submitted from fastfixwork.com/business.html
+      <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('bizjobs'))" style="margin-left:8px">Refresh</button></p>
+    <div class="table-wrap"><table>
+      <thead><tr><th>Job</th><th>Contact</th><th>Size</th><th>Route</th><th>Offer</th><th>Rec.</th><th>Counter</th><th>Decision</th><th>When</th><th>Status</th><th></th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>`;
+}
+// Full detail pop-out for a business job (mirrors the gigs tab modal).
+function showBusinessJobModal(id) {
+  const j = (cache.businessJobs || []).find(x => x.id === id);
+  if (!j) return;
+  const stops = Array.isArray(j.stops) ? j.stops : [];
+  const photos = Array.isArray(j.photo_urls) ? j.photo_urls : [];
+  const canAct = j.status !== 'booked' && j.status !== 'declined' && j.status !== 'completed';
+  const canComplete = j.status === 'booked' && j.gig_id;
+  const yn = v => v ? 'Yes' : 'No';
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()" style="position:relative">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        ${canAct ? `
+          <button onclick="bookBizJob('${j.id}')" style="position:absolute;top:16px;right:56px;padding:7px 14px;background:var(--success);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">Book</button>
+          <button onclick="declineBizJob('${j.id}')" style="position:absolute;top:16px;right:112px;padding:7px 14px;background:var(--error);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">Decline</button>
+        ` : ''}
+        ${canComplete ? `<button onclick="completeBizGig('${j.id}')" style="position:absolute;top:16px;right:56px;padding:7px 14px;background:var(--success);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">Complete gig</button>` : ''}
+        <h2>Business Job #${j.job_number || ''}</h2>
+        <div class="modal-row"><div class="modal-label">Decision</div><div class="modal-value">${bizBadge(j.decision)} ${esc(j.decision_reason || '')}</div></div>
+        <div class="modal-row"><div class="modal-label">Status</div><div class="modal-value">${badge(j.status)}</div></div>
+        <div class="modal-row"><div class="modal-label">Contact</div><div class="modal-value">${esc(j.customer_name || '—')}${j.customer_phone ? ' · ' + esc(j.customer_phone) : ''}${j.customer_email ? ' · ' + esc(j.customer_email) : ''}</div></div>
+        <div class="modal-row"><div class="modal-label">Job size</div><div class="modal-value">${esc(j.job_size) || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Route (${stops.length})</div><div class="modal-value">${stops.length ? stops.map((s, i) => `${i + 1}. ${esc(s.addr || '—')}`).join('<br>') : '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Distance</div><div class="modal-value">${j.distance_miles != null ? j.distance_miles + ' mi' : '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Est. duration</div><div class="modal-value">${j.estimated_duration_hours != null ? '~' + j.estimated_duration_hours + ' hrs' : '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Access</div><div class="modal-value">Stairs: ${yn(j.stairs)} · Elevator: ${yn(j.elevator)} · Long walk: ${yn(j.long_walk)}</div></div>
+        ${(Array.isArray(j.special_items) && j.special_items.length) ? `<div class="modal-row"><div class="modal-label">Special items</div><div class="modal-value">${j.special_items.map(esc).join(', ')}</div></div>` : ''}
+        ${j.access_notes ? `<div class="modal-row"><div class="modal-label">Access notes</div><div class="modal-value">${esc(j.access_notes)}</div></div>` : ''}
+        <div class="modal-row"><div class="modal-label">Offered</div><div class="modal-value">${dollars(j.offered_price_cents)}</div></div>
+        <div class="modal-row"><div class="modal-label">Recommended</div><div class="modal-value">${dollars(j.recommended_price_cents)}</div></div>
+        ${j.counter_price_cents ? `<div class="modal-row"><div class="modal-label">Counter</div><div class="modal-value">${dollars(j.counter_price_cents)}</div></div>` : ''}
+        <div class="modal-row"><div class="modal-label">Requested</div><div class="modal-value">${j.requested_date ? esc(j.requested_date) + (j.requested_time ? ' ' + esc(j.requested_time) : '') : 'ASAP'}</div></div>
+        ${j.scheduled_for ? `<div class="modal-row"><div class="modal-label">Scheduled</div><div class="modal-value">${fmt(j.scheduled_for)}</div></div>` : ''}
+        ${j.notes ? `<div class="modal-row"><div class="modal-label">Notes</div><div class="modal-value">${esc(j.notes)}</div></div>` : ''}
+        ${j.gig_id ? `<div class="modal-row"><div class="modal-label">Gig</div><div class="modal-value"><a onclick="showGigModal('${j.gig_id}')" style="color:var(--accent-deep);cursor:pointer;font-weight:600">Open gig →</a></div></div>` : ''}
+        <div class="modal-row"><div class="modal-label">Created</div><div class="modal-value">${fmt(j.created_at)}</div></div>
+        ${canAct ? `
+          <div style="margin-top:14px;padding:12px 14px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px">
+            <div class="modal-label" style="margin-bottom:6px">Send a counter offer</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+              <span style="font-weight:700;color:var(--ink)">$</span>
+              <input id="biz-counter-amt" type="number" min="1" step="1" value="${Math.round((j.counter_price_cents || j.recommended_price_cents || 0) / 100)}" style="width:100px;padding:7px 9px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px">
+              <input id="biz-counter-note" placeholder="optional note (e.g. open slot 2 PM)" style="flex:1;min-width:160px;padding:7px 9px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px">
+              <button onclick="counterBizJob('${j.id}')" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Send counter</button>
+            </div>
+            <div style="font-size:11px;color:var(--ink3);margin-top:6px">Records the counter — relay it to the customer at ${esc(j.customer_phone || 'their phone')}. When they agree, click <b>Book</b> (books at the counter price).</div>
+          </div>
+        ` : ''}
+        ${photos.length ? `<div style="margin-top:16px"><div class="modal-label" style="margin-bottom:8px">Photos (${photos.length})</div><div class="modal-photos">${photos.map(u => `<img src="${escAttr(u)}" onclick="window.open(this.src,'_blank')" alt="photo">`).join('')}</div></div>` : ''}
+      </div>
+    </div>`;
+}
+
+// Book (manual accept) a business job → bill-business-job creates the UNPAID gig
+// and emails the business a Stripe pay-link. Same path as auto-accept.
+async function bookBizJob(id) {
+  const j = (cache.businessJobs || []).find(x => x.id === id);
+  if (!j) return;
+  const price = j.counter_price_cents || j.offered_price_cents || j.recommended_price_cents || 0;
+  if (!j.customer_email) { if (!confirm('No email on file for this business — the pay-link can\'t be emailed (you\'ll get a link to send manually). Continue?')) return; }
+  if (!confirm(`Accept & bill this job at ${dollars(price)}? A Stripe pay-link will be emailed to the business.`)) return;
+  const { data, error } = await sb.functions.invoke('bill-business-job', { body: { business_job_id: id } });
+  const errMsg = error ? (data && data.error) || error.message || String(error) : (data && data.error);
+  if (errMsg) { alert('Could not bill: ' + errMsg); return; }
+  alert('Job accepted — pay-link emailed to the business.' + (data && data.url ? '\n\nLink: ' + data.url : ''));
+  await loadAll(); showPage('bizjobs');
+}
+async function declineBizJob(id) {
+  if (!confirm('Decline this business job?')) return;
+  const { error } = await sb.from('business_jobs').update({ status: 'declined', decided_at: new Date().toISOString() }).eq('id', id);
+  if (error) { alert('Could not decline: ' + error.message); return; }
+  await loadAll(); showPage('bizjobs');
+}
+// Mark a booked business job's gig as completed (and the job itself).
+async function completeBizGig(id) {
+  const j = (cache.businessJobs || []).find(x => x.id === id);
+  if (!j || !j.gig_id) { alert('No linked gig to complete.'); return; }
+  if (!confirm('Mark this business job\'s gig as completed?')) return;
+  const { error: gErr } = await sb.from('gigs').update({ status: 'completed' }).eq('id', j.gig_id);
+  if (gErr) { alert('Could not complete gig: ' + gErr.message); return; }
+  await sb.from('business_jobs').update({ status: 'completed' }).eq('id', id);
+  await loadAll(); showBusinessJobModal(id);
+}
+// Admin counter-offer: record a counter price (+ optional note) on a business job.
+// Relay it to the customer; on agreement, Book (which uses counter_price_cents).
+async function counterBizJob(id) {
+  const amt = parseFloat((document.getElementById('biz-counter-amt') || {}).value);
+  if (!(amt > 0)) { alert('Enter a counter price greater than 0.'); return; }
+  const note = ((document.getElementById('biz-counter-note') || {}).value || '').trim();
+  const { error } = await sb.from('business_jobs').update({
+    decision: 'countered', counter_price_cents: Math.round(amt * 100),
+    decision_reason: note || `Countered at $${amt.toFixed(0)} by admin.`,
+    status: 'new', decided_at: new Date().toISOString(),
+  }).eq('id', id);
+  if (error) { alert('Could not save counter: ' + error.message); return; }
+  await loadAll(); showBusinessJobModal(id);
+}
+
+// ─── Pricing reference (quick lookup on the go; mirrors lib/pricing.ts + intake) ──
+function renderPricing() {
+  const row = (k, v) => `<div style="display:flex;justify-content:space-between;gap:12px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px"><span style="color:var(--ink2)">${k}</span><span style="font-weight:700;color:var(--ink);white-space:nowrap">${v}</span></div>`;
+  const card = (title, rows) => `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px 18px;margin-bottom:14px">
+      <div style="font-size:12px;font-weight:700;color:var(--accent-deep);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">${title}</div>
+      ${rows.map(([k, v]) => row(k, v)).join('')}
+    </div>`;
+  return `
+    <h2 class="page-title">Pricing</h2>
+    <p class="page-sub">Quick reference — current rates (matches the intake form). Tax 8.25%. Customer pays 100% upfront; 15% platform fee, 85% mover payout.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px;align-items:start">
+      <div>
+        ${card('Base price by move size', [
+          ['Single item', '$93.75'], ['Just a few items', '$175'], ['Studio', '$350'], ['1 Bedroom', '$500'],
+          ['2 Bedroom', '$800'], ['3 Bedroom', '$1,350'], ['4+ BR / full house', '$1,600'],
+        ])}
+        ${card('Surcharges', [
+          ['Stairs', '$50 / flight (per location)'], ['Elevator', '$40 / location'],
+          ['Long carry (100+ ft)', '$50'], ['Distance', '$1.25/mi over 15 free'],
+          ['Long distance (50+ mi)', '+50% of base'], ['Home staging', '+30% of base'],
+          ['Packing service', '+25% of base'],
+        ])}
+      </div>
+      <div>
+        ${card('Special / heavy items (each)', [
+          ['Piano', '$250'], ['Pool table', '$300'], ['Safe / gun safe', '$150'],
+          ['Treadmill / Peloton', '$75'], ['Big TV (65"+)', '$75'], ['Aquarium', '$75'],
+          ['Artwork / mirror', '$75'], ['Other heavy item', '$75'],
+        ])}
+        ${card('Example — 2BR, 3 flights, elevator @ drop, piano', [
+          ['Base (2 BR)', '$800.00'], ['Stairs (3 × $50)', '$150.00'], ['Elevator', '$40.00'],
+          ['Piano', '$250.00'], ['Tax (8.25%)', '$102.30'], ['TOTAL', '$1,342.30'],
+        ])}
+        ${card('Terms', [
+          ['Refund', '80% if 48+ hrs out'], ['Within 48 hrs', 'Non-refundable'],
+          ['Inaccurate gig', 'Extra charge may apply'],
+        ])}
+      </div>
+    </div>`;
+}
+
+// ─── Referrals (individuals) ─────────────────
+// Referrer gets $20 cash after the referred move completes (tracked here, paid
+// manually); the referred customer gets a one-time $25 credit at booking.
+const REFERRAL_BASE = 'https://fastfixwork.com/intake.html?ref=';
+function refLink(code) { return REFERRAL_BASE + encodeURIComponent(code); }
+function qrSrc(code) { return 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&margin=8&data=' + encodeURIComponent(refLink(code)); }
+function refStat(code) {
+  const refs = (cache.referrals || []).filter(r => (r.referral_code || '').toUpperCase() === code.toUpperCase());
+  return {
+    referred: refs.length,
+    booked: refs.filter(r => r.gig_id).length,
+    owedCents: refs.filter(r => r.reward_status === 'owed').reduce((s, r) => s + (r.reward_cents || 0), 0),
+    paidCents: refs.filter(r => r.reward_status === 'paid').reduce((s, r) => s + (r.reward_cents || 0), 0),
+  };
+}
+function renderReferrals() {
+  const codes = cache.referralCodes || [];
+  const allRefs = cache.referrals || [];
+  const owed = allRefs.filter(r => r.reward_status === 'owed');
+  const owedTotal = owed.reduce((s, r) => s + (r.reward_cents || 0), 0);
+  const fld = 'padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px';
+
+  const codeCards = codes.length ? codes.map(c => {
+    const st = refStat(c.code);
+    return `
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;display:flex;gap:16px;align-items:flex-start;margin-bottom:12px;${c.active ? '' : 'opacity:.55'}">
+      <img src="${escAttr(qrSrc(c.code))}" alt="QR ${escAttr(c.code)}" width="120" height="120" style="border:1px solid var(--line);border-radius:8px;background:#fff;flex-shrink:0">
+      <div style="flex:1;min-width:0">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+          <span style="font-size:17px;font-weight:800;color:var(--ink);letter-spacing:.5px">${esc(c.code)}</span>
+          ${c.active ? '' : '<span style="font-size:11px;color:var(--ink3);font-weight:700">INACTIVE</span>'}
+        </div>
+        <div style="font-size:13px;color:var(--ink2);margin:2px 0 8px">${esc(c.referrer_name || '—')}${c.referrer_email ? ' · ' + esc(c.referrer_email) : ''}${c.referrer_phone ? ' · ' + esc(c.referrer_phone) : ''}${c.payout_handle ? ' · <span style="color:var(--success);font-weight:600">Pay: ' + esc(c.payout_handle) + '</span>' : ''}</div>
+        <div style="font-size:12px;color:var(--ink3);word-break:break-all;margin-bottom:8px"><a href="${escAttr(refLink(c.code))}" target="_blank" style="color:var(--accent-deep)">${esc(refLink(c.code))}</a></div>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;font-size:13px">
+          <span><b>${st.referred}</b> referred</span>
+          <span><b>${st.booked}</b> booked</span>
+          <span style="color:#8B6914"><b>${fmtMoney(st.owedCents)}</b> owed</span>
+          <span style="color:#1f7a4d"><b>${fmtMoney(st.paidCents)}</b> paid</span>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px">
+          <button onclick="navigator.clipboard&&navigator.clipboard.writeText('${escAttr(refLink(c.code))}')" style="padding:5px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer">Copy link</button>
+          <a href="${escAttr(qrSrc(c.code).replace('150x150','600x600'))}" target="_blank" style="padding:5px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;color:var(--ink2)">Big QR (print)</a>
+          <button onclick="toggleReferralActive('${c.id}', ${c.active ? 'false' : 'true'})" style="padding:5px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer">${c.active ? 'Deactivate' : 'Activate'}</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('') : `<p class="empty">No referral codes yet.</p>`;
+
+  // Copy button for a payout contact — XSS-safe via data-* + delegated listener.
+  const copyBtn = val => val ? `<button class="copy-btn" data-copy="${escAttr(val)}" style="margin-left:6px;padding:1px 7px;background:var(--surface);border:1px solid var(--line2);border-radius:6px;font-size:11px;cursor:pointer">copy</button>` : '';
+  const owedRows = owed.length ? owed.map(r => `
+    <tr>
+      <td>${esc(r.referred_name || r.referred_email || '—')}</td>
+      <td>
+        <div style="font-weight:600">${esc(r.referrer_name || r.referral_code)}</div>
+        ${r.payout_handle ? `<div style="font-size:12px;color:var(--success);font-weight:700">Pay to: ${esc(r.payout_handle)}${copyBtn(r.payout_handle)}</div>` : ''}
+        ${r.referrer_email ? `<div style="font-size:12px;color:var(--ink3)">${esc(r.referrer_email)}${copyBtn(r.referrer_email)}</div>` : ''}
+        ${r.referrer_phone ? `<div style="font-size:12px;color:var(--ink3)">${esc(r.referrer_phone)}${copyBtn(r.referrer_phone)}</div>` : ''}
+        ${!r.payout_handle && !r.referrer_email && !r.referrer_phone ? `<div style="font-size:12px;color:var(--ink4)">no payout info on file</div>` : ''}
+      </td>
+      <td>${fmtMoney(r.reward_cents)}</td>
+      <td>${r.completed_at ? fmt(r.completed_at) : '—'}</td>
+      <td><button onclick="markReferralPaid('${r.id}')" style="padding:5px 12px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">Mark $${(r.reward_cents/100).toFixed(0)} paid</button></td>
+    </tr>`).join('') : `<tr><td colspan="5" class="empty">No payouts owed.</td></tr>`;
+
+  return `
+    <h2 class="page-title">Referrals</h2>
+    <p class="page-sub">Referrer gets $20 cash after the move completes · referred customer gets a one-time $25 credit. ${codes.length} code(s) · <b style="color:#8B6914">${fmtMoney(owedTotal)} owed</b></p>
+
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:18px">
+      <div style="font-size:12px;font-weight:700;color:var(--accent-deep);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Create a referral code</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <input id="ref-name" placeholder="Referrer name (e.g. Sam R.)" style="${fld};flex:1;min-width:150px">
+        <input id="ref-email" placeholder="Email" style="${fld};flex:1;min-width:140px">
+        <input id="ref-phone" placeholder="Phone" style="${fld};width:130px">
+        <input id="ref-payout" placeholder="Venmo / Zelle (for $20 payout)" style="${fld};flex:1;min-width:170px">
+        <input id="ref-code" placeholder="Custom code (optional)" style="${fld};width:150px">
+        <button onclick="createReferralCode()" style="padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Create + QR</button>
+      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:6px">The name shows to the customer as "Referral from &lt;name&gt;" — use a first name + last initial.</div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(360px,1fr));gap:14px;align-items:start">
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:8px">Codes</div>
+        ${codeCards}
+      </div>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--ink2);margin-bottom:8px">Payouts owed (pay $20 cash, then mark paid)</div>
+        <div class="table-wrap"><table>
+          <thead><tr><th>Referred</th><th>Referrer</th><th>Reward</th><th>Completed</th><th></th></tr></thead>
+          <tbody>${owedRows}</tbody>
+        </table></div>
+      </div>
+    </div>`;
+}
+async function createReferralCode() {
+  const v = id => ((document.getElementById(id) || {}).value || '').trim();
+  const name = v('ref-name'), email = v('ref-email'), phone = v('ref-phone'), payout = v('ref-payout');
+  if (!name && !email) { alert('Enter at least a referrer name or email.'); return; }
+  let code = v('ref-code').replace(/[^A-Za-z0-9-]/g, '').toUpperCase();
+  if (!code) {
+    const base = (name.split(/\s+/)[0] || 'REF').replace(/[^A-Za-z0-9]/g, '').toUpperCase().slice(0, 8) || 'REF';
+    code = base + '-' + Math.floor(1000 + Math.random() * 9000);
+  }
+  const { error } = await sb.from('referral_codes').insert({
+    code, referrer_name: name || null, referrer_email: email || null, referrer_phone: phone || null,
+    payout_handle: payout || null, reward_cents: 2000, active: true,
+  });
+  if (error) { alert(/duplicate|unique/i.test(error.message) ? 'That code already exists — pick another.' : 'Could not create: ' + error.message); return; }
+  await loadAll();
+  showPage('referrals');
+}
+async function markReferralPaid(id) {
+  if (!confirm('Mark this $20 referral reward as paid? (Pay the referrer via cash/Zelle/Venmo first.)')) return;
+  const { error } = await sb.from('referrals').update({ reward_status: 'paid', reward_paid_at: new Date().toISOString() }).eq('id', id);
+  if (error) { alert('Could not update: ' + error.message); return; }
+  await loadAll();
+  showPage('referrals');
+}
+async function toggleReferralActive(id, active) {
+  const { error } = await sb.from('referral_codes').update({ active }).eq('id', id);
+  if (error) { alert('Could not update: ' + error.message); return; }
+  await loadAll();
+  showPage('referrals');
 }
 
 // ─── Helpers ─────────────────────────────────
@@ -791,6 +1138,7 @@ function renderGigs() {
       <button style="${tabStyle('completed')}" onclick="gigTab='completed';showPage('gigs')">Completed (${completed.length})</button>
       <button style="${tabStyle('deleted')}" onclick="gigTab='deleted';showPage('gigs')">Deleted (${deleted.length})</button>
       <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('gigs'))">Refresh</button>
+      <button onclick="showAddGigModal()" style="margin-left:auto;padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">+ Add gig</button>
     </div>
     <div class="table-wrap">
       <table>
@@ -1115,6 +1463,32 @@ function showGigModal(id) {
   const gigPhotos = cache.photos.filter(p => p.gig_id === id);
   const gigApps = cache.applications.filter(a => a.gig_id === id);
 
+  // Paid gigs that came from a web lead / business job carry the full customer
+  // info on the linked row — show it (like the lead modal) so confirmed gigs
+  // aren't missing the customer's details.
+  const linkedLead = g.quote_request_id
+    ? (cache.leads || []).find(x => x.id === g.quote_request_id)
+    : (cache.leads || []).find(x => x.gig_id === g.id);
+  const linkedBiz = (cache.businessJobs || []).find(x => x.gig_id === g.id);
+  const custName = g.customer_id ? profileName(g.customer_id) : (linkedLead ? esc(linkedLead.name) : (linkedBiz ? esc(linkedBiz.customer_name) : '—'));
+  const isLinked = !!(linkedLead || linkedBiz); // move details live in the Customer section, not duplicated above
+  let custSection = '';
+  if (linkedLead) {
+    custSection = `<div style="margin-top:16px;border-top:2px solid var(--accent);padding-top:12px">
+      <div class="modal-label" style="color:var(--accent-deep);font-weight:700;margin-bottom:8px">Customer details${linkedLead.lead_number ? ' · lead #' + linkedLead.lead_number : ''}</div>
+      <div class="modal-row"><div class="modal-label">Name</div><div class="modal-value">${esc(linkedLead.name) || '—'}</div></div>
+      ${leadCustomerRows(linkedLead, false)}</div>`;
+  } else if (linkedBiz) {
+    const stops = Array.isArray(linkedBiz.stops) ? linkedBiz.stops : [];
+    custSection = `<div style="margin-top:16px;border-top:2px solid var(--accent);padding-top:12px">
+      <div class="modal-label" style="color:var(--accent-deep);font-weight:700;margin-bottom:8px">Customer details · business job #${linkedBiz.job_number || ''}</div>
+      <div class="modal-row"><div class="modal-label">Name</div><div class="modal-value">${esc(linkedBiz.customer_name) || '—'}</div></div>
+      <div class="modal-row"><div class="modal-label">Phone</div><div class="modal-value">${linkedBiz.customer_phone ? `<a href="tel:${escAttr(linkedBiz.customer_phone)}" style="color:var(--accent-deep)">${esc(linkedBiz.customer_phone)}</a>` : '—'}</div></div>
+      <div class="modal-row"><div class="modal-label">Email</div><div class="modal-value">${linkedBiz.customer_email ? `<a href="mailto:${escAttr(linkedBiz.customer_email)}" style="color:var(--accent-deep)">${esc(linkedBiz.customer_email)}</a>` : '—'}</div></div>
+      <div class="modal-row"><div class="modal-label">Route</div><div class="modal-value">${stops.length ? stops.map((s, i) => `${i + 1}. ${esc(s.addr || '—')}`).join('<br>') : '—'}</div></div>
+      ${(Array.isArray(linkedBiz.special_items) && linkedBiz.special_items.length) ? `<div class="modal-row"><div class="modal-label">Special items</div><div class="modal-value">${linkedBiz.special_items.map(esc).join(', ')}</div></div>` : ''}</div>`;
+  }
+
   document.getElementById('modal-container').innerHTML = `
     <div class="modal-overlay" onclick="closeModal(event)">
       <div class="modal" onclick="event.stopPropagation()" style="position:relative">
@@ -1127,24 +1501,27 @@ function showGigModal(id) {
           : ''}
         <h2>Gig Details</h2>
         <div class="modal-row"><div class="modal-label">Status</div><div class="modal-value">${badge(g.status)}</div></div>
-        <div class="modal-row"><div class="modal-label">Customer</div><div class="modal-value">${profileName(g.customer_id)}</div></div>
         <div class="modal-row"><div class="modal-label">Worker</div><div class="modal-value">${g.mover_id ? profileName(g.mover_id) : 'None assigned'}</div></div>
+        <div class="modal-row"><div class="modal-label">Difficulty</div><div class="modal-value">${g.difficulty != null ? g.difficulty + '/5 — ' + (['Easy','Light','Moderate','Heavy','Expert'][g.difficulty-1] || '') : '—'}</div></div>
+        ${!isLinked ? `
+        <div class="modal-row"><div class="modal-label">Customer</div><div class="modal-value">${custName}</div></div>
         <div class="modal-row"><div class="modal-label">From</div><div class="modal-value">${esc(g.from_address)}</div></div>
         <div class="modal-row"><div class="modal-label">To</div><div class="modal-value">${esc(g.to_address)}</div></div>
         <div class="modal-row"><div class="modal-label">Distance</div><div class="modal-value">${g.distance_miles ? g.distance_miles + ' mi' : '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Home Size</div><div class="modal-value">${esc(g.home_size) || '—'}</div></div>
-        <div class="modal-row"><div class="modal-label">Difficulty</div><div class="modal-value">${g.difficulty != null ? g.difficulty + '/5 — ' + (['Easy','Light','Moderate','Heavy','Expert'][g.difficulty-1] || '') : '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Est. Duration</div><div class="modal-value">${g.estimated_duration_hours != null ? '~' + g.estimated_duration_hours + ' hrs' : '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Crew</div><div class="modal-value">${g.crew_size || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Truck</div><div class="modal-value">${esc(g.truck_size) || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Stairs</div><div class="modal-value">${g.stairs_from || 0} from, ${g.stairs_to || 0} to</div></div>
         <div class="modal-row"><div class="modal-label">Elevator</div><div class="modal-value">From: ${g.elevator_from ? 'Yes' : 'No'}, To: ${g.elevator_to ? 'Yes' : 'No'}</div></div>
-        <div class="modal-row"><div class="modal-label">Heavy Items</div><div class="modal-value">${esc((g.heavy_items || []).join(', ')) || 'None'}</div></div>
+        <div class="modal-row"><div class="modal-label">Heavy Items</div><div class="modal-value">${esc((g.heavy_items || []).join(', ')) || 'None'}</div></div>` : ''}
         <div class="modal-row"><div class="modal-label">Quoted Price</div><div class="modal-value">${dollars(g.quoted_price_cents)}</div></div>
         <div class="modal-row"><div class="modal-label">Final Price</div><div class="modal-value">${dollars(g.final_price_cents)}</div></div>
+        ${!isLinked ? `
         <div class="modal-row"><div class="modal-label">Scheduled</div><div class="modal-value">${g.scheduled_for ? fmt(g.scheduled_for) : 'ASAP'}</div></div>
-        <div class="modal-row"><div class="modal-label">Notes</div><div class="modal-value">${esc(g.customer_notes) || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Notes</div><div class="modal-value">${esc(g.customer_notes) || '—'}</div></div>` : ''}
         <div class="modal-row"><div class="modal-label">Created</div><div class="modal-value">${fmt(g.created_at)}</div></div>
+        ${custSection}
         ${gigPhotos.length ? `
           <div style="margin-top:16px">
             <div class="modal-label" style="margin-bottom:8px">Photos (${gigPhotos.length})</div>
@@ -1166,9 +1543,170 @@ function showGigModal(id) {
             `).join('')}
           </div>
         ` : ''}
+        ${g.status !== 'draft' && !g.deleted_at ? `
+          <div style="margin-top:18px;border-top:1px solid var(--line);padding-top:14px">
+            <div class="modal-label" style="margin-bottom:8px">Surcharges</div>
+            <div id="surcharge-list" style="margin-bottom:10px"><span style="color:var(--ink3);font-size:13px">Loading…</span></div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+              <div style="flex:0 0 96px">
+                <label style="font-size:11px;color:var(--ink3);display:block;margin-bottom:3px">Amount ($)</label>
+                <input id="surcharge-amount" type="number" min="1" step="1" placeholder="75" style="width:100%;padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px">
+              </div>
+              <div style="flex:1;min-width:160px">
+                <label style="font-size:11px;color:var(--ink3);display:block;margin-bottom:3px">Reason</label>
+                <input id="surcharge-reason" type="text" placeholder="e.g. 2 extra flights, undisclosed piano" style="width:100%;padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px">
+              </div>
+              <button id="surcharge-send-btn" onclick="sendSurcharge('${g.id}')" style="padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">Send pay link</button>
+            </div>
+            <div style="font-size:11px;color:var(--ink3);margin-top:6px">Emails the customer a secure Stripe link to pay an extra charge for this job.</div>
+          </div>
+        ` : ''}
       </div>
     </div>
   `;
+  if (g.status !== 'draft' && !g.deleted_at) renderGigSurcharges(g.id);
+}
+
+// ── Surcharges: extra charge billed to the customer for an inaccurate gig ─────
+// Paid via an emailed Stripe Checkout link (create-surcharge edge fn). The
+// stripe-webhook flips the row to 'paid' when the customer pays.
+function surchargeBadge(st) {
+  const map = { pending: ['#8B6914', '#FFF8E7', 'Pending'], paid: ['#1f7a4d', '#e6f6ee', 'Paid'], canceled: ['#888', '#eee', 'Canceled'] };
+  const [c, bg, lbl] = map[st] || map.pending;
+  return `<span style="background:${bg};color:${c};padding:2px 8px;border-radius:6px;font-size:11px;font-weight:700">${lbl}</span>`;
+}
+async function renderGigSurcharges(gigId) {
+  const el = document.getElementById('surcharge-list');
+  if (!el) return;
+  const { data, error } = await sb.from('surcharges').select('*').eq('gig_id', gigId).order('created_at', { ascending: false });
+  if (error) { el.innerHTML = `<span style="color:var(--error);font-size:12px">Could not load (${esc(error.message)})</span>`; return; }
+  if (!data || !data.length) { el.innerHTML = `<span style="color:var(--ink3);font-size:13px">None yet.</span>`; return; }
+  el.innerHTML = data.map(s => `
+    <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--line);font-size:13px">
+      <span><strong>${fmtMoney(s.amount_cents)}</strong>${s.reason ? ' · ' + esc(s.reason) : ''}</span>
+      <span>${surchargeBadge(s.status)}</span>
+    </div>`).join('');
+}
+async function sendSurcharge(gigId) {
+  const amtEl = document.getElementById('surcharge-amount');
+  const reasonEl = document.getElementById('surcharge-reason');
+  const btn = document.getElementById('surcharge-send-btn');
+  const dollars = parseFloat(amtEl && amtEl.value);
+  if (!(dollars > 0)) { alert('Enter a dollar amount greater than 0.'); return; }
+  const amount_cents = Math.round(dollars * 100);
+  const reason = (reasonEl && reasonEl.value || '').trim();
+  if (!confirm(`Email the customer a Stripe link to pay an extra ${fmtMoney(amount_cents)}?`)) return;
+  if (btn) { btn.disabled = true; btn.textContent = 'Sending…'; }
+  const { data, error } = await sb.functions.invoke('create-surcharge', { body: { gig_id: gigId, amount_cents, reason } });
+  if (btn) { btn.disabled = false; btn.textContent = 'Send pay link'; }
+  const errMsg = error ? (data && data.error) || error.message || String(error) : (data && data.error);
+  if (errMsg) { alert('Could not send surcharge: ' + errMsg); return; }
+  alert('Pay link emailed to the customer.' + (data && data.url ? '\n\nLink: ' + data.url : ''));
+  if (amtEl) amtEl.value = '';
+  if (reasonEl) reasonEl.value = '';
+  renderGigSurcharges(gigId);
+}
+
+// ── Add a custom gig manually (admin-created; shows in Gigs + Calendar) ───────
+// Requires the admin INSERT policy on gigs (migration 046). The difficulty +
+// duration trigger (042) stamps difficulty/estimated_duration_hours on insert.
+function showAddGigModal() {
+  const fld = 'width:100%;padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px;box-sizing:border-box';
+  const lbl = 'font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;display:block;margin:0 0 3px';
+  const sizes = ['Single item','Just a few items','Studio','1 BR','2 BR','3 BR','4+ BR / full house'];
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()" style="position:relative;max-width:620px">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>Add gig</h2>
+        <p style="color:var(--ink3);font-size:13px;margin:-6px 0 14px">Manually create a gig — it appears in Gigs and on the Calendar.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div style="grid-column:1/3"><label style="${lbl}">Title</label><input id="ag-title" style="${fld}" placeholder="e.g. Smith 2BR move"></div>
+          <div><label style="${lbl}">From address</label><input id="ag-from" style="${fld}" placeholder="123 Main St, Austin TX"></div>
+          <div><label style="${lbl}">To address</label><input id="ag-to" style="${fld}" placeholder="456 Oak Ave, Austin TX"></div>
+          <div><label style="${lbl}">Move size</label><select id="ag-size" style="${fld}">${sizes.map(s=>`<option value="${s}">${s}</option>`).join('')}</select></div>
+          <div><label style="${lbl}">Date &amp; time</label><input id="ag-when" type="datetime-local" style="${fld}"></div>
+          <div><label style="${lbl}">Crew size</label><input id="ag-crew" type="number" min="1" max="6" value="2" style="${fld}"></div>
+          <div><label style="${lbl}">Truck</label><select id="ag-truck" style="${fld}"><option value="">—</option><option value="small">Small</option><option value="medium" selected>Medium</option><option value="large">Large</option><option value="none">None</option></select></div>
+          <div><label style="${lbl}">Stairs (from / to flights)</label><div style="display:flex;gap:8px"><input id="ag-stairs-from" type="number" min="0" value="0" style="${fld}"><input id="ag-stairs-to" type="number" min="0" value="0" style="${fld}"></div></div>
+          <div><label style="${lbl}">Elevator</label><div style="display:flex;gap:14px;align-items:center;padding-top:6px;font-size:13px"><label><input id="ag-elev-from" type="checkbox"> From</label><label><input id="ag-elev-to" type="checkbox"> To</label></div></div>
+          <div><label style="${lbl}">Distance (mi, optional)</label><input id="ag-distance" type="number" min="0" style="${fld}"></div>
+          <div><label style="${lbl}">Price ($)</label><input id="ag-price" type="number" min="0" step="1" placeholder="e.g. 800" style="${fld}"></div>
+          <div><label style="${lbl}">Status</label><select id="ag-status" style="${fld}"><option value="posted">Posted</option><option value="matched">Matched</option><option value="in_progress">In progress (paid)</option><option value="completed">Completed</option></select></div>
+          <div style="grid-column:1/3"><label style="${lbl}">Special / heavy items (comma-separated)</label><input id="ag-heavy" style="${fld}" placeholder="Piano, Safe / gun safe"></div>
+          <div><label style="${lbl}">Customer name (optional)</label><input id="ag-cust-name" style="${fld}"></div>
+          <div><label style="${lbl}">Customer phone (optional)</label><input id="ag-cust-phone" style="${fld}"></div>
+          <div style="grid-column:1/3"><label style="${lbl}">Notes</label><textarea id="ag-notes" style="${fld};min-height:54px" placeholder="Anything the crew should know"></textarea></div>
+        </div>
+        <div id="ag-err" style="color:var(--error);font-size:13px;margin-top:10px;display:none"></div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+          <button onclick="closeModal()" style="padding:9px 16px;background:var(--surface);color:var(--ink2);border:1px solid var(--line2);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
+          <button id="ag-save" onclick="createCustomGig()" style="padding:9px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Create gig</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+async function createCustomGig() {
+  const v = id => (document.getElementById(id) || {}).value;
+  const chk = id => !!(document.getElementById(id) || {}).checked;
+  const errEl = document.getElementById('ag-err');
+  const showErr = m => { if (errEl) { errEl.textContent = m; errEl.style.display = 'block'; } };
+
+  const from = (v('ag-from') || '').trim();
+  const to = (v('ag-to') || '').trim();
+  if (!from || !to) return showErr('From and To addresses are required.');
+
+  const dollarsIn = parseFloat(v('ag-price'));
+  const price_cents = dollarsIn > 0 ? Math.round(dollarsIn * 100) : null;
+  const fee = price_cents != null ? Math.round(price_cents * 0.15) : null;
+  const payout = price_cents != null ? price_cents - fee : null;
+  const status = v('ag-status') || 'posted';
+  const isPaid = status === 'in_progress' || status === 'completed';
+
+  const whenRaw = v('ag-when');
+  let scheduled_for = null;
+  if (whenRaw) { const d = new Date(whenRaw); if (!isNaN(d)) scheduled_for = d.toISOString(); }
+
+  const heavy = (v('ag-heavy') || '').split(',').map(s => s.trim()).filter(Boolean);
+  const notesParts = [];
+  const cn = (v('ag-cust-name') || '').trim(), cp = (v('ag-cust-phone') || '').trim();
+  if (cn || cp) notesParts.push(`Customer: ${cn}${cp ? ' · ' + cp : ''}`);
+  if ((v('ag-notes') || '').trim()) notesParts.push(v('ag-notes').trim());
+
+  const gig = {
+    customer_id: null,
+    status,
+    from_address: from,
+    to_address: to,
+    distance_miles: parseFloat(v('ag-distance')) || null,
+    home_size: v('ag-size') || null,
+    heavy_items: heavy,
+    crew_size: parseInt(v('ag-crew')) || null,
+    truck_size: v('ag-truck') || null,
+    stairs_from: parseInt(v('ag-stairs-from')) || 0,
+    stairs_to: parseInt(v('ag-stairs-to')) || 0,
+    elevator_from: chk('ag-elev-from'),
+    elevator_to: chk('ag-elev-to'),
+    scheduled_for,
+    pricing_model: 'flat',
+    gig_category: 'moving',
+    gig_title: (v('ag-title') || '').trim() || 'Custom gig',
+    quoted_price_cents: price_cents,
+    platform_fee_cents: fee,
+    mover_payout_cents: payout,
+    payout_status: 'unpaid',
+    paid_at: isPaid ? new Date().toISOString() : null,
+    customer_notes: notesParts.join('\n') || null,
+  };
+
+  const btn = document.getElementById('ag-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+  const { error } = await sb.from('gigs').insert(gig);
+  if (error) { if (btn) { btn.disabled = false; btn.textContent = 'Create gig'; } return showErr('Could not create gig: ' + error.message); }
+  closeModal();
+  await loadAll();
+  showPage('gigs');
 }
 
 function closeModal(e) {
@@ -1247,6 +1785,17 @@ document.addEventListener('click', (e) => {
   if (el) removeMoverSkill(el.dataset.id, el.dataset.skill);
 });
 
+// Copy-to-clipboard for referral payout contacts (data-* keeps it XSS-safe).
+document.addEventListener('click', (e) => {
+  const el = e.target.closest ? e.target.closest('.copy-btn') : null;
+  if (el && navigator.clipboard) {
+    navigator.clipboard.writeText(el.dataset.copy || '');
+    const prev = el.textContent;
+    el.textContent = 'copied';
+    setTimeout(() => { el.textContent = prev; }, 1200);
+  }
+});
+
 // Admin assigns a mover to a gig by accepting their application. Backed by the
 // assign_mover_to_gig SECURITY DEFINER RPC (migration 034), which is admin-gated
 // and works even on lead-sourced gigs where customer_id IS NULL.
@@ -1283,9 +1832,9 @@ async function restoreLead(id) {
 
 // ─── Leads ───────────────────────────────────
 // ── Lead price breakdown (mirrors intake form calcQuote) ─────────────────────
-const LEAD_BASE = { 'Just a few items':17500, 'Studio':35000, '1 BR':50000, '2 BR':80000, '3 BR':135000, '4+ BR / full house':160000 };
+const LEAD_BASE = { 'Single item':9375, 'Just a few items':17500, 'Studio':35000, '1 BR':50000, '2 BR':80000, '3 BR':135000, '4+ BR / full house':160000 };
 const LEAD_HEAVY = { 'Piano':25000, 'Safe / gun safe':15000, 'Pool table':30000, 'Treadmill / Peloton':7500, 'Big TV (65"+)':7500, 'Aquarium':7500, 'Artwork / mirror':7500 };
-const LEAD_HOURS = { 'Just a few items':1.5, 'Studio':2, '1 BR':3, '2 BR':4, '3 BR':5, '4+ BR / full house':7 };
+const LEAD_HOURS = { 'Single item':1, 'Just a few items':1.5, 'Studio':2, '1 BR':3, '2 BR':4, '3 BR':5, '4+ BR / full house':7 };
 function estimateLeadHours(l) {
   let hrs = LEAD_HOURS[l.items_size] || 2;
   const sp = l.stairs_pickup || '', sd = l.stairs_dropoff || '';
@@ -1303,10 +1852,13 @@ function calcLeadQuote(l) {
   const special = Array.isArray(l.special_items) ? l.special_items.filter(x => x !== 'Nope — just regular stuff') : [];
   const sp = l.stairs_pickup || '', sd = l.stairs_dropoff || '';
   const hasStairs = lbl => lbl === 'Stairs' || lbl === 'Both';
+  const hasElevator = lbl => lbl === 'Elevator' || lbl === 'Both';
   const flightsFrom = hasStairs(sp) ? Math.max(1, l.flights_pickup || 1) : 0;
   const flightsTo   = hasStairs(sd) ? Math.max(1, l.flights_dropoff || 1) : 0;
   const flights    = flightsFrom + flightsTo;
-  const stairsCents = flights * 3000; // $30/flight — matches intake STAIRS_SURCHARGE
+  const stairsCents = flights * 5000; // $50/flight — matches intake STAIRS_SURCHARGE
+  const elevators   = (hasElevator(sp) ? 1 : 0) + (hasElevator(sd) ? 1 : 0);
+  const elevatorCents = elevators * 4000; // $40/location — matches intake ELEVATOR_SURCHARGE
   const carryCents  = (l.parking || '').includes('100+') ? 5000 : 0;
   const heavyCents  = special.reduce((s, x) => s + (LEAD_HEAVY[x] || 7500), 0);
   const isLongDistance = l.service_type === 'Long distance' || l.service_type === 'Long distance (auto)';
@@ -1315,11 +1867,11 @@ function calcLeadQuote(l) {
   const stagingCents = l.staging ? Math.round(adjustedBase * 0.30) : 0;
   const wantsPacking = l.packing_service != null ? l.packing_service : (l.items_boxed === 'Not yet');
   const packingCents = wantsPacking ? Math.round(adjustedBase * 0.25) : 0;
-  const subtotal = adjustedBase + stairsCents + carryCents + heavyCents + stagingCents + packingCents;
+  const subtotal = adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + stagingCents + packingCents;
   const tax = Math.round(subtotal * 0.0825);
   const total = subtotal + tax;
   const deposit = total; // 100% upfront
-  return { base, stairsCents, carryCents, heavyCents, stagingCents, packingCents, isLongDistance, subtotal, tax, total, deposit, flights, heavyCount: special.length };
+  return { base, stairsCents, elevatorCents, elevators, carryCents, heavyCents, stagingCents, packingCents, isLongDistance, subtotal, tax, total, deposit, flights, heavyCount: special.length };
 }
 function fmtMoney(c) { return '$' + (c/100).toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0}); }
 function renderLeadPrice(l) {
@@ -1332,6 +1884,7 @@ function renderLeadPrice(l) {
   const rows = [
     q.isLongDistance ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Long distance (50%)</span><span>+${fmtMoney(Math.round(q.base * 0.5))}</span></div>` : '',
     q.stairsCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Stairs (${q.flights} flight${q.flights>1?'s':''})</span><span>+${fmtMoney(q.stairsCents)}</span></div>` : '',
+    q.elevatorCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Elevator (${q.elevators} location${q.elevators>1?'s':''})</span><span>+${fmtMoney(q.elevatorCents)}</span></div>` : '',
     q.carryCents  ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Long carry</span><span>+${fmtMoney(q.carryCents)}</span></div>` : '',
     q.heavyCents  ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Special items (${q.heavyCount})</span><span>+${fmtMoney(q.heavyCents)}</span></div>` : '',
     q.stagingCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Home staging (+30%)</span><span>+${fmtMoney(q.stagingCents)}</span></div>` : '',
@@ -1393,10 +1946,10 @@ function gcalLink(l) {
   return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${d}T${startTime}/${d}T${endTime}&location=${loc}&details=${details}`;
 }
 
-function openLeadModal(id) {
-  const l = cache.leads.find(x => x.id === id);
-  if (!l) return;
-  const price = l.estimated_price_cents ? `$${Math.round(l.estimated_price_cents/100).toLocaleString()}` : '—';
+// Build a lead's customer/move detail rows. Shared by the lead modal AND the gig
+// modal, so a confirmed paid gig shows the same full customer info.
+// includeFlow=true adds the lead-flow-only "Stopped on" row (omit it for gigs).
+function leadCustomerRows(l, includeFlow) {
   const specialArr = Array.isArray(l.special_items) ? l.special_items.filter(x => x !== 'Nope — just regular stuff') : [];
   const specialCounts = {};
   specialArr.forEach(x => { specialCounts[x] = (specialCounts[x] || 0) + 1; });
@@ -1413,7 +1966,6 @@ function openLeadModal(id) {
         const attrStr = attrs ? Object.entries(attrs).map(([a,c]) => `${c} ${a.toLowerCase()}`).join(', ') : '';
         return attrStr ? `${label} (${attrStr})` : label;
       }).join(', ') : '—';
-  const cal = gcalLink(l);
   const hrs = estimateLeadHours(l);
   const endTimeLabel = l.preferred_time ? (() => {
     const m = l.preferred_time.match(/(\d+)/);
@@ -1446,9 +1998,17 @@ function openLeadModal(id) {
     ['Items list',  esc(l.items_list) || '—'],
     ['Other notes', esc(l.other_notes) || '—'],
     ['Payment',     l.payment_status === 'paid' ? `<span style="color:#27ae60;font-weight:700">Paid (${l.deposit_cents ? '$'+Math.round(l.deposit_cents/100) : '—'})</span>` : l.payment_status === 'pending' ? '<span style="color:#e67e22;font-weight:600">Pending</span>' : '<span style="color:var(--muted)">Unpaid</span>'],
-    ['Stopped on',  `<span style="color:var(--accent-deep);font-weight:700">${esc(leadStopStep(l))}</span>`],
-    ['Submitted',   fmt(l.created_at)],
-  ].map(([label, val]) => `<div class="modal-row"><div class="modal-label">${label}</div><div class="modal-value">${val}</div></div>`).join('');
+  ];
+  if (includeFlow) rows.push(['Stopped on', `<span style="color:var(--accent-deep);font-weight:700">${esc(leadStopStep(l))}</span>`]);
+  rows.push(['Submitted', fmt(l.created_at)]);
+  return rows.map(([label, val]) => `<div class="modal-row"><div class="modal-label">${label}</div><div class="modal-value">${val}</div></div>`).join('');
+}
+
+function openLeadModal(id) {
+  const l = cache.leads.find(x => x.id === id);
+  if (!l) return;
+  const cal = gcalLink(l);
+  const rows = leadCustomerRows(l, true);
 
   document.getElementById('modal-container').innerHTML = `
     <div class="modal-overlay" onclick="closeModal(event)">

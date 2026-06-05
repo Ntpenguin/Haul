@@ -78,6 +78,38 @@ serve(async (req) => {
 
   if (event.type === 'payment_intent.succeeded') {
     const intent = event.data.object as Stripe.PaymentIntent;
+
+    // Admin-initiated surcharge (create-surcharge). Tagged on the PaymentIntent so
+    // it is NOT mistaken for an app-gig or lead payment — handle it first and return.
+    if (intent.metadata?.type === 'surcharge') {
+      const surchargeId = intent.metadata?.surcharge_id;
+      if (surchargeId) {
+        await supabase
+          .from('surcharges')
+          .update({ status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent_id: intent.id })
+          .eq('id', surchargeId);
+        console.log(`Surcharge ${surchargeId} paid`);
+      }
+      return new Response(JSON.stringify({ received: true }), { status: 200 });
+    }
+
+    // Business job pay-link (bill-business-job). Mark the job paid + stamp the gig.
+    if (intent.metadata?.type === 'business_job') {
+      const bjId = intent.metadata?.business_job_id;
+      const bjGigId = intent.metadata?.gig_id;
+      if (bjId) {
+        await supabase
+          .from('business_jobs')
+          .update({ payment_status: 'paid', paid_at: new Date().toISOString(), stripe_payment_intent_id: intent.id })
+          .eq('id', bjId);
+      }
+      if (bjGigId) {
+        await supabase.from('gigs').update({ paid_at: new Date().toISOString() }).eq('id', bjGigId);
+      }
+      console.log(`Business job ${bjId} paid`);
+      return new Response(JSON.stringify({ received: true }), { status: 200 });
+    }
+
     const gigId = intent.metadata?.gig_id;
     const quoteId = intent.metadata?.quote_request_id;
 
@@ -87,7 +119,7 @@ serve(async (req) => {
       // leads become gigs / appear on the calendar). Keep the lead row forever.
       const { data: quote } = await supabase
         .from('quote_requests')
-        .select('id, gig_id, name, email, phone, lead_number, preferred_date, preferred_time, pickup_address, dropoff_address, service_type, items_size, items_list, deposit_cents, estimated_price_cents, stairs_pickup, stairs_dropoff, flights_pickup, flights_dropoff, staging, packing_service, other_notes, special_items, answers')
+        .select('id, gig_id, name, email, phone, lead_number, preferred_date, preferred_time, pickup_address, dropoff_address, service_type, items_size, items_list, deposit_cents, estimated_price_cents, stairs_pickup, stairs_dropoff, flights_pickup, flights_dropoff, staging, packing_service, other_notes, special_items, answers, referral_code, referral_credit_cents')
         .eq('stripe_payment_intent_id', intent.id)
         .single();
 
@@ -102,7 +134,12 @@ serve(async (req) => {
         // not the lead's estimated_price_cents — those can diverge if the customer
         // edited the quote after the PaymentIntent was created (back-nav), which
         // would otherwise let mover_payout exceed what we collected.
-        const total = intent.amount || quote.estimated_price_cents || quote.deposit_cents || 0;
+        // Gross the referral credit back up so the platform — not the mover —
+        // absorbs the $25 discount: the mover is paid 85% of the FULL move price.
+        const referralCredit = quote.referral_credit_cents || 0;
+        const total = intent.amount
+          ? intent.amount + referralCredit
+          : (quote.estimated_price_cents || quote.deposit_cents || 0);
         const platform_fee_cents = Math.round(total * (PLATFORM_FEE_PERCENT / 100));
         const mover_payout_cents = total - platform_fee_cents;
         const hasStairsPU = quote.stairs_pickup === 'Stairs' || quote.stairs_pickup === 'Both';
@@ -146,6 +183,8 @@ serve(async (req) => {
             mover_payout_cents,
             payout_status: 'unpaid',
             paid_at: new Date().toISOString(),
+            referral_code: quote.referral_code || null,
+            referral_credit_cents: referralCredit,
             customer_notes: [quote.items_list, quote.other_notes].filter(Boolean).join('\n') || null,
           })
           .select('id')
@@ -158,6 +197,11 @@ serve(async (req) => {
             .from('quote_requests')
             .update({ gig_id: newGig.id, status: 'booked' })
             .eq('id', quote.id);
+          // Link the referral redemption to the booked gig so completing the gig
+          // (trigger) flips the referrer's $20 reward to 'owed'.
+          if (quote.referral_code) {
+            await supabase.from('referrals').update({ gig_id: newGig.id }).eq('quote_request_id', quote.id);
+          }
           console.log(`Lead ${quote.id} converted to gig ${newGig.id}`);
         }
       }

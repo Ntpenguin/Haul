@@ -32,7 +32,8 @@ export function StepExtras() {
           />
           <AccessRow
             icon="arrow-up-outline"
-            label="Elevator available"
+            label="Elevator"
+            sub="Move uses an elevator here (+$40)"
             control={<Toggle value={draft.elevator_from} onChange={(v) => updateDraft({ elevator_from: v })} />}
             last
           />
@@ -69,7 +70,8 @@ export function StepExtras() {
           />
           <AccessRow
             icon="arrow-up-outline"
-            label="Elevator available"
+            label="Elevator"
+            sub="Move uses an elevator here (+$40)"
             control={<Toggle value={draft.elevator_to} onChange={(v) => updateDraft({ elevator_to: v })} />}
           />
           <AccessRow

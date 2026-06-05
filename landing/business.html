@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://joiukvttuamaanrgzfrz.supabase.co; connect-src https://joiukvttuamaanrgzfrz.supabase.co https://nominatim.openstreetmap.org;">
+<title>Business job request — Fast Fix Work</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#FAF7F2;--card:#fff;--ink:#1A1714;--ink2:#534C44;--ink3:#8B8379;--ink4:#B8B0A4;
+    --amber:#C98B3F;--amber-deep:#8B5E2B;--amber-soft:#F5EDE0;--amber-mid:#E8C48A;--success:#4A8066;
+    --surface:#F2EEE7;--line:rgba(26,23,20,.08);--line2:rgba(26,23,20,.18)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink2);font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.5}
+  .wrap{max-width:640px;margin:0 auto;padding:28px 18px 80px}
+  .brand{font-family:'Fraunces',Georgia,serif;color:var(--amber);font-weight:700;font-size:24px;text-align:center;margin-bottom:6px}
+  h1{font-family:'Fraunces',Georgia,serif;color:var(--ink);font-size:26px;letter-spacing:-.5px;margin:0 0 4px;text-align:center}
+  .sub{text-align:center;color:var(--ink3);font-size:14px;margin-bottom:22px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+  label.fl{display:block;font-size:12px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin:0 0 5px}
+  input,select,textarea{width:100%;padding:11px 12px;border:1.5px solid var(--line2);border-radius:10px;font-size:15px;color:var(--ink);font-family:inherit;background:#fff}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--amber)}
+  .row{display:flex;gap:10px}.row>*{flex:1}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{padding:9px 14px;border:1.5px solid var(--line2);border-radius:999px;background:#fff;font-size:14px;font-weight:600;color:var(--ink2);cursor:pointer}
+  .chip.on{background:var(--amber-soft);border-color:var(--amber);color:var(--amber-deep);box-shadow:2px 2px 0 var(--amber)}
+  .toggle-row{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+  .toggle-row:first-child{border-top:none}
+  .toggle-row label{flex:1;font-size:15px;color:var(--ink);font-weight:600}
+  .mt{margin-top:12px}
+  .stop{position:relative;margin-bottom:10px}
+  .sugg{position:absolute;left:0;right:0;top:100%;background:#fff;border:1px solid var(--line2);border-top:none;border-radius:0 0 10px 10px;z-index:5;max-height:190px;overflow:auto}
+  .sugg div{padding:9px 12px;font-size:13px;cursor:pointer;border-top:1px solid var(--line)}
+  .sugg div:hover{background:var(--amber-soft)}
+  .addbtn{background:none;border:1.5px dashed var(--line2);color:var(--ink2);border-radius:10px;padding:9px;width:100%;font-weight:600;cursor:pointer;font-size:14px}
+  .rec{background:var(--amber-soft);border:2px solid var(--amber);border-radius:14px;padding:16px;margin-bottom:14px}
+  .rec .q-row{display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:4px}
+  .rec .big{display:flex;justify-content:space-between;align-items:baseline;border-top:1.5px solid var(--amber);margin-top:8px;padding-top:8px}
+  .rec .big b{font-family:'Fraunces',serif;font-size:24px;color:var(--ink)}
+  .submit{width:100%;padding:15px;background:var(--amber);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;margin-top:6px}
+  .submit:disabled{opacity:.5;cursor:not-allowed}
+  .note{font-size:12px;color:var(--ink3);margin-top:6px}
+  .photos{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+  .photos img{width:64px;height:64px;object-fit:cover;border-radius:8px;border:1px solid var(--line)}
+  .outcome{text-align:center;padding:10px 0}
+  .badge{display:inline-block;padding:6px 16px;border-radius:999px;font-weight:700;font-size:14px;margin-bottom:12px}
+  .b-accepted{background:#e6f6ee;color:#1f7a4d}.b-countered{background:#FFF8E7;color:#8B6914}.b-pending{background:var(--surface);color:var(--ink2)}
+  .err{color:#b3261e;font-size:13px;margin-top:8px}
+  .disclaimer{background:var(--amber-soft);border:1.5px solid var(--amber-mid);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--ink2);line-height:1.5;margin-bottom:16px}
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+  <div class="brand">Fast Fix Work</div>
+  <h1>Business job request</h1>
+  <div class="sub">For businesses — name your price, get an instant answer.</div>
+
+  <div class="disclaimer"><b style="color:var(--amber-deep)">Heads up:</b> Your quote is based on the details you provide. If the job on site differs from what's listed (extra items, stairs, access, more distance), a surcharge may apply.</div>
+
+  <div class="card">
+    <div class="row">
+      <div><label class="fl">Contact name</label><input id="f-name" placeholder="Jordan at Acme Co."></div>
+      <div><label class="fl">Phone</label><input id="f-phone" type="tel" placeholder="(512) 000-0000"></div>
+    </div>
+    <div class="mt"><label class="fl">Email (for confirmation)</label><input id="f-email" type="email" placeholder="you@company.com"></div>
+  </div>
+
+  <div class="card">
+    <label class="fl">Job size</label>
+    <div class="chips" id="f-size"></div>
+    <div class="note">Pick the closest — sets the base rate.</div>
+  </div>
+
+  <div class="card">
+    <label class="fl">Addresses (in order, up to 4)</label>
+    <div id="f-stops"></div>
+    <button class="addbtn" id="add-stop">+ Add a stop</button>
+  </div>
+
+  <div class="card">
+    <label class="fl">Access</label>
+    <div class="toggle-row"><label>Stairs</label><input type="checkbox" id="f-stairs" style="width:20px;height:20px;accent-color:var(--amber)"></div>
+    <div class="toggle-row"><label>Elevator</label><input type="checkbox" id="f-elevator" style="width:20px;height:20px;accent-color:var(--amber)"></div>
+    <div class="toggle-row"><label>Long walk to door (100+ ft)</label><input type="checkbox" id="f-longwalk" style="width:20px;height:20px;accent-color:var(--amber)"></div>
+  </div>
+
+  <div class="card">
+    <label class="fl">Special / heavy items</label>
+    <div id="f-special" class="chips"></div>
+    <div class="note">Check any that apply — added to the price.</div>
+  </div>
+
+  <div class="card">
+    <label class="fl">Photos of the items</label>
+    <input type="file" id="f-photos" accept="image/*" multiple>
+    <div class="photos" id="photo-prev"></div>
+  </div>
+
+  <div class="card">
+    <div class="row">
+      <div><label class="fl">Preferred date</label><input id="f-date" type="date"></div>
+      <div><label class="fl">Preferred time</label><select id="f-time"></select></div>
+    </div>
+  </div>
+
+  <div class="rec" id="rec"></div>
+
+  <div class="card">
+    <label class="fl">Your offer (what you'll pay)</label>
+    <input id="f-offer" type="number" min="0" step="1" placeholder="e.g. 600">
+    <div class="note">We auto-accept if your offer is within range, otherwise we'll counter or review.</div>
+  </div>
+
+  <button class="submit" id="submit">Submit job request</button>
+  <div class="err" id="err" style="display:none"></div>
+</div>
+
+<script>
+const SB_URL='https://joiukvttuamaanrgzfrz.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvaXVrdnR0dWFtYWFucmd6ZnJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNTY5ODksImV4cCI6MjA5NDYzMjk4OX0.TcpzGaMihyKUZNtuRncasXImyv6bb0De1lf_wQa61Ew';
+
+// Pricing — MUST mirror submit-business-job edge fn.
+const BASE={'Single item':9375,'Just a few items':17500,'Studio':35000,'1 BR':50000,'2 BR':80000,'3 BR':135000,'4+ BR / full house':160000};
+const HOURS={'Single item':1,'Just a few items':1.5,'Studio':2,'1 BR':3,'2 BR':4,'3 BR':5,'4+ BR / full house':7};
+const STAIRS=5000,ELEV=4000,LONGWALK=5000,TAX=.0825,FREE_MI=15,PER_MI=125,DRIVE_MPH=45;
+const HEAVY={'Piano':25000,'Safe / gun safe':15000,'Pool table':30000,'Refrigerator':7500,'Treadmill / Peloton':7500,'Big TV (65"+)':7500,'Aquarium':7500,'Artwork / mirror':7500};
+const SIZES=Object.keys(BASE);
+
+const S={size:null,stops:[{addr:'',lat:null,lng:null},{addr:'',lat:null,lng:null}],special:[],photos:[],photoUrls:[]};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const money=c=>'$'+(c/100).toLocaleString('en-US',{minimumFractionDigits:0,maximumFractionDigits:0});
+
+function hav(a,b){const R=3959,dLa=(b.lat-a.lat)*Math.PI/180,dLo=(b.lng-a.lng)*Math.PI/180;
+  const x=Math.sin(dLa/2)**2+Math.cos(a.lat*Math.PI/180)*Math.cos(b.lat*Math.PI/180)*Math.sin(dLo/2)**2;
+  return R*2*Math.atan2(Math.sqrt(x),Math.sqrt(1-x));}
+function miles(){const p=S.stops.filter(s=>s.lat!=null&&s.lng!=null);let t=0;for(let i=0;i<p.length-1;i++)t+=hav(p[i],p[i+1]);return Math.round(t);}
+
+function calc(){
+  if(!S.size)return null;
+  const base=BASE[S.size],mi=miles();
+  const dist=mi>FREE_MI?(mi-FREE_MI)*PER_MI:0;
+  const access=($('f-stairs').checked?STAIRS:0)+($('f-elevator').checked?ELEV:0)+($('f-longwalk').checked?LONGWALK:0);
+  const heavy=S.special.reduce((s,k)=>s+(HEAVY[k]||0),0);
+  const sub=base+dist+access+heavy, rec=Math.round(sub*(1+TAX));
+  const est=Math.round((HOURS[S.size]+mi/DRIVE_MPH)*10)/10;
+  return{base,mi,dist,access,heavy,rec,est};
+}
+function renderRec(){
+  const q=calc(),el=$('rec');
+  if(!q){el.innerHTML='<div style="font-size:13px;color:var(--ink3)">Pick a job size to see the recommended price.</div>';return;}
+  el.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--amber-deep);letter-spacing:.5px;text-transform:uppercase;margin-bottom:8px">Recommended price</div>
+    <div class="q-row"><span>Base (${esc(S.size)})</span><span>${money(q.base)}</span></div>
+    ${q.dist?`<div class="q-row"><span>Distance (${q.mi} mi)</span><span>+${money(q.dist)}</span></div>`:''}
+    ${q.access?`<div class="q-row"><span>Access</span><span>+${money(q.access)}</span></div>`:''}
+    ${q.heavy?`<div class="q-row"><span>Special items (${S.special.length})</span><span>+${money(q.heavy)}</span></div>`:''}
+    <div class="q-row"><span>Tax (8.25%)</span><span>included</span></div>
+    <div class="big"><span style="font-weight:700;color:var(--ink)">Recommended</span><b>${money(q.rec)}</b></div>
+    <div class="note">Est. ${q.est} hrs${q.est>4?' — over 4h jobs go to manual review':''}.</div>`;
+}
+
+// Job size chips
+$('f-size').innerHTML=SIZES.map(s=>`<button class="chip" data-s="${esc(s)}">${esc(s)}</button>`).join('');
+$('f-size').addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(!b)return;
+  S.size=b.dataset.s;[...$('f-size').children].forEach(c=>c.classList.toggle('on',c.dataset.s===S.size));renderRec();});
+
+// Special / heavy items checklist
+$('f-special').innerHTML=Object.keys(HEAVY).map(k=>`<button class="chip" data-h="${esc(k)}">${esc(k)} <span style="color:var(--ink3);font-weight:400">+$${(HEAVY[k]/100).toLocaleString('en-US')}</span></button>`).join('');
+$('f-special').addEventListener('click',e=>{const b=e.target.closest('[data-h]');if(!b)return;
+  const k=b.dataset.h,i=S.special.indexOf(k);
+  if(i>=0)S.special.splice(i,1);else S.special.push(k);
+  b.classList.toggle('on');renderRec();});
+
+// Time grid 8AM–7PM, with already-booked hours disabled (no double-booking).
+// Booked = paid consumer leads + admin-blocked slots + booked business jobs
+// (get_booked_slots). Each booking blocks its FULL span (start → start+duration),
+// matching the intake form, so long jobs don't get overlapped.
+function parseHour(label){const m=String(label||'').match(/^(\d{1,2}):00\s*(AM|PM)$/i);if(!m)return null;let h=+m[1];if(/pm/i.test(m[2])&&h<12)h+=12;if(/am/i.test(m[2])&&h===12)h=0;return h;}
+function estBookedHours(row){let hrs=HOURS[row.items_size]||2;if(String(row.stairs_pickup||'').includes('Stairs'))hrs+=.5;if(String(row.stairs_dropoff||'').includes('Stairs'))hrs+=.5;const sc=Array.isArray(row.special_items)?row.special_items.length:0;hrs+=sc*.25;if(String(row.parking||'').includes('100+'))hrs+=.25;return Math.ceil(hrs*2)/2;}
+async function refreshSlots(){
+  const date=$('f-date').value, sel=$('f-time'), cur=sel.value;
+  const blocked=new Set();
+  if(date){
+    try{
+      const r=await fetch(`${SB_URL}/rest/v1/rpc/get_booked_slots`,{method:'POST',
+        headers:{'Authorization':`Bearer ${SB_KEY}`,'apikey':SB_KEY,'Content-Type':'application/json'},
+        body:JSON.stringify({p_date:date})});
+      if(r.ok){(await r.json()||[]).forEach(row=>{const s=parseHour(row.preferred_time);if(s==null)return;const dur=estBookedHours(row);for(let h=s;h<s+dur;h++)blocked.add(Math.floor(h));});}
+    }catch(_){}
+  }
+  sel.innerHTML='<option value="">Any time</option>'+Array.from({length:12},(_,i)=>{
+    const h=8+i,ap=h>=12?'PM':'AM',hh=h%12||12,t=`${hh}:00 ${ap}`;
+    const dis=blocked.has(h);
+    return `<option${dis?' disabled':''}>${t}${dis?' — booked':''}</option>`;
+  }).join('');
+  if(cur && !blocked.has(parseHour(cur))) sel.value=cur;
+}
+refreshSlots();
+$('f-date').min=new Date().toISOString().slice(0,10);
+$('f-date').addEventListener('change',refreshSlots);
+
+// Address stops + Nominatim autocomplete
+function renderStops(){
+  $('f-stops').innerHTML=S.stops.map((s,i)=>`<div class="stop">
+    <input data-i="${i}" class="stop-in" placeholder="${i===0?'Pickup address':'Address '+(i+1)}" value="${esc(s.addr)}" autocomplete="off">
+    <div class="sugg" id="sugg-${i}" style="display:none"></div>
+  </div>`).join('');
+  $('add-stop').style.display=S.stops.length>=4?'none':'';
+}
+let debTimer;
+document.addEventListener('input',e=>{
+  if(!e.target.classList.contains('stop-in'))return;
+  const i=+e.target.dataset.i;S.stops[i]={addr:e.target.value,lat:null,lng:null};renderRec();
+  clearTimeout(debTimer);const q=e.target.value.trim();const box=$('sugg-'+i);
+  if(q.length<4){box.style.display='none';return;}
+  debTimer=setTimeout(async()=>{
+    try{const r=await fetch(`https://nominatim.openstreetmap.org/search?format=json&countrycodes=us&limit=5&q=${encodeURIComponent(q)}`,{headers:{'Accept':'application/json'}});
+      const d=await r.json();
+      box.innerHTML=d.map(x=>`<div data-i="${i}" data-lat="${x.lat}" data-lng="${x.lon}" data-addr="${esc(x.display_name)}">${esc(x.display_name)}</div>`).join('');
+      box.style.display=d.length?'block':'none';
+    }catch(_){}
+  },350);
+});
+document.addEventListener('click',e=>{
+  const o=e.target.closest('.sugg div');if(!o)return;
+  const i=+o.dataset.i;S.stops[i]={addr:o.dataset.addr,lat:parseFloat(o.dataset.lat),lng:parseFloat(o.dataset.lng)};
+  $('sugg-'+i).style.display='none';renderStops();renderRec();
+});
+$('add-stop').addEventListener('click',()=>{if(S.stops.length<4){S.stops.push({addr:'',lat:null,lng:null});renderStops();}});
+['f-stairs','f-elevator','f-longwalk'].forEach(id=>$(id).addEventListener('change',renderRec));
+
+// Photos -> upload to quote-photos bucket, keep URLs
+$('f-photos').addEventListener('change',async e=>{
+  const files=[...e.target.files].slice(0,12);
+  for(const file of files){
+    const url=URL.createObjectURL(file);S.photos.push(url);
+    const img=document.createElement('img');img.src=url;$('photo-prev').appendChild(img);
+    const ext=(file.name.split('.').pop()||'jpg');const path=`business/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+    try{const r=await fetch(`${SB_URL}/storage/v1/object/quote-photos/${path}`,{method:'POST',headers:{'Authorization':`Bearer ${SB_KEY}`,'apikey':SB_KEY,'Content-Type':file.type||'image/jpeg'},body:file});
+      if(r.ok)S.photoUrls.push(`${SB_URL}/storage/v1/object/public/quote-photos/${path}`);}catch(_){}
+  }
+});
+
+// Submit
+$('submit').addEventListener('click',async()=>{
+  const err=$('err');err.style.display='none';
+  const name=$('f-name').value.trim(),phone=$('f-phone').value.trim();
+  const offer=parseFloat($('f-offer').value);
+  if(!name||!phone)return showErr('Please add your name and phone.');
+  if(!S.size)return showErr('Please pick a job size.');
+  if(!S.stops.some(s=>s.addr&&s.addr.trim()))return showErr('Please add at least one address.');
+  if(!(offer>0))return showErr('Please enter the price you want to pay.');
+  const btn=$('submit');btn.disabled=true;btn.textContent='Submitting…';
+  const payload={customer_name:name,customer_phone:phone,customer_email:$('f-email').value.trim(),job_size:S.size,
+    stops:S.stops.filter(s=>s.addr&&s.addr.trim()),
+    stairs:$('f-stairs').checked,elevator:$('f-elevator').checked,long_walk:$('f-longwalk').checked,
+    special_items:S.special,photo_urls:S.photoUrls,
+    requested_date:$('f-date').value||null,requested_time:$('f-time').value||null,
+    offered_price_cents:Math.round(offer*100)};
+  try{
+    const r=await fetch(`${SB_URL}/functions/v1/submit-business-job`,{method:'POST',
+      headers:{'Authorization':`Bearer ${SB_KEY}`,'apikey':SB_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||'Submission failed');
+    showOutcome(d);
+  }catch(e){btn.disabled=false;btn.textContent='Submit job request';showErr(e.message||'Something went wrong — call 512-777-1628.');}
+});
+function showErr(m){const e=$('err');e.textContent=m;e.style.display='block';}
+
+function showOutcome(d){
+  const map={accepted:['b-accepted','Accepted ✓'],countered:['b-countered','Counter offer'],pending:['b-pending','Under review']};
+  const[cls,lbl]=map[d.decision]||map.pending;
+  let body='';
+  if(d.decision==='accepted'){
+    body=`<p>Your job <b>#${d.job_number}</b> is booked${d.scheduled_for?' for '+new Date(d.scheduled_for).toLocaleString('en-US',{month:'short',day:'numeric',hour:'numeric',minute:'2-digit'}):''}.</p>
+      <p>We'll text you at the number provided to confirm crew details.</p>`;
+  }else if(d.decision==='countered'){
+    body=`<p>${esc(d.decision_reason)}</p>
+      ${d.counter_price_cents?`<p>Our recommended price for this job is <b>${money(d.counter_price_cents)}</b>.</p>`:''}
+      ${d.suggested_time?`<p>Next open slot: <b>${esc(d.suggested_time)}</b>.</p>`:''}
+      <p>Reply to our text to accept, or call <a href="tel:5127771628" style="color:var(--amber-deep);font-weight:600">512-777-1628</a>.</p>`;
+  }else{
+    body=`<p>Job <b>#${d.job_number}</b> received. ${esc(d.decision_reason)}</p>
+      <p>We'll review and reach out shortly with a quote.</p>`;
+  }
+  $('wrap').innerHTML=`<div class="brand">Fast Fix Work</div>
+    <div class="card outcome"><span class="badge ${cls}">${lbl}</span>
+      <div style="font-size:14px;color:var(--ink2);line-height:1.6">${body}</div>
+      <div class="note" style="margin-top:14px">Recommended ${money(d.recommended_price_cents)} · est. ${d.estimated_duration_hours} hrs · ${d.distance_miles} mi</div>
+    </div>`;
+  window.scrollTo(0,0);
+}
+
+renderStops();renderRec();
+</script>
+</body>
+</html>

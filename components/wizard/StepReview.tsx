@@ -95,6 +95,7 @@ export function StepReview() {
               {price.longDistanceCents > 0 && <PriceRow label="Long distance (+50%)" value={`+${formatCents(price.longDistanceCents)}`} />}
               {price.distanceSurchargeCents > 0 && <PriceRow label="Mileage" value={`+${formatCents(price.distanceSurchargeCents)}`} />}
               {price.stairsSurchargeCents > 0 && <PriceRow label="Stairs surcharge" value={`+${formatCents(price.stairsSurchargeCents)}`} />}
+              {price.elevatorSurchargeCents > 0 && <PriceRow label="Elevator" value={`+${formatCents(price.elevatorSurchargeCents)}`} />}
               {price.longCarryCents > 0 && <PriceRow label="Long carry" value={`+${formatCents(price.longCarryCents)}`} />}
               {price.heavyItemsCents > 0 && <PriceRow label="Heavy items" value={`+${formatCents(price.heavyItemsCents)}`} />}
               {price.stagingCents > 0 && <PriceRow label="Home staging (+30%)" value={`+${formatCents(price.stagingCents)}`} />}

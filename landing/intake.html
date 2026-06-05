@@ -818,7 +818,7 @@ function stripHtml(s) { return String(s || '').replace(/<[^>]*>/g, '').trim(); }
 function clamp(s, max) { return String(s || '').slice(0, max); }
 
 // ── Booked-slot detection ────────────────────────────────────────────────────
-const LEAD_HOURS = { 'Just a few items':1.5, 'Studio':2, '1 BR':3, '2 BR':4, '3 BR':5, '4+ BR / full house':7 };
+const LEAD_HOURS = { 'Single item':1, 'Just a few items':1.5, 'Studio':2, '1 BR':3, '2 BR':4, '3 BR':5, '4+ BR / full house':7 };
 function estimateLeadHours(lead) {
   let hrs = LEAD_HOURS[lead.items_size] || 2;
   const sp = lead.stairs_pickup || '', sd = lead.stairs_dropoff || '';
@@ -917,6 +917,9 @@ const S = {
   photoPreviews: {}, // id -> dataURL[]
   bookedHours: new Set(), // hours blocked on selected date
   submitting: false,
+  referralCode: null,   // from ?ref= ; referrer's QR code
+  referralCredit: 0,    // cents (2500 if eligible) resolved via referral_lookup
+  referrerName: null,   // for "Referral from <name>"
 };
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
@@ -983,6 +986,14 @@ function validate(q){
   }
   if(q.id === 'addresses'){
     if(!v || !v.pickup || !(v.pickup.addr||'').trim()) return 'Please enter a pickup address.';
+    const isSameAddr = S.answers['service'] === 'Rearranging within same address';
+    if(!isSameAddr){
+      const pu = (v.pickup?.addr||'').trim().toLowerCase();
+      const dr = (v.dropoff?.addr||'').trim().toLowerCase();
+      const sameByText  = dr && pu === dr;
+      const sameByCoord = v.pickup?.lat!=null && v.dropoff?.lat!=null && v.pickup.lat===v.dropoff.lat && v.pickup.lng===v.dropoff.lng;
+      if(sameByText || sameByCoord) return 'Pickup and drop-off can’t be the same address. If you’re moving things within one place, choose “Rearranging within same address”.';
+    }
     return null;
   }
   if(q.id === 'stuff'){
@@ -1133,6 +1144,9 @@ function renderBody(q){
   if(q.type === 'contact'){
     const c = a || {};
     return `
+      <div style="margin-bottom:16px;padding:11px 13px;background:var(--amber-soft);border:1.5px solid var(--amber-mid);border-radius:10px;font-size:12.5px;color:var(--ink2);line-height:1.5">
+        <b style="color:var(--amber-deep)">Heads up:</b> Your quote is based on the details you give us here. If there are extra items, stairs, long carries, parking/access issues, or other conditions not listed on this form, a surcharge may apply on move day.
+      </div>
       <label class="field-label" for="fi-contact-name">Your name</label>
       <input class="field-input" id="fi-contact-name" type="text"
         placeholder="e.g. Sam Rivera" value="${esc(c.name||'')}" data-bind="c-name" autocomplete="name" />
@@ -1186,7 +1200,7 @@ function renderBody(q){
   // ── Stuff (size + special items + item list) ──
   if(q.type === 'stuff'){
     const st = a || {};
-    const sizes = ['Just a few items','Studio','1 BR','2 BR','3 BR','4+ BR / full house'];
+    const sizes = ['Single item','Just a few items','Studio','1 BR','2 BR','3 BR','4+ BR / full house'];
     const sizeChips = sizes.map(s =>
       `<button class="chip${st.size===s?' checked':''}" data-bind="size" data-val="${esc(s)}">${esc(s)}</button>`
     ).join('');
@@ -2037,8 +2051,9 @@ function formatAnswer(q){
 }
 
 // ── Instant quote engine (mirrors lib/pricing.ts) ────────────────────────────
-const BASE_PRICES = { 'Just a few items':17500, 'Studio':35000, '1 BR':50000, '2 BR':80000, '3 BR':135000, '4+ BR / full house':160000 };
-const STAIRS_SURCHARGE = 3000;
+const BASE_PRICES = { 'Single item':9375, 'Just a few items':17500, 'Studio':35000, '1 BR':50000, '2 BR':80000, '3 BR':135000, '4+ BR / full house':160000 };
+const STAIRS_SURCHARGE = 5000;
+const ELEVATOR_SURCHARGE = 4000; // $40 per location that has an elevator
 const LONG_CARRY = 5000;
 const HEAVY_PRICES = { 'Piano':25000, 'Safe / gun safe':15000, 'Pool table':30000, 'Treadmill / Peloton':7500, 'Big TV (65"+)':7500, 'Aquarium':7500, 'Artwork / mirror':7500 };
 const TAX = 0.0825;
@@ -2076,12 +2091,15 @@ function calcQuote(){
   const parking  = access.parking || '';
 
   const hasStairs  = lbl => lbl === 'Stairs' || lbl === 'Both';
+  const hasElevator = lbl => lbl === 'Elevator' || lbl === 'Both';
   const flightsFrom = hasStairs(stairs_p) ? Math.max(1, access.flights_pickup || 1) : 0;
   const flightsTo   = hasStairs(stairs_d) ? Math.max(1, access.flights_dropoff || 1) : 0;
   const longCarry  = parking.includes('100+');
 
   const flights = flightsFrom + flightsTo;
   const stairsCents  = flights * STAIRS_SURCHARGE;
+  const elevators    = (hasElevator(stairs_p) ? 1 : 0) + (hasElevator(stairs_d) ? 1 : 0);
+  const elevatorCents = elevators * ELEVATOR_SURCHARGE;
   const carryCents   = longCarry ? LONG_CARRY : 0;
   const specialEntries = Object.entries(special).filter(([k]) => k !== 'Nope — just regular stuff');
   const heavyCents   = specialEntries.reduce((s,[k,qty]) => s + (HEAVY_PRICES[k] || 7500) * qty, 0);
@@ -2104,13 +2122,18 @@ function calcQuote(){
   const needsPacking = S.answers['extras']?.boxed === 'Not yet' && S.answers['extras']?.packing !== false;
   const packingCents = needsPacking ? Math.round(adjustedBase * PACKING_SURCHARGE_PCT) : 0;
 
-  const subtotal = Math.round(adjustedBase + stairsCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents);
+  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents);
   const tax      = Math.round(subtotal * TAX);
-  const total    = subtotal + tax;
-  const deposit  = total; // 100% upfront
+  const total    = subtotal + tax;  // gross move price (before any referral credit)
+
+  // Referral credit ($25 off, applied to the post-tax total). Capped so the
+  // charge never drops below Stripe's minimum. Mirrors create-quote-payment.
+  const referralCredit = Math.min(Math.max(0, S.referralCredit || 0), Math.max(0, total - 50));
+  const finalTotal = total - referralCredit;
+  const deposit  = finalTotal; // 100% upfront (after credit)
 
   const heavyCount = specialEntries.reduce((s,[,qty]) => s + qty, 0);
-  return { base, stairsCents, carryCents, heavyCents, distanceCents, stagingCents, packingCents, miles, isLongDistance, subtotal, tax, total, deposit, flights, longCarry, heavyCount };
+  return { base, stairsCents, elevatorCents, elevators, carryCents, heavyCents, distanceCents, stagingCents, packingCents, miles, isLongDistance, subtotal, tax, total, referralCredit, finalTotal, deposit, flights, longCarry, heavyCount };
 }
 
 function fmtMoney(cents){ return '$' + (cents/100).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}); }
@@ -2125,11 +2148,13 @@ function renderQuoteBlock(){
     q.isLongDistance ? `<div class="q-row"><span>Long distance${q.miles >= 50 && S.answers['service'] !== 'Long distance' ? ' (auto — '+q.miles+' mi)' : ''} (50%)</span><span>+${fmtMoney(Math.round(q.base * 0.5))}</span></div>` : '',
     q.distanceCents ? `<div class="q-row"><span>Distance (${q.miles} mi, ${q.miles - DISTANCE_FREE_MILES} over ${DISTANCE_FREE_MILES} free)</span><span>+${fmtMoney(q.distanceCents)}</span></div>` : '',
     q.stairsCents  ? `<div class="q-row"><span>Stairs (${q.flights} flight${q.flights>1?'s':''})</span><span>+${fmtMoney(q.stairsCents)}</span></div>` : '',
+    q.elevatorCents ? `<div class="q-row"><span>Elevator (${q.elevators} location${q.elevators>1?'s':''})</span><span>+${fmtMoney(q.elevatorCents)}</span></div>` : '',
     q.carryCents   ? `<div class="q-row"><span>Long carry</span><span>+${fmtMoney(q.carryCents)}</span></div>` : '',
     q.stagingCents ? `<div class="q-row"><span>Home staging (+30%)</span><span>+${fmtMoney(q.stagingCents)}</span></div>` : '',
     q.packingCents ? `<div class="q-row"><span>Packing service (+25%)</span><span>+${fmtMoney(q.packingCents)}</span></div>` : '',
     q.heavyCents   ? `<div class="q-row"><span>Special items (${q.heavyCount})</span><span>+${fmtMoney(q.heavyCents)}</span></div>${Object.entries(S.answers['stuff']?.special||{}).filter(([k])=>k!=='Nope — just regular stuff').filter(([,v])=>v>1).map(([k,v])=>`<div class="q-row" style="font-size:12px;color:var(--ink3);padding-left:10px"><span>${esc(k)} ×${v}</span><span>${fmtMoney((HEAVY_PRICES[k]||7500)*v)}</span></div>`).join('')}` : '',
     `<div class="q-row"><span>Tax (8.25%)</span><span>+${fmtMoney(q.tax)}</span></div>`,
+    q.referralCredit ? `<div class="q-row" style="color:var(--success);font-weight:700"><span>Referral from ${esc(S.referrerName || 'a friend')}</span><span>-${fmtMoney(q.referralCredit)}</span></div>` : '',
   ].filter(Boolean).join('');
 
   return `<div style="background:var(--amber-soft);border:2px solid var(--amber);border-radius:14px;padding:16px;margin-bottom:14px;">
@@ -2139,7 +2164,7 @@ function renderQuoteBlock(){
     <div style="border-top:1.5px solid var(--amber);margin:10px 0 8px"></div>
     <div style="display:flex;justify-content:space-between;align-items:baseline">
       <span style="font-size:18px;font-weight:800;font-family:'Fraunces',serif;color:var(--ink)">Total</span>
-      <span style="font-size:26px;font-weight:800;font-family:'Fraunces',serif;color:var(--ink)">${fmtMoney(q.total)}</span>
+      <span style="font-size:26px;font-weight:800;font-family:'Fraunces',serif;color:var(--ink)">${fmtMoney(q.finalTotal)}</span>
     </div>
     <div style="font-size:12px;color:var(--ink3);margin-top:4px">Full payment due at booking · 80% refundable if cancelled 48+ hours before move</div>
     <div style="font-size:11px;color:var(--ink3);margin-top:6px;line-height:1.4;font-style:italic">* This estimate is subject to change based on actual move conditions. If anything about your move changes, please call or text <a href="tel:5127771628" style="color:var(--amber-deep);font-weight:600">512-777-1628</a> for a manual review of your quote.</div>
@@ -2255,7 +2280,7 @@ function showReview(){
       <div class="qnum">Review · last step</div>
       <div class="qtitle">Look good?</div>
       <div class="review-list">${rows}</div>
-      ${renderQuoteBlock()}
+      <div id="qblock">${renderQuoteBlock()}</div>
       <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;margin-top:8px;background:var(--surface);border-radius:10px;cursor:pointer;font-size:13px;color:var(--ink2);line-height:1.45;user-select:none">
         <input type="checkbox" id="agree-cb" style="margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:var(--amber);cursor:pointer" />
         <span>I agree to the <a href="#" id="terms-link" style="color:var(--amber-deep);font-weight:600;text-decoration:underline">Moving Services Agreement</a> and <a href="#" id="privacy-link" style="color:var(--amber-deep);font-weight:600;text-decoration:underline">Privacy Policy</a>. I authorize Fast Fix Work to charge my card for the full estimated amount. 80% is refundable if cancelled 48+ hours before the move; non-refundable within 48 hours. The estimate may change based on actual move conditions. The Company is not responsible for damage to particleboard, IKEA-style, or pre-damaged items.</span>
@@ -2279,6 +2304,15 @@ function showReview(){
   document.getElementById('terms-link').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showLegalModal('terms'); });
   document.getElementById('privacy-link').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showLegalModal('privacy'); });
 
+  // Resolve the referral credit (if a ?ref= code was scanned), then re-render just
+  // the estimate so the discount + "Referral from <name>" line appears automatically.
+  if (S.referralCode) {
+    refreshReferral().then(() => {
+      const qb = document.getElementById('qblock');
+      if (qb) qb.innerHTML = renderQuoteBlock();
+    });
+  }
+
   backBtn.disabled = false;
   nextBtn.disabled = true;
   nextBtn.style.opacity = '.3';
@@ -2291,7 +2325,7 @@ function showReview(){
 function buildPayload(){
   const getA = id => S.answers[id];
   const VALID_SERVICES = new Set(['Local move (same city)','Long distance','Just a few items','Loading / unloading help only','Moving in or out of storage','Rearranging within same address']);
-  const VALID_SIZES    = new Set(['Just a few items','Studio','1 BR','2 BR','3 BR','4+ BR / full house']);
+  const VALID_SIZES    = new Set(['Single item','Just a few items','Studio','1 BR','2 BR','3 BR','4+ BR / full house']);
   const VALID_STAIRS   = new Set(['Ground floor','Stairs','Elevator','Both','Ground floor — easy in/out','Stairs only','Both stairs and elevator']);
   const VALID_PARKING  = new Set(['Driveway / right at the door','Street parking — short walk','Long walk (100+ ft)','Loading dock / bay','Permit might be needed','Not sure — call me']);
   const VALID_SPECIAL  = new Set(['Piano','Safe / gun safe','Pool table','Treadmill / Peloton','Big TV (65"+)','Artwork / mirror','Aquarium','Nope — just regular stuff','Not sure']);
@@ -2365,6 +2399,7 @@ function buildPayload(){
     other_notes:        clamp(stripHtml(extras.other), 2000) || null,
     photo_urls:         [],
     estimated_price_cents: calcQuote()?.total || null,
+    referral_code:      S.referralCode || null,
     answers: S.answers,
     notes:   S.notes,
   };
@@ -2377,6 +2412,30 @@ function buildPayload(){
 // progressive save upserts the same lead. NOTE: the RPC sets all allow-listed
 // columns from the payload, so callers must always send the FULL payload (a
 // partial payload would null the omitted fields).
+// Resolve a referral ?ref= code against the referrer + the customer's contact
+// info (eligibility / once-per-person) via the same RPC the server uses, so the
+// shown credit always equals what create-quote-payment charges.
+async function refreshReferral(){
+  if(!S.referralCode) return;
+  const c = S.answers['contact'] || {};
+  if(!c.email) return; // need contact info to check eligibility
+  try {
+    const r = await fetch(`${SB_URL}/rest/v1/rpc/referral_lookup`, {
+      method:'POST',
+      headers:{ 'Authorization':`Bearer ${SB_KEY}`, 'apikey':SB_KEY, 'Content-Type':'application/json' },
+      body: JSON.stringify({ p_code: S.referralCode, p_email: c.email||'', p_phone: c.phone||'', p_name: c.name||'' }),
+    });
+    if(!r.ok) return;
+    const data = await r.json();
+    if(data && data.valid){
+      S.referrerName  = data.referrer_name || null;
+      S.referralCredit = parseInt(data.credit_cents) || 0;
+    } else {
+      S.referralCredit = 0;
+    }
+  } catch(e){ /* non-fatal — credit stays 0, server is authoritative anyway */ }
+}
+
 async function saveLead(payload){
   if(!S.quoteRecordId) S.quoteRecordId = payload.id;
   payload.id = S.quoteRecordId;
@@ -2513,7 +2572,8 @@ async function showPaymentStep(recordId, quote) {
       <div class="qtitle">Secure your booking</div>
       <div class="deposit-summary">
         <div class="ds-row"><span>Estimated total</span><span>${fmtMoney(quote.total)}</span></div>
-        <div class="ds-row total"><span>Due now</span><span>${fmtMoney(quote.total)}</span></div>
+        ${quote.referralCredit ? `<div class="ds-row" style="color:var(--success);font-weight:700"><span>Referral from ${esc(S.referrerName || 'a friend')}</span><span>-${fmtMoney(quote.referralCredit)}</span></div>` : ''}
+        <div class="ds-row total"><span>Due now</span><span>${fmtMoney(quote.finalTotal)}</span></div>
         <div class="ds-note">80% refundable if cancelled 48+ hours before your move; non-refundable within 48 hours.</div>
         <div class="ds-note" style="font-style:italic">* Estimate subject to change based on actual move conditions. Call or text <a href="tel:5127771628" style="color:var(--amber-deep);font-weight:600">512-777-1628</a> if anything about your move changes.</div>
       </div>
@@ -2655,6 +2715,13 @@ backBtn.addEventListener('click', goBack);
     }
   }
 })();
+// Referral: capture ?ref=CODE from a scanned QR (sanitize to a safe code).
+(function captureRef(){
+  const raw = new URLSearchParams(window.location.search).get('ref') || '';
+  const code = raw.replace(/[^A-Za-z0-9-]/g, '').slice(0, 40);
+  if (code) S.referralCode = code;
+})();
+
 renderAll();
 initMobNav();
 

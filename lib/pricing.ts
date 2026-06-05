@@ -4,7 +4,8 @@
 // Sources:
 // - Austin movers: $90–$180/hr for 2-mover crew + truck
 // - Studio: $300–$450, 1BR: $400–$650, 2BR: $700–$900, 3BR: $1,100–$1,650
-// - Stairs surcharge: $30/flight (matches intake form + admin)
+// - Stairs surcharge: $50/flight (matches intake form + admin)
+// - Elevator surcharge: $40 per location with an elevator (matches intake + admin)
 // - Heavy items: $50–$150 each depending on item
 //
 // Payment model:
@@ -17,7 +18,7 @@
 //   - base price is by move size only — crew size and truck size do NOT change
 //     the price (they're still collected for the mover's planning).
 //   - long-distance (>= 50 mi) multiplies the base by 1.5x.
-//   - stairs are charged per flight with no elevator discount.
+//   - stairs are charged per flight; an elevator at a location adds a flat fee.
 
 import { z } from 'zod';
 
@@ -48,6 +49,7 @@ export interface FlatPriceResult {
   baseCents: number;
   longDistanceCents: number;
   stairsSurchargeCents: number;
+  elevatorSurchargeCents: number;
   longCarryCents: number;
   heavyItemsCents: number;
   distanceSurchargeCents: number;
@@ -99,7 +101,8 @@ const TRUCK_MULTIPLIERS: Record<string, number> = {
 };
 
 // Austin industry standard surcharges
-const STAIRS_SURCHARGE_CENTS_PER_FLIGHT = 3000;   // $30/flight (matches intake/admin)
+const STAIRS_SURCHARGE_CENTS_PER_FLIGHT = 5000;   // $50/flight (matches intake/admin)
+const ELEVATOR_SURCHARGE_CENTS = 4000;             // $40 per location that has an elevator
 const LONG_CARRY_SURCHARGE_CENTS = 5000;           // $50 for long carry (100+ ft)
 const HEAVY_ITEM_SURCHARGE_CENTS = 7500;           // $75 per heavy/specialty item (default)
 const TAX_RATE = 0.0825;                           // Texas sales tax 8.25%
@@ -204,9 +207,11 @@ export function priceFor(data: GigPricingData, model: PricingModel = 'flat'): Pr
   // Flat rate — mirrors the intake form's calcQuote exactly.
   // Crew size and truck size do NOT affect the flat price (parity with the website).
   const baseCents = BASE_PRICES_CENTS[data.homeSize] ?? 50000;
-  // Stairs are charged per flight with no elevator discount (matches intake form).
+  // Stairs are charged per flight (matches intake form).
   const stairsFlights = Math.max(0, data.stairsFrom + data.stairsTo);
   const stairsSurchargeCents = stairsFlights * STAIRS_SURCHARGE_CENTS_PER_FLIGHT;
+  // Elevator at a location adds a flat fee per location (slower load via lift / dock walk).
+  const elevatorSurchargeCents = ((data.elevatorFrom ? 1 : 0) + (data.elevatorTo ? 1 : 0)) * ELEVATOR_SURCHARGE_CENTS;
   const longCarryCents = data.longCarry ? LONG_CARRY_SURCHARGE_CENTS : 0;
   const heavyItemsCents = data.heavyItems.reduce((sum, item) => sum + heavyItemCost(item), 0);
   const distanceSurchargeCents = distanceSurcharge(data.distanceMiles);
@@ -217,7 +222,7 @@ export function priceFor(data: GigPricingData, model: PricingModel = 'flat'): Pr
   const stagingCents = data.staging ? Math.round(adjustedBaseCents * (STAGING_SURCHARGE_PERCENT / 100)) : 0;
   const packingCents = data.packing ? Math.round(adjustedBaseCents * (PACKING_SURCHARGE_PERCENT / 100)) : 0;
 
-  const subtotalCents = Math.round(adjustedBaseCents + stairsSurchargeCents + longCarryCents + heavyItemsCents + distanceSurchargeCents + stagingCents + packingCents);
+  const subtotalCents = Math.round(adjustedBaseCents + stairsSurchargeCents + elevatorSurchargeCents + longCarryCents + heavyItemsCents + distanceSurchargeCents + stagingCents + packingCents);
   const taxesCents = Math.round(subtotalCents * TAX_RATE);
   const totalCents = subtotalCents + taxesCents;
 
@@ -229,6 +234,7 @@ export function priceFor(data: GigPricingData, model: PricingModel = 'flat'): Pr
     baseCents,
     longDistanceCents,
     stairsSurchargeCents,
+    elevatorSurchargeCents,
     longCarryCents,
     heavyItemsCents,
     distanceSurchargeCents,
