@@ -917,9 +917,10 @@ const S = {
   photoPreviews: {}, // id -> dataURL[]
   bookedHours: new Set(), // hours blocked on selected date
   submitting: false,
-  referralCode: null,   // from ?ref= ; referrer's QR code
+  referralCode: null,   // from ?ref= (scanned QR) OR typed into the review-step field
   referralCredit: 0,    // cents (2500 if eligible) resolved via referral_lookup
   referrerName: null,   // for "Referral from <name>"
+  refTried: false,      // user manually clicked Apply (show "invalid" note on miss)
 };
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
@@ -2171,6 +2172,56 @@ function renderQuoteBlock(){
   </div>`;
 }
 
+// ── Referral code: manual entry on the review step. Mirrors a scanned ?ref= —
+// both routes set S.referralCode and resolve the credit via refreshReferral()
+// (the same referral_lookup RPC the server uses at charge time). ────────────────
+function renderRefEntry(){
+  if ((S.referralCredit || 0) > 0) {
+    return `<div style="margin:-2px 0 14px;padding:11px 14px;background:#E7F2EC;border:1.5px solid var(--success);border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <span style="font-size:13px;font-weight:700;color:#2F6B50">&#10003; Referral code applied — $25 off${S.referrerName ? ' from ' + esc(S.referrerName) : ''}</span>
+      <button id="ref-remove" type="button" style="background:none;border:none;color:#2F6B50;font-size:12px;text-decoration:underline;cursor:pointer">remove</button>
+    </div>`;
+  }
+  return `<div style="margin:-2px 0 14px;padding:11px 14px;background:var(--surface);border:1.5px solid var(--line2);border-radius:12px">
+    <div style="font-size:12px;font-weight:700;color:var(--ink2);margin-bottom:8px">Have a referral code?</div>
+    <div style="display:flex;gap:8px">
+      <input id="ref-input" type="text" inputmode="text" autocapitalize="characters" autocomplete="off" placeholder="e.g. SAM-1234" value="${esc(S.referralCode || '')}" style="flex:1;min-width:0;padding:9px 12px;border:1.5px solid var(--line2);border-radius:9px;font-size:14px;text-transform:uppercase;color:var(--ink);background:var(--card)" />
+      <button id="ref-apply" type="button" style="padding:9px 18px;background:var(--amber);color:#fff;border:none;border-radius:9px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">Apply</button>
+    </div>
+    ${S.refTried ? `<div style="font-size:12px;color:#B4452E;margin-top:8px">That code isn&#39;t valid, or your contact info isn&#39;t eligible for this credit.</div>` : ''}
+  </div>`;
+}
+async function applyRefCode(){
+  const inp = document.getElementById('ref-input');
+  if (!inp) return;
+  const code = (inp.value || '').replace(/[^A-Za-z0-9-]/g, '').slice(0, 40).toUpperCase();
+  if (!code) { inp.focus(); return; }
+  const btn = document.getElementById('ref-apply');
+  if (btn) { btn.disabled = true; btn.textContent = '…'; }
+  S.referralCode = code;
+  S.refTried = true;
+  await refreshReferral();
+  refreshEstimateUI();
+}
+function removeRefCode(){
+  S.referralCode = null; S.referralCredit = 0; S.referrerName = null; S.refTried = false;
+  refreshEstimateUI();
+}
+// Re-render the estimate + referral box together, then re-wire the inputs.
+function refreshEstimateUI(){
+  const qb = document.getElementById('qblock');    if (qb) qb.innerHTML = renderQuoteBlock();
+  const re = document.getElementById('ref-entry'); if (re) re.innerHTML = renderRefEntry();
+  wireRefEntry();
+}
+function wireRefEntry(){
+  const apply = document.getElementById('ref-apply');
+  if (apply) apply.addEventListener('click', applyRefCode);
+  const inp = document.getElementById('ref-input');
+  if (inp) inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); applyRefCode(); } });
+  const rm = document.getElementById('ref-remove');
+  if (rm) rm.addEventListener('click', removeRefCode);
+}
+
 function showLegalModal(type) {
   const isTerms = type === 'terms';
   const title = isTerms ? 'Moving Services Agreement' : 'Privacy Policy';
@@ -2281,6 +2332,7 @@ function showReview(){
       <div class="qtitle">Look good?</div>
       <div class="review-list">${rows}</div>
       <div id="qblock">${renderQuoteBlock()}</div>
+      <div id="ref-entry">${renderRefEntry()}</div>
       <label style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;margin-top:8px;background:var(--surface);border-radius:10px;cursor:pointer;font-size:13px;color:var(--ink2);line-height:1.45;user-select:none">
         <input type="checkbox" id="agree-cb" style="margin-top:3px;width:18px;height:18px;flex-shrink:0;accent-color:var(--amber);cursor:pointer" />
         <span>I agree to the <a href="#" id="terms-link" style="color:var(--amber-deep);font-weight:600;text-decoration:underline">Moving Services Agreement</a> and <a href="#" id="privacy-link" style="color:var(--amber-deep);font-weight:600;text-decoration:underline">Privacy Policy</a>. I authorize Fast Fix Work to charge my card for the full estimated amount. 80% is refundable if cancelled 48+ hours before the move; non-refundable within 48 hours. The estimate may change based on actual move conditions. The Company is not responsible for damage to particleboard, IKEA-style, or pre-damaged items.</span>
@@ -2304,13 +2356,12 @@ function showReview(){
   document.getElementById('terms-link').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showLegalModal('terms'); });
   document.getElementById('privacy-link').addEventListener('click', e => { e.preventDefault(); e.stopPropagation(); showLegalModal('privacy'); });
 
-  // Resolve the referral credit (if a ?ref= code was scanned), then re-render just
-  // the estimate so the discount + "Referral from <name>" line appears automatically.
+  wireRefEntry();
+  // Resolve an already-present referral code (scanned ?ref= or carried from a prior
+  // visit to this step), then re-render the estimate + referral box so the discount
+  // and "Referral from <name>" line appear automatically.
   if (S.referralCode) {
-    refreshReferral().then(() => {
-      const qb = document.getElementById('qblock');
-      if (qb) qb.innerHTML = renderQuoteBlock();
-    });
+    refreshReferral().then(refreshEstimateUI);
   }
 
   backBtn.disabled = false;

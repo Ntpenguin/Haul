@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fast Fix Work — Admin Dashboard</title>
 <!-- CSP: allow supabase, jsdelivr CDN, google calendar links; block everything else -->
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src 'self' data: blob: https://joiukvttuamaanrgzfrz.supabase.co https://api.qrserver.com; connect-src https://joiukvttuamaanrgzfrz.supabase.co wss://joiukvttuamaanrgzfrz.supabase.co; frame-src 'none'; object-src 'none';" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://joiukvttuamaanrgzfrz.supabase.co https://api.qrserver.com; connect-src https://joiukvttuamaanrgzfrz.supabase.co wss://joiukvttuamaanrgzfrz.supabase.co; frame-src 'none'; object-src 'none';" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <style>
   :root {
@@ -595,7 +595,8 @@ function renderReferrals() {
           <span style="color:#8B6914"><b>${fmtMoney(st.owedCents)}</b> owed</span>
           <span style="color:#1f7a4d"><b>${fmtMoney(st.paidCents)}</b> paid</span>
         </div>
-        <div style="margin-top:8px;display:flex;gap:8px">
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <button onclick="referralFlyer('${escAttr(c.id)}')" style="padding:5px 12px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">&#128424; Flyer</button>
           <button onclick="navigator.clipboard&&navigator.clipboard.writeText('${escAttr(refLink(c.code))}')" style="padding:5px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer">Copy link</button>
           <a href="${escAttr(qrSrc(c.code).replace('150x150','600x600'))}" target="_blank" style="padding:5px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:7px;font-size:12px;font-weight:600;text-decoration:none;color:var(--ink2)">Big QR (print)</a>
           <button onclick="toggleReferralActive('${c.id}', ${c.active ? 'false' : 'true'})" style="padding:5px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer">${c.active ? 'Deactivate' : 'Activate'}</button>
@@ -681,6 +682,181 @@ async function toggleReferralActive(id, active) {
   if (error) { alert('Could not update: ' + error.message); return; }
   await loadAll();
   showPage('referrals');
+}
+// Open a print-ready referral flyer (brand + QR + referrer name) in a new tab.
+// The QR encodes intake.html?ref=CODE so a scan lands on the form with the
+// $25 credit pre-applied; the code is also printed for manual entry.
+function referralFlyer(id) {
+  const c = (cache.referralCodes || []).find(x => String(x.id) === String(id));
+  if (!c) { alert('Code not found — reload and try again.'); return; }
+  const name = (c.referrer_name || '').trim();
+  const code = c.code;
+  // High-res QR for crisp printing (api.qrserver.com is already CSP-allowed).
+  const qr = 'https://api.qrserver.com/v1/create-qr-code/?size=1000x1000&margin=12&data=' + encodeURIComponent(refLink(code));
+  const w = window.open('', '_blank');
+  if (!w) { alert('Pop-up blocked — allow pop-ups for this site, then click Flyer again.'); return; }
+  // Fill the three blanks in the branded flyer template: name, code box, QR image.
+  const qrImg = `<img src="${esc(qr)}" alt="Scan to book — referral QR" style="width:176px;height:176px;border-radius:11px;display:block">`;
+  const codeBox = `<div class="code" style="display:flex;align-items:center;justify-content:center;font-family:'Archivo Black',sans-serif;font-size:19px;letter-spacing:2px;color:var(--gold-deep);padding:0 16px;width:auto">${esc(code)}</div>`;
+  const fillName = name
+    ? `<span class="fillname" style="border-bottom:0;min-width:0;height:auto;vertical-align:baseline;color:var(--brown);font-weight:700">${esc(name)}</span>`
+    : `<span class="fillname"></span>`;
+  const html = `<!doctype html><html lang="en"><head><meta charset="utf-8">
+<title>Referral flyer — ${esc(name || code)}</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,700&family=Archivo+Black&display=swap" rel="stylesheet">
+<style>
+:root{
+  --gold:#C98B3F; --gold-deep:#A9701F; --gold-soft:#EDD09A;
+  --cream:#FAF7F2; --cream-2:#F1E8D8;
+  --ink:#1A1714; --ink-2:#5A5149; --brown:#8B5E2B;
+  --line:rgba(26,23,20,0.12);
+}
+@page{size:816px 1056px;margin:0;}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:816px;height:1056px;}
+body{font-family:'Archivo',sans-serif;background:var(--cream);color:var(--ink);-webkit-font-smoothing:antialiased;-webkit-print-color-adjust:exact;print-color-adjust:exact;}
+.page{width:816px;height:1056px;position:relative;overflow:hidden;display:flex;flex-direction:column;
+   background:radial-gradient(120% 80% at 50% 6%, #FCFAF6 0%, var(--cream) 55%, #F4EEE4 100%);}
+.header{height:148px;flex:none;background:linear-gradient(135deg,#CC8F44 0%, #C0822F 52%, #B0731F 100%);
+   padding:0 50px;display:flex;align-items:center;justify-content:space-between;position:relative;}
+.header::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;
+   background:linear-gradient(90deg,var(--gold-soft),#fff5e2,var(--gold-soft));opacity:.6;}
+.brandwrap{display:flex;align-items:center;gap:17px;}
+.mono{width:60px;height:60px;border-radius:15px;background:var(--cream);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(80,45,0,.28);}
+.mono span{font-family:'Archivo Black';font-size:22px;letter-spacing:.5px;color:var(--gold-deep);}
+.wordmark{font-family:'Archivo';font-weight:700;font-size:30px;color:#fff;line-height:1;}
+.wordmark i{font-style:italic;font-weight:700;color:#FFE7BD;}
+.tagline{margin-top:9px;font-size:9.5px;letter-spacing:2.3px;font-weight:600;color:rgba(255,255,255,.85);text-transform:uppercase;white-space:nowrap;}
+.rating{display:flex;flex-direction:column;align-items:flex-end;gap:5px;text-align:right;}
+.stars{font-size:17px;letter-spacing:2px;color:#FFE7BD;line-height:1;}
+.rating .rlabel{font-size:10px;letter-spacing:1.5px;font-weight:600;color:rgba(255,255,255,.92);text-transform:uppercase;}
+.hero{padding:34px 50px 0;text-align:center;flex:none;}
+.eyebrow{font-size:12.5px;letter-spacing:4px;font-weight:700;color:var(--brown);text-transform:uppercase;}
+.eyebrow .dot{color:var(--gold);margin:0 7px;}
+h1{font-family:'Archivo Black';font-size:90px;line-height:.92;letter-spacing:-2px;margin-top:13px;color:var(--ink);}
+h1 .hl{display:inline-block;position:relative;padding:0 11px;color:var(--ink);}
+h1 .hl::before{content:"";position:absolute;left:2px;right:2px;top:13px;bottom:15px;z-index:-1;
+   background:linear-gradient(180deg,var(--gold-soft),#EBC57F);border-radius:8px;transform:rotate(-1.4deg);}
+.sub{font-size:30px;font-weight:500;color:var(--ink-2);margin-top:10px;}
+.refby{display:inline-flex;align-items:center;gap:10px;margin-top:20px;background:#fff;border:1.5px solid var(--gold-soft);border-radius:999px;padding:9px 20px 9px 12px;box-shadow:0 4px 14px rgba(150,100,20,.12);}
+.refby .av{width:26px;height:26px;border-radius:50%;background:linear-gradient(135deg,var(--gold),var(--gold-deep));display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:12px;}
+.refby b{font-size:15px;font-weight:700;color:var(--brown);}
+.refby b span{color:var(--ink-2);font-weight:500;}
+.refby .fillname{display:inline-block;min-width:150px;border-bottom:2px dashed var(--gold);height:18px;margin:0 6px;vertical-align:-2px;}
+.diffs{display:flex;padding:28px 44px 0;flex:none;}
+.diff{flex:1;text-align:center;padding:0 16px;position:relative;}
+.diff + .diff::before{content:"";position:absolute;left:0;top:6px;bottom:6px;width:1px;background:var(--line);}
+.diff .ic{width:36px;height:36px;margin:0 auto 11px;display:flex;align-items:center;justify-content:center;}
+.diff .dt{font-size:16px;font-weight:700;color:var(--ink);}
+.diff .dd{font-size:12.5px;color:var(--ink-2);margin-top:5px;line-height:1.4;}
+.action{display:flex;gap:24px;padding:28px 50px 0;align-items:stretch;flex:none;}
+.card{background:#fff;border:1px solid var(--line);border-radius:22px;box-shadow:0 12px 30px rgba(120,80,20,.10);}
+.qrcard{width:330px;flex:none;padding:22px;text-align:center;display:flex;flex-direction:column;align-items:center;}
+.qrcard .qhead{font-size:17px;font-weight:700;color:var(--ink);}
+.qrbox{width:188px;height:188px;margin:13px 0;border-radius:15px;border:2px dashed rgba(169,112,31,.55);background:#FCF7EE;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:11px;}
+.qrbox .phint{font-size:12px;font-weight:600;color:var(--ink-2);letter-spacing:.3px;}
+.codeline{font-size:13px;color:var(--ink-2);}
+.code{display:inline-block;margin:7px 0 3px;min-width:178px;height:42px;background:#FBF3E3;border:2px dashed var(--gold);border-radius:10px;}
+.url{font-size:15px;font-weight:600;color:var(--ink);margin-top:11px;letter-spacing:.3px;}
+.proof{flex:1;padding:22px 24px;display:flex;flex-direction:column;}
+.phone{align-self:center;width:170px;height:200px;border-radius:25px;background:#fff;border:6px solid var(--ink);box-shadow:0 14px 28px rgba(20,16,10,.20);position:relative;padding:13px 11px 11px;}
+.phone .notch{position:absolute;top:8px;left:50%;transform:translateX(-50%);width:42px;height:5px;border-radius:3px;background:var(--ink);opacity:.85;}
+.phone .pchip{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.5px;color:var(--gold-deep);background:#FBF3E3;border-radius:6px;padding:3px 8px;text-transform:uppercase;margin-top:6px;}
+.phone .pmsg{margin-top:10px;background:#FBF3E3;border:1px solid rgba(170,120,40,.22);border-radius:11px;padding:10px 11px;font-size:11px;font-weight:600;color:var(--ink);line-height:1.4;text-align:left;}
+.phone .pbtn{margin-top:8px;height:28px;border-radius:9px;background:linear-gradient(135deg,#B5772E,#875715);color:#fff;font-size:12px;font-weight:700;letter-spacing:.4px;display:flex;align-items:center;justify-content:center;}
+.quote{margin-top:auto;border-top:1px solid var(--line);padding-top:15px;}
+.quote .qs{font-size:14px;letter-spacing:1.5px;color:var(--gold);}
+.quote p{font-size:14.5px;line-height:1.45;color:var(--ink);font-weight:500;margin-top:7px;}
+.quote .who{font-size:12px;color:var(--ink-2);margin-top:8px;font-weight:600;}
+.footer{margin-top:auto;padding:16px 50px 20px;flex:none;}
+.frule{height:2px;background:linear-gradient(90deg,transparent,var(--gold-soft),transparent);margin-bottom:12px;}
+.fbrand{text-align:center;font-size:13px;font-weight:700;color:var(--ink);}
+.fbrand i{font-style:italic;color:var(--brown);}
+.fbrand span{font-weight:500;color:var(--ink-2);}
+.fine{text-align:center;font-size:10.5px;color:var(--ink-2);line-height:1.5;margin-top:7px;max-width:660px;margin-left:auto;margin-right:auto;}
+.printbar{position:sticky;top:0;z-index:20;display:flex;gap:12px;align-items:center;justify-content:center;padding:10px 14px;background:#1A1714;}
+.printbar button{font-family:inherit;font-weight:700;font-size:14px;padding:9px 18px;border:none;border-radius:8px;background:var(--gold);color:#fff;cursor:pointer;}
+.printbar span{color:#B8B0A4;font-size:12px;}
+@media screen{ html,body{width:auto;height:auto;background:#E4DCCD;} .stage{display:flex;flex-direction:column;align-items:center;padding-bottom:36px;} .page{margin:22px 0 0;box-shadow:0 14px 46px rgba(0,0,0,.24);} }
+@media print{ .printbar{display:none;} html,body{width:816px;height:1056px;background:#fff;} .page{margin:0;box-shadow:none;} }
+</style></head><body>
+<div class="printbar"><button onclick="window.print()">&#128424; Print / Save as PDF</button><span>Print it, or save as PDF to text or share.</span></div>
+<div class="stage">
+<div class="page">
+  <div class="header">
+    <div class="brandwrap">
+      <div class="mono"><span>FFX</span></div>
+      <div>
+        <div class="wordmark">Fast. <i>Fix.</i> Work.</div>
+        <div class="tagline">Austin movers you control from your phone</div>
+      </div>
+    </div>
+    <div class="rating">
+      <div class="stars">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+      <div class="rlabel">Five star on Thumbtack</div>
+    </div>
+  </div>
+  <div class="hero">
+    <div class="eyebrow">Referral offer <span class="dot">&bull;</span> $25 credit</div>
+    <h1>Get <span class="hl">$25</span> off</h1>
+    <div class="sub">your next move</div>
+    <div class="refby">
+      <div class="av"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20a6.5 6.5 0 0 1 13 0"/></svg></div>
+      <b>Referred by ${fillName} <span>so your first move is on us</span></b>
+    </div>
+  </div>
+  <div class="diffs">
+    <div class="diff">
+      <div class="ic"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#A9701F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12.6 2.6A2 2 0 0 0 11.2 2H4a2 2 0 0 0-2 2v7.2a2 2 0 0 0 .6 1.4l8.7 8.7a2.4 2.4 0 0 0 3.4 0l6.6-6.6a2.4 2.4 0 0 0 0-3.4Z"/><circle cx="7.5" cy="7.5" r="1.4"/></svg></div>
+      <div class="dt">Instant quote</div>
+      <div class="dd">A real price in minutes, no vague ranges</div>
+    </div>
+    <div class="diff">
+      <div class="ic"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#A9701F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3 5 6v5.5c0 4.3 3 7.4 7 9 4-1.6 7-4.7 7-9V6Z"/><path d="M9 12l2.2 2.2L15.5 10"/></svg></div>
+      <div class="dt">Nothing without your OK</div>
+      <div class="dd">We wait for your green light before every move</div>
+    </div>
+    <div class="diff">
+      <div class="ic"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#A9701F" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="6.5" y="2.5" width="11" height="19" rx="2.4"/><path d="M10.5 18.5h3"/></svg></div>
+      <div class="dt">Never need to be home</div>
+      <div class="dd">Run your day. We handle the whole job for you</div>
+    </div>
+  </div>
+  <div class="action">
+    <div class="card qrcard">
+      <div class="qhead">Scan to book online</div>
+      <div class="qrbox">${qrImg}</div>
+      <div class="codeline">or use code at checkout</div>
+      ${codeBox}
+      <div class="url">fastfixwork.com</div>
+    </div>
+    <div class="card proof">
+      <div class="phone">
+        <div class="notch"></div>
+        <div class="pchip">Checkpoint 3 of 5</div>
+        <div class="pmsg">Sofa wrapped and padded. OK to load the truck?</div>
+        <div class="pbtn">Approve &#10003;</div>
+      </div>
+      <div class="quote">
+        <div class="qs">&#9733;&#9733;&#9733;&#9733;&#9733;</div>
+        <p>Punctual, professional, and careful start to finish. The whole move was stress free.</p>
+        <div class="who">Shae E. &bull; Austin, TX</div>
+      </div>
+    </div>
+  </div>
+  <div class="footer">
+    <div class="frule"></div>
+    <div class="fbrand">Fast. <i>Fix.</i> Work. <span>&bull; Austin, TX &bull; Call or text 512 777 1628 &bull; fastfixwork.com</span></div>
+    <div class="fine">$25 credit applies to a new customer's first booking through Fast Fix Work. One credit per household. Scan the code or enter your referral code at fastfixwork.com to redeem.</div>
+  </div>
+</div>
+</div>
+</body></html>`;
+  w.document.open();
+  w.document.write(html);
+  w.document.close();
 }
 
 // ─── Helpers ─────────────────────────────────
