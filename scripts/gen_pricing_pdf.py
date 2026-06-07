@@ -82,6 +82,8 @@ kv_table(pdf, [
     ("Long distance (50+ mi, or chosen)", "+50% of base"),
     ("Home staging (arrange/style furniture)", "+30% of base"),
     ("Packing service (boxes + labor)", "+25% of base"),
+    ("Bed frame disassembly", "$50"),
+    ("Shelving disassembly", "$25"),
 ])
 
 # Special items

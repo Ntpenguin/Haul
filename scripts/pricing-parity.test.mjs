@@ -13,6 +13,7 @@
 const BASE_PRICES = { 'Single item': 9375, 'Just a few items': 17500, 'Studio': 35000, '1 BR': 50000, '2 BR': 80000, '3 BR': 135000, '4+ BR / full house': 160000 };
 const STAIRS_SURCHARGE = 5000, ELEVATOR_SURCHARGE = 4000, LONG_CARRY = 5000, TAX = 0.0825;
 const HEAVY_PRICES = { 'Piano': 25000, 'Safe / gun safe': 15000, 'Pool table': 30000, 'Treadmill / Peloton': 7500, 'Big TV (65"+)': 7500, 'Aquarium': 7500, 'Artwork / mirror': 7500 };
+const PREP_SURCHARGES = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 };
 const DISTANCE_FREE_MILES = 15, DISTANCE_PER_MILE = 125, LONG_DISTANCE_MULTIPLIER = 1.5, LONG_DISTANCE_THRESHOLD = 50;
 const STAGING_PCT = 0.30, PACKING_PCT = 0.25;
 const hasStairs = (lbl) => lbl === 'Stairs' || lbl === 'Both';
@@ -44,7 +45,8 @@ function intakeCalc(s) {
   const stagingCents = s.staging ? Math.round(adjustedBase * STAGING_PCT) : 0;
   const needsPacking = s.boxed === 'Not yet' && s.packing !== false;
   const packingCents = needsPacking ? Math.round(adjustedBase * PACKING_PCT) : 0;
-  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents);
+  const prepCents = (Array.isArray(s.prep) ? s.prep : []).reduce((a, p) => a + (PREP_SURCHARGES[p] || 0), 0);
+  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents + prepCents);
   return subtotal + Math.round(subtotal * TAX);
 }
 
@@ -63,6 +65,7 @@ function toRow(s) {
     special_items,
     staging: !!s.staging,
     packing_service: s.boxed === 'Not yet' ? (s.packing !== false) : false,
+    prep_needed: Array.isArray(s.prep) ? s.prep : [],
     answers: s.coords ? { addresses: { pickup: { lat: s.coords[0], lng: s.coords[1] }, dropoff: { lat: s.coords[2], lng: s.coords[3] } } } : {},
   };
 }
@@ -87,7 +90,8 @@ function serverCalc(q) {
   const adjustedBase = base * (isLong ? LONG_DISTANCE_MULTIPLIER : 1);
   const stagingCents = q.staging ? Math.round(adjustedBase * STAGING_PCT) : 0;
   const packingCents = q.packing_service ? Math.round(adjustedBase * PACKING_PCT) : 0;
-  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents);
+  const prepCents = (Array.isArray(q.prep_needed) ? q.prep_needed : []).reduce((a, p) => a + (PREP_SURCHARGES[p] || 0), 0);
+  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents + prepCents);
   return subtotal + Math.round(subtotal * TAX);
 }
 
@@ -112,6 +116,9 @@ const scenarios = [
   { name: '1 BR, AUS->Round Rock (~17mi, distance only)', size: '1 BR', coords: [...AUS, ...RRK] },
   { name: '1 BR, AUS->near (<1mi, no distance)', size: '1 BR', coords: [...AUS, ...NEAR] },
   { name: 'KITCHEN SINK 4+BR long+stairs+special+staging+packing', size: '4+ BR / full house', coords: [...AUS, ...HOU], stairs_p: 'Stairs', flights_p: 3, stairs_d: 'Stairs', flights_d: 2, parking: '100+ ft', special: { 'Piano': 1, 'Hot tub?': 1 }, staging: true, boxed: 'Not yet' },
+  { name: '1 BR, disassemble bed frame (+$50)', size: '1 BR', prep: ['Disassemble bed frame(s)'] },
+  { name: '2 BR, bed frame + shelving disassembly (+$75)', size: '2 BR', prep: ['Disassemble bed frame(s)', 'Take apart shelving'] },
+  { name: '1 BR, prep but only free options', size: '1 BR', prep: ['Wrap / pad furniture', 'Unmount TV'] },
   { name: 'other / custom size (un-quotable)', size: 'other' },
 ];
 

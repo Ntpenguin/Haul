@@ -47,6 +47,7 @@ const LONG_DISTANCE_MULTIPLIER = 1.5;
 const LONG_DISTANCE_THRESHOLD = 50;
 const STAGING_SURCHARGE_PCT = 0.30;
 const PACKING_SURCHARGE_PCT = 0.25;
+const PREP_SURCHARGES: Record<string, number> = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 };
 
 function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 3959; // Earth radius in miles
@@ -94,8 +95,10 @@ function computeQuoteTotalCents(q: any): number | null {
 
   const stagingCents = q.staging ? Math.round(adjustedBase * STAGING_SURCHARGE_PCT) : 0;
   const packingCents = q.packing_service ? Math.round(adjustedBase * PACKING_SURCHARGE_PCT) : 0;
+  const prep = Array.isArray(q.prep_needed) ? q.prep_needed : [];
+  const prepCents = prep.reduce((s: number, p: string) => s + (PREP_SURCHARGES[p] || 0), 0);
 
-  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents);
+  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents + prepCents);
   const tax = Math.round(subtotal * TAX);
   return subtotal + tax;
 }
@@ -155,7 +158,7 @@ serve(async (req) => {
       .select(
         'id, name, email, phone, lead_number, payment_status, estimated_price_cents, ' +
         'items_size, service_type, stairs_pickup, stairs_dropoff, flights_pickup, ' +
-        'flights_dropoff, parking, special_items, staging, packing_service, answers, ' +
+        'flights_dropoff, parking, special_items, staging, packing_service, prep_needed, answers, ' +
         'referral_code, referral_credit_cents',
       )
       .eq('id', quote_request_id)

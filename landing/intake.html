@@ -2063,6 +2063,7 @@ const DISTANCE_PER_MILE = 125; // $1.25/mile over 15 free miles
 const LONG_DISTANCE_MULTIPLIER = 1.5; // 50% surcharge for long distance moves
 const STAGING_SURCHARGE_PCT = 0.30;   // +30% of base for home staging (crew arranges/styles furniture)
 const PACKING_SURCHARGE_PCT = 0.25;   // +25% of base for full packing service (items not yet boxed)
+const PREP_SURCHARGES = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 }; // flat disassembly add-ons; other prep options are free
 
 function haversineDistance(lat1, lng1, lat2, lng2) {
   const R = 3959; // Earth radius in miles
@@ -2123,7 +2124,12 @@ function calcQuote(){
   const needsPacking = S.answers['extras']?.boxed === 'Not yet' && S.answers['extras']?.packing !== false;
   const packingCents = needsPacking ? Math.round(adjustedBase * PACKING_SURCHARGE_PCT) : 0;
 
-  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents);
+  // Prep disassembly add-ons (flat, per selected option — bed frame $50 / shelving $25)
+  const prepSel   = Array.isArray(S.answers['extras']?.prep) ? S.answers['extras'].prep : [];
+  const prepItems = prepSel.filter(p => PREP_SURCHARGES[p]).map(p => [p, PREP_SURCHARGES[p]]);
+  const prepCents = prepItems.reduce((s,[,c]) => s + c, 0);
+
+  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents + prepCents);
   const tax      = Math.round(subtotal * TAX);
   const total    = subtotal + tax;  // gross move price (before any referral credit)
 
@@ -2134,7 +2140,7 @@ function calcQuote(){
   const deposit  = finalTotal; // 100% upfront (after credit)
 
   const heavyCount = specialEntries.reduce((s,[,qty]) => s + qty, 0);
-  return { base, stairsCents, elevatorCents, elevators, carryCents, heavyCents, distanceCents, stagingCents, packingCents, miles, isLongDistance, subtotal, tax, total, referralCredit, finalTotal, deposit, flights, longCarry, heavyCount };
+  return { base, stairsCents, elevatorCents, elevators, carryCents, heavyCents, distanceCents, stagingCents, packingCents, prepCents, prepItems, miles, isLongDistance, subtotal, tax, total, referralCredit, finalTotal, deposit, flights, longCarry, heavyCount };
 }
 
 function fmtMoney(cents){ return '$' + (cents/100).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}); }
@@ -2153,6 +2159,7 @@ function renderQuoteBlock(){
     q.carryCents   ? `<div class="q-row"><span>Long carry</span><span>+${fmtMoney(q.carryCents)}</span></div>` : '',
     q.stagingCents ? `<div class="q-row"><span>Home staging (+30%)</span><span>+${fmtMoney(q.stagingCents)}</span></div>` : '',
     q.packingCents ? `<div class="q-row"><span>Packing service (+25%)</span><span>+${fmtMoney(q.packingCents)}</span></div>` : '',
+    (q.prepItems||[]).map(([label,cents]) => `<div class="q-row"><span>${esc(label)}</span><span>+${fmtMoney(cents)}</span></div>`).join(''),
     q.heavyCents   ? `<div class="q-row"><span>Special items (${q.heavyCount})</span><span>+${fmtMoney(q.heavyCents)}</span></div>${Object.entries(S.answers['stuff']?.special||{}).filter(([k])=>k!=='Nope — just regular stuff').filter(([,v])=>v>1).map(([k,v])=>`<div class="q-row" style="font-size:12px;color:var(--ink3);padding-left:10px"><span>${esc(k)} ×${v}</span><span>${fmtMoney((HEAVY_PRICES[k]||7500)*v)}</span></div>`).join('')}` : '',
     `<div class="q-row"><span>Tax (8.25%)</span><span>+${fmtMoney(q.tax)}</span></div>`,
     q.referralCredit ? `<div class="q-row" style="color:var(--success);font-weight:700"><span>Referral from ${esc(S.referrerName || 'a friend')}</span><span>-${fmtMoney(q.referralCredit)}</span></div>` : '',

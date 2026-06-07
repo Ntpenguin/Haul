@@ -544,7 +544,8 @@ function renderPricing() {
           ['Stairs', '$50 / flight (per location)'], ['Elevator', '$40 / location'],
           ['Long carry (100+ ft)', '$50'], ['Distance', '$1.25/mi over 15 free'],
           ['Long distance (50+ mi)', '+50% of base'], ['Home staging', '+30% of base'],
-          ['Packing service', '+25% of base'],
+          ['Packing service', '+25% of base'], ['Bed frame disassembly', '$50'],
+          ['Shelving disassembly', '$25'],
         ])}
       </div>
       <div>
@@ -2350,11 +2351,14 @@ function calcLeadQuote(l) {
   const stagingCents = l.staging ? Math.round(adjustedBase * 0.30) : 0;
   const wantsPacking = l.packing_service != null ? l.packing_service : (l.items_boxed === 'Not yet');
   const packingCents = wantsPacking ? Math.round(adjustedBase * 0.25) : 0;
-  const subtotal = adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + stagingCents + packingCents;
+  const PREP_SURCHARGES = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 }; // matches intake + create-quote-payment
+  const prepItems = (Array.isArray(l.prep_needed) ? l.prep_needed : []).filter(p => PREP_SURCHARGES[p]).map(p => [p, PREP_SURCHARGES[p]]);
+  const prepCents = prepItems.reduce((s,[,c]) => s + c, 0);
+  const subtotal = adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + stagingCents + packingCents + prepCents;
   const tax = Math.round(subtotal * 0.0825);
   const total = subtotal + tax;
   const deposit = total; // 100% upfront
-  return { base, stairsCents, elevatorCents, elevators, carryCents, heavyCents, stagingCents, packingCents, isLongDistance, subtotal, tax, total, deposit, flights, heavyCount: special.length };
+  return { base, stairsCents, elevatorCents, elevators, carryCents, heavyCents, stagingCents, packingCents, prepItems, isLongDistance, subtotal, tax, total, deposit, flights, heavyCount: special.length };
 }
 function fmtMoney(c) { return '$' + (c/100).toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0}); }
 function renderLeadPrice(l) {
@@ -2372,6 +2376,7 @@ function renderLeadPrice(l) {
     q.heavyCents  ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Special items (${q.heavyCount})</span><span>+${fmtMoney(q.heavyCents)}</span></div>` : '',
     q.stagingCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Home staging (+30%)</span><span>+${fmtMoney(q.stagingCents)}</span></div>` : '',
     q.packingCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Packing service (+25%)</span><span>+${fmtMoney(q.packingCents)}</span></div>` : '',
+    ...(q.prepItems||[]).map(([label,cents]) => `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>${esc(label)}</span><span>+${fmtMoney(cents)}</span></div>`),
     `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Tax (8.25%)</span><span>+${fmtMoney(q.tax)}</span></div>`,
   ].filter(Boolean).join('');
   return `<div style="background:var(--accent-soft);border:2px solid var(--accent);border-radius:12px;padding:14px 16px;margin:10px 0">
