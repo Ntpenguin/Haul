@@ -1108,17 +1108,21 @@ function gigCrewSection(g){
   </div>`;
 }
 async function assignCrew(gigId){
-  const sel=document.getElementById('crew-pick-'+gigId); const worker_id=sel&&sel.value;
+  // Reads the modal picker OR the inline Schedule-row picker, whichever is present.
+  const sel=document.getElementById('crew-pick-'+gigId)||document.getElementById('sched-pick-'+gigId);
+  const worker_id=sel&&sel.value;
   if(!worker_id){alert('Pick a worker.');return;}
   const {error}=await sb.from('job_crew').insert({gig_id:gigId, worker_id});
   if(error){alert(/duplicate|unique/i.test(error.message)?'That worker is already on this job.':'Could not assign: '+error.message);return;}
-  await loadAll(); showGigModal(gigId);
+  await loadAll();
+  if(currentPage==='schedule') showPage('schedule'); else showGigModal(gigId);
 }
 async function removeCrew(id){
   const c=(cache.jobCrew||[]).find(x=>x.id===id); const gigId=c?c.gig_id:null;
   const {error}=await sb.from('job_crew').delete().eq('id',id);
   if(error){alert('Could not remove: '+error.message);return;}
-  await loadAll(); if(gigId) showGigModal(gigId);
+  await loadAll();
+  if(currentPage==='schedule') showPage('schedule'); else if(gigId) showGigModal(gigId);
 }
 // Day-by-day dispatch view: scheduled gigs grouped by date with assigned crew
 // and double-booking warnings.
@@ -1127,19 +1131,28 @@ function renderSchedule(){
     .sort((a,b)=>new Date(a.scheduled_for)-new Date(b.scheduled_for));
   const byDay={};
   gigs.forEach(g=>{const key=new Date(g.scheduled_for).toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});(byDay[key]=byDay[key]||[]).push(g);});
-  const chip=(name,con)=>`<span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;margin:0 4px 4px 0;background:${con?'#FBE4DF':'var(--surface)'};border:1px solid ${con?'#E0A99A':'var(--line2)'}">${esc(name)}${con?' &#9888;':''}</span>`;
+  const roster=(cache.workers||[]).filter(w=>w.active!==false);
   const days=Object.entries(byDay).map(([day,gs])=>{
     const rows=gs.map(g=>{
       const t=new Date(g.scheduled_for).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
       const assigned=(cache.jobCrew||[]).filter(c=>c.gig_id===g.id);
+      const assignedIds=new Set(assigned.map(c=>c.worker_id));
       const need=g.crew_size||0;
-      const crewHtml=assigned.length?assigned.map(c=>{const w=(cache.workers||[]).find(x=>x.id===c.worker_id);return chip(w?w.name:'?',workerConflict(c.worker_id,g));}).join('')
-        :`<span style="color:#b4452e;font-size:12px;font-weight:600">&#9888; no crew</span>`;
       const short=need&&assigned.length<need;
+      const chips=assigned.length?assigned.map(c=>{
+        const w=(cache.workers||[]).find(x=>x.id===c.worker_id);
+        const con=workerConflict(c.worker_id,g);
+        return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 5px 2px 9px;border-radius:999px;font-size:12px;margin:0 4px 4px 0;background:${con?'#FBE4DF':'var(--surface)'};border:1px solid ${con?'#E0A99A':'var(--line2)'}">${esc(w?w.name:'?')}${con?' <span style="color:#b4452e;font-weight:700" title="Double-booked">&#9888;</span>':''}<button onclick="removeCrew('${c.id}')" title="Remove" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:13px;line-height:1;padding:0 1px">&times;</button></span>`;
+      }).join(''):'<span style="color:#b4452e;font-size:12px;font-weight:600">&#9888; no crew</span>';
+      const availOpts=roster.filter(w=>!assignedIds.has(w.id)).map(w=>`<option value="${escAttr(w.id)}">${esc(w.name)}</option>`).join('');
+      const assignCtrl=availOpts?`<div style="display:flex;gap:6px;margin-top:2px">
+          <select id="sched-pick-${g.id}" style="flex:1;min-width:100px;padding:5px 7px;border:1.5px solid var(--line2);border-radius:7px;font-size:12px">${availOpts}</select>
+          <button onclick="assignCrew('${g.id}')" style="padding:5px 11px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">+ Add</button>
+        </div>`:(roster.length?'':'<div style="font-size:11px;color:var(--ink3);margin-top:2px">add crew in Crew &amp; pay</div>');
       return `<tr onclick="showGigModal('${g.id}')" style="cursor:pointer">
         <td style="white-space:nowrap;font-weight:700;vertical-align:top">${t}</td>
         <td style="vertical-align:top">${esc(g.home_size||g.gig_title||'job')}<div style="font-size:12px;color:var(--ink3)">${g.difficulty?('Diff '+g.difficulty+'/5 · '):''}${g.estimated_duration_hours?('~'+g.estimated_duration_hours+'h · '):''}${need?(need+' crew needed'):'crew n/a'}${short?` <span style="color:#8B6914;font-weight:700">(short ${need-assigned.length})</span>`:''}</div></td>
-        <td style="vertical-align:top">${crewHtml}</td>
+        <td onclick="event.stopPropagation()" style="vertical-align:top;min-width:220px">${chips}${assignCtrl}</td>
       </tr>`;
     }).join('');
     return `<div style="margin-bottom:18px"><div style="font-size:14px;font-weight:800;margin-bottom:8px">${esc(day)}</div>
