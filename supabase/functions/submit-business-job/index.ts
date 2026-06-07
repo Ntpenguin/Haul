@@ -30,7 +30,8 @@ const STAIRS_SURCHARGE = 5000;     // $50 flat (simpler than per-flight on the B
 const ELEVATOR_SURCHARGE = 4000;   // $40
 const LONG_WALK_SURCHARGE = 5000;  // $50
 const HEAVY_PRICES: Record<string, number> = {
-  'Piano': 25000, 'Safe / gun safe': 15000, 'Pool table': 30000, 'Refrigerator': 7500,
+  'Piano': 25000, 'Safe / gun safe': 15000, 'Pool table': 30000, 'Refrigerator': 12000,
+  'Refrigerator disassembly': 8000,
   'Treadmill / Peloton': 7500, 'Big TV (65"+)': 7500, 'Aquarium': 7500, 'Artwork / mirror': 7500,
 };
 const TAX = 0.0825;

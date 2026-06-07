@@ -124,7 +124,7 @@ const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZ
 const BASE={'Single item':9375,'Just a few items':17500,'Studio':35000,'1 BR':50000,'2 BR':80000,'3 BR':135000,'4+ BR / full house':160000};
 const HOURS={'Single item':1,'Just a few items':1.5,'Studio':2,'1 BR':3,'2 BR':4,'3 BR':5,'4+ BR / full house':7};
 const STAIRS=5000,ELEV=4000,LONGWALK=5000,TAX=.0825,FREE_MI=15,PER_MI=125,DRIVE_MPH=45;
-const HEAVY={'Piano':25000,'Safe / gun safe':15000,'Pool table':30000,'Refrigerator':7500,'Treadmill / Peloton':7500,'Big TV (65"+)':7500,'Aquarium':7500,'Artwork / mirror':7500};
+const HEAVY={'Piano':25000,'Safe / gun safe':15000,'Pool table':30000,'Refrigerator':12000,'Refrigerator disassembly':8000,'Treadmill / Peloton':7500,'Big TV (65"+)':7500,'Aquarium':7500,'Artwork / mirror':7500};
 const SIZES=Object.keys(BASE);
 
 const S={size:null,stops:[{addr:'',lat:null,lng:null},{addr:'',lat:null,lng:null}],special:[],photos:[],photoUrls:[]};
@@ -165,12 +165,23 @@ $('f-size').innerHTML=SIZES.map(s=>`<button class="chip" data-s="${esc(s)}">${es
 $('f-size').addEventListener('click',e=>{const b=e.target.closest('[data-s]');if(!b)return;
   S.size=b.dataset.s;[...$('f-size').children].forEach(c=>c.classList.toggle('on',c.dataset.s===S.size));renderRec();});
 
-// Special / heavy items checklist
-$('f-special').innerHTML=Object.keys(HEAVY).map(k=>`<button class="chip" data-h="${esc(k)}">${esc(k)} <span style="color:var(--ink3);font-weight:400">+$${(HEAVY[k]/100).toLocaleString('en-US')}</span></button>`).join('');
+// Special / heavy items checklist. The fridge-disassembly add-on stays hidden
+// until Refrigerator is selected, and is cleared if the fridge is deselected.
+const DISA='Refrigerator disassembly';
+$('f-special').innerHTML=Object.keys(HEAVY).map(k=>`<button class="chip" data-h="${esc(k)}"${k===DISA?' style="display:none"':''}>${esc(k)} <span style="color:var(--ink3);font-weight:400">+$${(HEAVY[k]/100).toLocaleString('en-US')}</span></button>`).join('');
 $('f-special').addEventListener('click',e=>{const b=e.target.closest('[data-h]');if(!b)return;
   const k=b.dataset.h,i=S.special.indexOf(k);
   if(i>=0)S.special.splice(i,1);else S.special.push(k);
-  b.classList.toggle('on');renderRec();});
+  b.classList.toggle('on');
+  if(k==='Refrigerator'){
+    const disBtn=[...$('f-special').children].find(c=>c.dataset.h===DISA);
+    const fridgeOn=S.special.includes('Refrigerator');
+    if(disBtn){
+      disBtn.style.display=fridgeOn?'':'none';
+      if(!fridgeOn){const di=S.special.indexOf(DISA);if(di>=0)S.special.splice(di,1);disBtn.classList.remove('on');}
+    }
+  }
+  renderRec();});
 
 // Time grid 8AM–7PM, with already-booked hours disabled (no double-booking).
 // Booked = paid consumer leads + admin-blocked slots + booked business jobs
