@@ -251,6 +251,7 @@
       <a onclick="showPage('bizjobs')"><span class="nav-icon">&#9670;</span> Business Jobs</a>
       <a onclick="showPage('pricing')"><span class="nav-icon">&#36;</span> Pricing</a>
       <a onclick="showPage('crew')"><span class="nav-icon">&#9874;</span> Crew &amp; pay</a>
+      <a onclick="showPage('schedule')"><span class="nav-icon">&#128197;</span> Schedule</a>
     </div>
     <div class="main" id="main-content"></div>
   </div>
@@ -323,7 +324,7 @@ async function initApp() {
 
 // ─── Data Loading ────────────────────────────
 async function loadAll() {
-  const [profiles, moverProfiles, gigs, applications, photos, leads, blockedSlots, businesses, fleetVehicles, referralCodes, referrals, businessJobs, workers, workerPayouts] = await Promise.all([
+  const [profiles, moverProfiles, gigs, applications, photos, leads, blockedSlots, businesses, fleetVehicles, referralCodes, referrals, businessJobs, workers, workerPayouts, jobCrew] = await Promise.all([
     sb.from('profiles').select('*').order('created_at', { ascending: false }),
     sb.from('mover_profiles').select('*').order('created_at', { ascending: false }),
     sb.from('gigs').select('*').order('created_at', { ascending: false }),
@@ -338,6 +339,7 @@ async function loadAll() {
     sb.from('business_jobs').select('*').order('created_at', { ascending: false }),
     sb.from('workers').select('*').order('created_at', { ascending: false }),
     sb.from('worker_payouts').select('*').order('created_at', { ascending: false }),
+    sb.from('job_crew').select('*').order('created_at', { ascending: false }),
   ]);
   cache.profiles = profiles.data || [];
   cache.moverProfiles = moverProfiles.data || [];
@@ -353,6 +355,7 @@ async function loadAll() {
   cache.businessJobs = businessJobs.data || [];
   cache.workers = workers.data || [];
   cache.workerPayouts = workerPayouts.data || [];
+  cache.jobCrew = jobCrew.data || [];
 }
 
 // ─── Navigation ──────────────────────────────
@@ -361,7 +364,7 @@ function showPage(page) {
   currentPage = page;
   document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
   const links = document.querySelectorAll('.sidebar a');
-  const pages = ['overview','users','movers','businesses','gigs','applications','photos','leads','calendar','referrals','bizjobs','pricing','crew'];
+  const pages = ['overview','users','movers','businesses','gigs','applications','photos','leads','calendar','referrals','bizjobs','pricing','crew','schedule'];
   const idx = pages.indexOf(page);
   if (idx >= 0 && links[idx]) links[idx].classList.add('active');
 
@@ -380,6 +383,7 @@ function showPage(page) {
     case 'bizjobs': main.innerHTML = renderBusinessJobs(); break;
     case 'pricing': main.innerHTML = renderPricing(); break;
     case 'crew': main.innerHTML = renderCrew(); break;
+    case 'schedule': main.innerHTML = renderSchedule(); break;
   }
 }
 
@@ -1009,6 +1013,142 @@ async function deleteWorker(id){
   const { error } = await sb.from('workers').delete().eq('id', id);
   if(error){ alert('Could not delete: ' + error.message); return; }
   await loadAll(); showPage('crew');
+}
+
+// ─── Job planning (read-only): prep/handling summary + a derived gear list ───
+// Pulls from the gig + its linked consumer lead (common_item_details/prep_needed)
+// or business job (special_items). No DB writes — just surfaces what's collected.
+function jobHandlingNeeds(g, lead, biz){
+  const needs = [];
+  const heavy = [...new Set([...(g.heavy_items||[]), ...(lead?lead.special_items||[]:[]), ...(biz?biz.special_items||[]:[])].filter(Boolean))];
+  heavy.filter(h=>h!=='Nope — just regular stuff').forEach(h=>needs.push('Special item: '+h));
+  if(lead && lead.common_item_details && typeof lead.common_item_details==='object'){
+    for(const [item, attrs] of Object.entries(lead.common_item_details)){
+      const on = Object.entries(attrs||{}).filter(([,c])=>c>0).map(([a])=>a);
+      if(on.length) needs.push(item+' — '+on.join(', ').toLowerCase());
+    }
+  }
+  if(lead && Array.isArray(lead.prep_needed)) lead.prep_needed.filter(p=>p && p!=='None — ready to go').forEach(p=>needs.push('Prep: '+p));
+  if((lead&&lead.staging)||g.staging) needs.push('Home staging');
+  if((lead&&lead.packing_service)||g.packing_service) needs.push('Packing service');
+  return needs;
+}
+function gearChecklist(g, lead, biz){
+  const gear = new Set(['Furniture dolly','Hand truck','Moving blankets','Ratchet straps','Shrink wrap','Floor / door-jamb protection']);
+  if((g.stairs_from||0)+(g.stairs_to||0) > 0) gear.add('Stair-climbing dolly');
+  if(g.long_carry || (biz&&biz.long_walk)) gear.add('Extra dolly for long carry');
+  const items = [...(g.heavy_items||[]), ...(lead?lead.special_items||[]:[]), ...(biz?biz.special_items||[]:[])].join(' | ').toLowerCase();
+  const flags = (lead&&lead.common_item_details ? JSON.stringify(lead.common_item_details) : '').toLowerCase();
+  const prep = (lead&&Array.isArray(lead.prep_needed) ? lead.prep_needed.join(' ') : '').toLowerCase();
+  if(items.includes('piano')) gear.add('Piano dolly + board');
+  if(items.includes('pool table')) gear.add('Pool-table breakdown tools');
+  if(items.includes('safe')) gear.add('Heavy-duty 4-wheel dolly');
+  if(items.includes('refrigerator')||items.includes('fridge')) gear.add('Appliance dolly');
+  if(items.includes('aquarium')) gear.add('Aquarium drain kit + padding');
+  if(items.includes('tv')||items.includes('artwork')||items.includes('mirror')||flags.includes('wrapping')||prep.includes('unmount tv')) gear.add('TV/mirror box + extra wrap');
+  if(items.includes('disassembly')||flags.includes('disassembly')||prep.includes('disassemble')||prep.includes('take apart')) gear.add('Tool kit (drivers, allen keys, wrench)');
+  if((lead&&lead.packing_service)||g.packing_service||prep.includes('pack the kitchen')) gear.add('Boxes, paper, tape, bubble wrap');
+  if((lead&&lead.staging)||g.staging) gear.add('Furniture pads + staging supplies');
+  return [...gear];
+}
+function jobPlanningSection(g, lead, biz){
+  const needs = jobHandlingNeeds(g, lead, biz);
+  const gear = gearChecklist(g, lead, biz);
+  const diff = g.difficulty!=null ? g.difficulty+'/5 — '+(['Easy','Light','Moderate','Heavy','Expert'][g.difficulty-1]||'') : '—';
+  const dur = g.estimated_duration_hours!=null ? '~'+g.estimated_duration_hours+' hrs' : '—';
+  const access = `${g.stairs_from||0} flt from / ${g.stairs_to||0} flt to`
+    + ((g.elevator_from||g.elevator_to)?` · elevator${g.elevator_from?' (from)':''}${g.elevator_to?' (to)':''}`:'')
+    + ((g.long_carry||(biz&&biz.long_walk))?' · long carry':'');
+  return `<div style="margin-top:16px;border-top:2px solid var(--accent);padding-top:12px">
+    <div class="modal-label" style="color:var(--accent-deep);font-weight:700;margin-bottom:8px">&#129520; Job planning</div>
+    <div class="modal-row"><div class="modal-label">Difficulty</div><div class="modal-value">${diff}</div></div>
+    <div class="modal-row"><div class="modal-label">Est. duration</div><div class="modal-value">${dur}</div></div>
+    <div class="modal-row"><div class="modal-label">Crew / truck</div><div class="modal-value">${g.crew_size||'—'} crew · ${esc(g.truck_size)||'—'} truck</div></div>
+    <div class="modal-row"><div class="modal-label">Access</div><div class="modal-value">${access}</div></div>
+    <div class="modal-row"><div class="modal-label">Prep / handling</div><div class="modal-value">${needs.length?needs.map(esc).join('<br>'):'Standard — nothing special flagged'}</div></div>
+    <div class="modal-row"><div class="modal-label">Gear to bring</div><div class="modal-value">${gear.map(esc).join(' · ')}</div></div>
+  </div>`;
+}
+
+// ─── Crew assignment + scheduling conflicts (job_crew, migration 055) ────────
+function gigSpan(g){
+  if(!g || !g.scheduled_for) return null;
+  const start=new Date(g.scheduled_for).getTime();
+  if(isNaN(start)) return null;
+  return [start, start + (g.estimated_duration_hours||2)*3600000];
+}
+function workerConflict(workerId, gig){
+  const span=gigSpan(gig); if(!span) return false;
+  return (cache.jobCrew||[]).filter(c=>c.worker_id===workerId && c.gig_id!==gig.id).some(c=>{
+    const os=gigSpan(gigById(c.gig_id));
+    return os && os[0] < span[1] && span[0] < os[1];
+  });
+}
+function gigCrewSection(g){
+  const assigned=(cache.jobCrew||[]).filter(c=>c.gig_id===g.id);
+  const roster=(cache.workers||[]).filter(w=>w.active!==false);
+  const assignedIds=new Set(assigned.map(c=>c.worker_id));
+  const opts=roster.filter(w=>!assignedIds.has(w.id)).map(w=>`<option value="${escAttr(w.id)}">${esc(w.name)}</option>`).join('');
+  const need=g.crew_size||0;
+  const chips=assigned.length?assigned.map(c=>{
+    const w=(cache.workers||[]).find(x=>x.id===c.worker_id);
+    const con=workerConflict(c.worker_id,g);
+    return `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 11px;background:${con?'#FBE4DF':'var(--surface)'};border:1px solid ${con?'#E0A99A':'var(--line2)'};border-radius:999px;font-size:13px;margin:0 6px 6px 0">${esc(w?w.name:'(removed)')}${con?' <span title="Double-booked at this time" style="color:#b4452e;font-weight:700">&#9888;</span>':''}<button onclick="removeCrew('${c.id}')" title="Remove" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">&times;</button></span>`;
+  }).join(''):'<span style="color:var(--ink3);font-size:13px">No crew assigned yet.</span>';
+  const countTxt=need?`<span style="font-size:12px;font-weight:600;color:${assigned.length>=need?'var(--success)':'#8B6914'}">${assigned.length}/${need} assigned</span>`:`<span style="font-size:12px;color:var(--ink3)">${assigned.length} assigned</span>`;
+  return `<div style="margin-top:16px;border-top:2px solid var(--accent);padding-top:12px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <div class="modal-label" style="color:var(--accent-deep);font-weight:700">&#128119; Crew assigned</div>${countTxt}
+    </div>
+    <div style="margin-bottom:8px">${chips}</div>
+    ${roster.length?`<div style="display:flex;gap:8px">
+      <select id="crew-pick-${g.id}" style="flex:1;padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px"${opts?'':' disabled'}>${opts||'<option value="">All crew already assigned</option>'}</select>
+      <button onclick="assignCrew('${g.id}')" style="padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Assign</button>
+    </div>`:`<div style="font-size:12px;color:var(--ink3)">Add workers in the <b>Crew &amp; pay</b> tab first.</div>`}
+  </div>`;
+}
+async function assignCrew(gigId){
+  const sel=document.getElementById('crew-pick-'+gigId); const worker_id=sel&&sel.value;
+  if(!worker_id){alert('Pick a worker.');return;}
+  const {error}=await sb.from('job_crew').insert({gig_id:gigId, worker_id});
+  if(error){alert(/duplicate|unique/i.test(error.message)?'That worker is already on this job.':'Could not assign: '+error.message);return;}
+  await loadAll(); showGigModal(gigId);
+}
+async function removeCrew(id){
+  const c=(cache.jobCrew||[]).find(x=>x.id===id); const gigId=c?c.gig_id:null;
+  const {error}=await sb.from('job_crew').delete().eq('id',id);
+  if(error){alert('Could not remove: '+error.message);return;}
+  await loadAll(); if(gigId) showGigModal(gigId);
+}
+// Day-by-day dispatch view: scheduled gigs grouped by date with assigned crew
+// and double-booking warnings.
+function renderSchedule(){
+  const gigs=(cache.gigs||[]).filter(g=>!g.deleted_at && g.status!=='draft' && g.status!=='cancelled' && g.scheduled_for)
+    .sort((a,b)=>new Date(a.scheduled_for)-new Date(b.scheduled_for));
+  const byDay={};
+  gigs.forEach(g=>{const key=new Date(g.scheduled_for).toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});(byDay[key]=byDay[key]||[]).push(g);});
+  const chip=(name,con)=>`<span style="display:inline-block;padding:2px 9px;border-radius:999px;font-size:12px;margin:0 4px 4px 0;background:${con?'#FBE4DF':'var(--surface)'};border:1px solid ${con?'#E0A99A':'var(--line2)'}">${esc(name)}${con?' &#9888;':''}</span>`;
+  const days=Object.entries(byDay).map(([day,gs])=>{
+    const rows=gs.map(g=>{
+      const t=new Date(g.scheduled_for).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+      const assigned=(cache.jobCrew||[]).filter(c=>c.gig_id===g.id);
+      const need=g.crew_size||0;
+      const crewHtml=assigned.length?assigned.map(c=>{const w=(cache.workers||[]).find(x=>x.id===c.worker_id);return chip(w?w.name:'?',workerConflict(c.worker_id,g));}).join('')
+        :`<span style="color:#b4452e;font-size:12px;font-weight:600">&#9888; no crew</span>`;
+      const short=need&&assigned.length<need;
+      return `<tr onclick="showGigModal('${g.id}')" style="cursor:pointer">
+        <td style="white-space:nowrap;font-weight:700;vertical-align:top">${t}</td>
+        <td style="vertical-align:top">${esc(g.home_size||g.gig_title||'job')}<div style="font-size:12px;color:var(--ink3)">${g.difficulty?('Diff '+g.difficulty+'/5 · '):''}${g.estimated_duration_hours?('~'+g.estimated_duration_hours+'h · '):''}${need?(need+' crew needed'):'crew n/a'}${short?` <span style="color:#8B6914;font-weight:700">(short ${need-assigned.length})</span>`:''}</div></td>
+        <td style="vertical-align:top">${crewHtml}</td>
+      </tr>`;
+    }).join('');
+    return `<div style="margin-bottom:18px"><div style="font-size:14px;font-weight:800;margin-bottom:8px">${esc(day)}</div>
+      <div class="table-wrap"><table><thead><tr><th>Time</th><th>Job</th><th>Crew</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+  }).join('');
+  return `<h2 class="page-title">Schedule &amp; dispatch</h2>
+    <p class="page-sub">${gigs.length} scheduled job${gigs.length===1?'':'s'} · assign crew from each job (click a row). <span style="color:#b4452e">&#9888;</span> = a worker double-booked across overlapping jobs.</p>
+    <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('schedule'))" style="margin-bottom:14px">Refresh</button>
+    ${gigs.length?days:'<p class="empty">No scheduled jobs yet.</p>'}`;
 }
 
 // ─── Helpers ─────────────────────────────────
@@ -1850,6 +1990,8 @@ function showGigModal(id) {
         <div class="modal-row"><div class="modal-label">Notes</div><div class="modal-value">${esc(g.customer_notes) || '—'}</div></div>` : ''}
         <div class="modal-row"><div class="modal-label">Created</div><div class="modal-value">${fmt(g.created_at)}</div></div>
         ${custSection}
+        ${jobPlanningSection(g, linkedLead, linkedBiz)}
+        ${gigCrewSection(g)}
         ${gigPhotos.length ? `
           <div style="margin-top:16px">
             <div class="modal-label" style="margin-bottom:8px">Photos (${gigPhotos.length})</div>
