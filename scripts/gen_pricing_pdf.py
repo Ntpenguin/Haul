@@ -90,6 +90,8 @@ kv_table(pdf, [
     ("Piano", "$250"),
     ("Pool table", "$300"),
     ("Safe / gun safe", "$150"),
+    ("Refrigerator", "$120"),
+    ("Refrigerator disassembly", "+$80"),
     ("Treadmill / Peloton", "$75"),
     ('Big TV (65"+)', "$75"),
     ("Aquarium", "$75"),
