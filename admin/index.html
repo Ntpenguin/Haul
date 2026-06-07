@@ -250,6 +250,7 @@
       <a onclick="showPage('referrals')"><span class="nav-icon">&#9734;</span> Referrals</a>
       <a onclick="showPage('bizjobs')"><span class="nav-icon">&#9670;</span> Business Jobs</a>
       <a onclick="showPage('pricing')"><span class="nav-icon">&#36;</span> Pricing</a>
+      <a onclick="showPage('crew')"><span class="nav-icon">&#9874;</span> Crew &amp; pay</a>
     </div>
     <div class="main" id="main-content"></div>
   </div>
@@ -322,7 +323,7 @@ async function initApp() {
 
 // ─── Data Loading ────────────────────────────
 async function loadAll() {
-  const [profiles, moverProfiles, gigs, applications, photos, leads, blockedSlots, businesses, fleetVehicles, referralCodes, referrals, businessJobs] = await Promise.all([
+  const [profiles, moverProfiles, gigs, applications, photos, leads, blockedSlots, businesses, fleetVehicles, referralCodes, referrals, businessJobs, workers, workerPayouts] = await Promise.all([
     sb.from('profiles').select('*').order('created_at', { ascending: false }),
     sb.from('mover_profiles').select('*').order('created_at', { ascending: false }),
     sb.from('gigs').select('*').order('created_at', { ascending: false }),
@@ -335,6 +336,8 @@ async function loadAll() {
     sb.from('referral_codes').select('*').order('created_at', { ascending: false }),
     sb.from('referrals').select('*').order('created_at', { ascending: false }),
     sb.from('business_jobs').select('*').order('created_at', { ascending: false }),
+    sb.from('workers').select('*').order('created_at', { ascending: false }),
+    sb.from('worker_payouts').select('*').order('created_at', { ascending: false }),
   ]);
   cache.profiles = profiles.data || [];
   cache.moverProfiles = moverProfiles.data || [];
@@ -348,6 +351,8 @@ async function loadAll() {
   cache.referralCodes = referralCodes.data || [];
   cache.referrals = referrals.data || [];
   cache.businessJobs = businessJobs.data || [];
+  cache.workers = workers.data || [];
+  cache.workerPayouts = workerPayouts.data || [];
 }
 
 // ─── Navigation ──────────────────────────────
@@ -356,7 +361,7 @@ function showPage(page) {
   currentPage = page;
   document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
   const links = document.querySelectorAll('.sidebar a');
-  const pages = ['overview','users','movers','businesses','gigs','applications','photos','leads','calendar','referrals','bizjobs','pricing'];
+  const pages = ['overview','users','movers','businesses','gigs','applications','photos','leads','calendar','referrals','bizjobs','pricing','crew'];
   const idx = pages.indexOf(page);
   if (idx >= 0 && links[idx]) links[idx].classList.add('active');
 
@@ -374,6 +379,7 @@ function showPage(page) {
     case 'referrals': main.innerHTML = renderReferrals(); break;
     case 'bizjobs': main.innerHTML = renderBusinessJobs(); break;
     case 'pricing': main.innerHTML = renderPricing(); break;
+    case 'crew': main.innerHTML = renderCrew(); break;
   }
 }
 
@@ -857,6 +863,151 @@ h1 .hl::before{content:"";position:absolute;left:2px;right:2px;top:13px;bottom:1
   w.document.open();
   w.document.write(html);
   w.document.close();
+}
+
+// ─── Crew (loginless workers + manual payout ledger, migration 054) ──────────
+// Admin-managed roster of crew with NO app login; log a payout per job worked
+// and mark it paid (cash/Venmo/Zelle). Separate from app movers (mover_profiles).
+function crewOwed(workerId){ return (cache.workerPayouts||[]).filter(p=>p.worker_id===workerId&&p.status==='owed').reduce((s,p)=>s+(p.amount_cents||0),0); }
+function crewPaid(workerId){ return (cache.workerPayouts||[]).filter(p=>p.worker_id===workerId&&p.status==='paid').reduce((s,p)=>s+(p.amount_cents||0),0); }
+function gigById(gid){ return (cache.gigs||[]).find(g=>String(g.id)===String(gid)); }
+function gigLabel(g){
+  if(!g) return 'Ad-hoc (no job)';
+  const when = g.scheduled_for ? fmt(g.scheduled_for) : (g.created_at ? fmt(g.created_at) : '');
+  const what = g.home_size || g.gig_title || g.gig_category || 'job';
+  return `${what}${when ? ' · ' + when : ''} · ${String(g.id).slice(0,8)}`;
+}
+function renderCrew(){
+  const workers = cache.workers || [];
+  const payouts = cache.workerPayouts || [];
+  const totalOwed = payouts.filter(p=>p.status==='owed').reduce((s,p)=>s+(p.amount_cents||0),0);
+  const fld = 'padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px';
+  const accentBtn = 'padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer';
+  const copyBtn = val => val ? `<button class="copy-btn" data-copy="${escAttr(val)}" style="margin-left:6px;padding:1px 7px;background:var(--surface);border:1px solid var(--line2);border-radius:6px;font-size:11px;cursor:pointer">copy</button>` : '';
+
+  const gigOpts = (cache.gigs||[]).filter(g=>g.status!=='draft')
+    .map(g=>`<option value="${escAttr(g.id)}" data-payout="${g.mover_payout_cents||0}">${esc(gigLabel(g))}${g.mover_payout_cents?(' — '+fmtMoney(g.mover_payout_cents)):''}</option>`).join('');
+  const workerOpts = workers.filter(w=>w.active!==false).map(w=>`<option value="${escAttr(w.id)}">${esc(w.name)}</option>`).join('');
+
+  const cards = workers.length ? workers.map(w=>{
+    const owed = crewOwed(w.id), paid = crewPaid(w.id);
+    const rows = payouts.filter(p=>p.worker_id===w.id)
+      .sort((a,b)=> (a.status===b.status ? 0 : a.status==='owed' ? -1 : 1))
+      .map(p=>{
+        const g = gigById(p.gig_id);
+        const label = g ? gigLabel(g) : (p.note || 'Ad-hoc payout');
+        return `<tr>
+          <td>${esc(label)}</td>
+          <td>${fmtMoney(p.amount_cents)}</td>
+          <td>${p.status==='paid'
+            ? `<span style="color:var(--success);font-weight:700">paid</span>${p.paid_at?` · <span style="color:var(--ink3);font-size:12px">${fmt(p.paid_at)}</span>`:''}`
+            : `<span style="color:#8B6914;font-weight:700">owed</span>`}</td>
+          <td style="text-align:right;white-space:nowrap">
+            ${p.status==='owed'?`<button onclick="markWorkerPayoutPaid('${p.id}')" style="padding:4px 10px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:12px;font-weight:700;cursor:pointer">Mark $${(p.amount_cents/100).toFixed(0)} paid</button>`:''}
+            <button onclick="deleteWorkerPayout('${p.id}')" title="Delete entry" style="margin-left:6px;padding:4px 8px;background:var(--surface);border:1px solid var(--line2);border-radius:6px;font-size:12px;cursor:pointer">&times;</button>
+          </td>
+        </tr>`;
+      }).join('') || `<tr><td colspan="4" class="empty">No payouts logged yet.</td></tr>`;
+    return `<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;${w.active===false?'opacity:.6':''}">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <div style="min-width:0">
+          <div style="font-size:16px;font-weight:800;color:var(--ink)">${esc(w.name)}${w.active===false?' <span style="font-size:11px;font-weight:600;color:var(--ink3)">INACTIVE</span>':''}</div>
+          <div style="font-size:12px;color:var(--ink3);margin-top:2px">${[w.phone,w.email].filter(Boolean).map(esc).join(' · ')||'—'}${w.payout_handle?` · <span style="color:var(--success);font-weight:700">Pay: ${esc(w.payout_handle)}</span>${copyBtn(w.payout_handle)}`:''}</div>
+        </div>
+        <div style="text-align:right;white-space:nowrap">
+          <div style="font-size:18px;font-weight:800;color:${owed?'#8B6914':'var(--ink3)'}">${fmtMoney(owed)} <span style="font-size:11px;font-weight:600;color:var(--ink3)">owed</span></div>
+          <div style="font-size:12px;color:#1f7a4d">${fmtMoney(paid)} paid</div>
+        </div>
+      </div>
+      <div class="table-wrap" style="margin-top:12px"><table>
+        <thead><tr><th>Job</th><th>Amount</th><th>Status</th><th></th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table></div>
+      <div style="margin-top:10px;display:flex;gap:8px">
+        <button onclick="toggleWorkerActive('${w.id}', ${w.active===false?'true':'false'})" style="padding:5px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer">${w.active===false?'Reactivate':'Deactivate'}</button>
+        <button onclick="deleteWorker('${w.id}')" style="padding:5px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:7px;font-size:12px;font-weight:600;color:#b4452e;cursor:pointer">Delete worker</button>
+      </div>
+    </div>`;
+  }).join('') : `<p class="empty">No crew yet — add your first worker above.</p>`;
+
+  return `
+    <h2 class="page-title">Crew &amp; pay</h2>
+    <p class="page-sub">${workers.length} worker${workers.length===1?'':'s'} · <b style="color:#8B6914">${fmtMoney(totalOwed)} owed</b>. Loginless roster — log a payout per job, pay by cash/Venmo/Zelle, then mark paid.</p>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;margin-bottom:18px">
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent-deep);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Add a worker</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+          <input id="wk-name" placeholder="Name" style="${fld};flex:1;min-width:130px">
+          <input id="wk-phone" placeholder="Phone" style="${fld};width:120px">
+          <input id="wk-email" placeholder="Email (optional)" style="${fld};flex:1;min-width:140px">
+          <input id="wk-handle" placeholder="Venmo / Zelle" style="${fld};flex:1;min-width:130px">
+          <button onclick="addWorker()" style="${accentBtn}">Add worker</button>
+        </div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px">
+        <div style="font-size:12px;font-weight:700;color:var(--accent-deep);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Log a payout</div>
+        ${workers.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+          <select id="wp-worker" style="${fld};flex:1;min-width:120px">${workerOpts}</select>
+          <select id="wp-gig" onchange="wpFillAmount()" style="${fld};flex:2;min-width:190px"><option value="">Ad-hoc (no job)</option>${gigOpts}</select>
+          <input id="wp-amount" type="number" min="0" step="0.01" placeholder="$ amount" style="${fld};width:110px">
+          <button onclick="logWorkerPayout()" style="${accentBtn}">Add</button>
+        </div>
+        <div style="font-size:11px;color:var(--ink3);margin-top:6px">Pick a job to auto-fill its mover payout, or type a custom amount.</div>`
+        : `<p style="font-size:13px;color:var(--ink3);margin:0">Add a worker first, then you can log payouts.</p>`}
+      </div>
+    </div>
+
+    <div>${cards}</div>
+  `;
+}
+async function addWorker(){
+  const v = id => ((document.getElementById(id)||{}).value||'').trim();
+  const name = v('wk-name');
+  if(!name){ alert('Enter a worker name.'); return; }
+  const { error } = await sb.from('workers').insert({ name, phone:v('wk-phone')||null, email:v('wk-email')||null, payout_handle:v('wk-handle')||null });
+  if(error){ alert('Could not add worker: ' + error.message); return; }
+  await loadAll(); showPage('crew');
+}
+function wpFillAmount(){
+  const sel = document.getElementById('wp-gig'), amt = document.getElementById('wp-amount');
+  if(!sel || !amt) return;
+  const opt = sel.options[sel.selectedIndex];
+  const cents = opt ? parseInt(opt.dataset.payout||'0', 10) : 0;
+  if(cents > 0) amt.value = (cents/100).toFixed(2);
+}
+async function logWorkerPayout(){
+  const worker_id = (document.getElementById('wp-worker')||{}).value;
+  if(!worker_id){ alert('Pick a worker.'); return; }
+  const gig_id = (document.getElementById('wp-gig')||{}).value || null;
+  const dollars = parseFloat((document.getElementById('wp-amount')||{}).value);
+  if(isNaN(dollars) || dollars < 0){ alert('Enter a valid amount.'); return; }
+  const { error } = await sb.from('worker_payouts').insert({ worker_id, gig_id, amount_cents: Math.round(dollars*100), status:'owed' });
+  if(error){ alert('Could not log payout: ' + error.message); return; }
+  await loadAll(); showPage('crew');
+}
+async function markWorkerPayoutPaid(id){
+  if(!confirm('Mark this payout as paid? (Pay the worker first via cash/Venmo/Zelle.)')) return;
+  const { error } = await sb.from('worker_payouts').update({ status:'paid', paid_at:new Date().toISOString() }).eq('id', id);
+  if(error){ alert('Could not update: ' + error.message); return; }
+  await loadAll(); showPage('crew');
+}
+async function deleteWorkerPayout(id){
+  if(!confirm('Delete this payout entry?')) return;
+  const { error } = await sb.from('worker_payouts').delete().eq('id', id);
+  if(error){ alert('Could not delete: ' + error.message); return; }
+  await loadAll(); showPage('crew');
+}
+async function toggleWorkerActive(id, active){
+  const { error } = await sb.from('workers').update({ active }).eq('id', id);
+  if(error){ alert('Could not update: ' + error.message); return; }
+  await loadAll(); showPage('crew');
+}
+async function deleteWorker(id){
+  if(!confirm('Delete this worker and ALL their payout entries? This cannot be undone.')) return;
+  const { error } = await sb.from('workers').delete().eq('id', id);
+  if(error){ alert('Could not delete: ' + error.message); return; }
+  await loadAll(); showPage('crew');
 }
 
 // ─── Helpers ─────────────────────────────────
