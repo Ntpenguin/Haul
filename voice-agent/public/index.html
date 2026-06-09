@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>OpenVoice Agent</title>
+  <link rel="stylesheet" href="/styles.css" />
+</head>
+<body>
+  <header>
+    <div class="brand">📞 OpenVoice<span>Agent</span></div>
+    <nav>
+      <button data-tab="agents" class="active">Agents</button>
+      <button data-tab="calls">Calls</button>
+      <button data-tab="crm">Leads &amp; Bookings</button>
+    </nav>
+    <div class="health" id="health"></div>
+  </header>
+
+  <main>
+    <!-- AGENTS -->
+    <section id="tab-agents" class="tab active">
+      <div class="cols">
+        <div class="list-pane">
+          <div class="pane-head">
+            <h2>Agents</h2>
+            <button id="new-agent" class="primary">+ New</button>
+          </div>
+          <ul id="agent-list" class="list"></ul>
+        </div>
+        <div class="edit-pane">
+          <div id="agent-editor" class="hidden">
+            <h2 id="editor-title">Edit agent</h2>
+            <div class="grid2">
+              <label>Agent name<input id="f-name" /></label>
+              <label>Business name<input id="f-business_name" /></label>
+            </div>
+            <label>Greeting (first thing said)<textarea id="f-greeting" rows="2"></textarea></label>
+            <label>Persona / role<textarea id="f-persona" rows="4"></textarea></label>
+            <label>Goals<textarea id="f-goals" rows="5"></textarea></label>
+            <label>Knowledge base / FAQ<textarea id="f-knowledge_base" rows="6"></textarea></label>
+            <div class="grid2">
+              <label>Voice ID (TTS)<input id="f-voice_id" placeholder="provider voice id (blank = default)" /></label>
+              <label>Language<input id="f-language" placeholder="en" /></label>
+            </div>
+            <div class="grid2">
+              <label>Routed phone number (E.164)<input id="f-phone_number" placeholder="+15125551234" /></label>
+              <label>Transfer-to number<input id="f-transfer_number" placeholder="+15125550000" /></label>
+            </div>
+            <label>CRM / automation webhook URL<input id="f-webhook_url" placeholder="https://your-crm/webhook" /></label>
+            <div class="grid2">
+              <label>After-hours behavior
+                <select id="f-after_hours">
+                  <option value="ai">AI answers anyway</option>
+                  <option value="voicemail">Voicemail</option>
+                  <option value="transfer">Transfer</option>
+                </select>
+              </label>
+              <label>Max call seconds<input id="f-max_call_seconds" type="number" /></label>
+            </div>
+            <fieldset>
+              <legend>Enabled actions</legend>
+              <div id="tools" class="tools"></div>
+            </fieldset>
+            <div class="row">
+              <button id="save-agent" class="primary">Save</button>
+              <button id="delete-agent" class="danger">Delete</button>
+              <span id="save-status"></span>
+            </div>
+
+            <hr />
+            <h3>Test the agent (text simulator)</h3>
+            <p class="muted">Runs the same brain (LLM + tools) with no phone needed.</p>
+            <div id="sim-log" class="sim-log"></div>
+            <div class="row">
+              <input id="sim-input" placeholder="Type what the caller says…" />
+              <button id="sim-send" class="primary">Send</button>
+              <button id="sim-reset">Restart</button>
+            </div>
+
+            <hr />
+            <h3>Place an outbound call</h3>
+            <div class="row">
+              <input id="outbound-to" placeholder="+1512..." />
+              <button id="outbound-call" class="primary">Call</button>
+              <span id="outbound-status" class="muted"></span>
+            </div>
+          </div>
+          <div id="editor-empty" class="muted center">Select an agent, or create one.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CALLS -->
+    <section id="tab-calls" class="tab">
+      <div class="cols">
+        <div class="list-pane">
+          <h2>Recent calls</h2>
+          <ul id="call-list" class="list"></ul>
+        </div>
+        <div class="edit-pane">
+          <h2>Transcript</h2>
+          <div id="transcript" class="transcript muted">Select a call.</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- CRM -->
+    <section id="tab-crm" class="tab">
+      <h2>Leads</h2>
+      <table id="leads-table" class="data"></table>
+      <h2>Appointments</h2>
+      <table id="appts-table" class="data"></table>
+    </section>
+  </main>
+
+  <script src="/app.js"></script>
+</body>
+</html>

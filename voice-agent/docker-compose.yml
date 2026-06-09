@@ -1,0 +1,22 @@
+services:
+  voice-agent:
+    build: .
+    container_name: openvoice-agent
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    volumes:
+      - ./data:/app/data
+    environment:
+      - DB_PATH=/app/data/voice-agent.db
+
+  # Optional: expose a public HTTPS URL for Twilio without your own domain.
+  # Set TUNNEL_TOKEN in .env (Cloudflare Zero Trust → Tunnels) to use this.
+  # tunnel:
+  #   image: cloudflare/cloudflared:latest
+  #   restart: unless-stopped
+  #   command: tunnel --no-autoupdate run
+  #   environment:
+  #     - TUNNEL_TOKEN=${TUNNEL_TOKEN}
