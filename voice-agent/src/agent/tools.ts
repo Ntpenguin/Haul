@@ -2,10 +2,23 @@ import { AgentConfig, ToolName } from './types.js';
 import { ToolSchema } from '../providers/types.js';
 import { findAvailability, book } from '../integrations/calendarProvider.js';
 import { postWebhook } from '../integrations/webhook.js';
+import { sendSms, isE164 } from '../server/twilioRest.js';
 import { insertLead, setOutcome } from '../db/index.js';
 import { logger } from '../logger.js';
 
 const log = logger('tools');
+
+/** The SMS a caller receives after the agent books their appointment. */
+export function confirmationSms(agent: AgentConfig, startIso: string): string {
+  const when = new Date(startIso).toLocaleString('en-US', {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+  return `You're booked with ${agent.business_name} for ${when}. Reply here or call us with any questions.`;
+}
 
 export type ControlAction = { type: 'transfer'; number: string } | { type: 'hangup' };
 
@@ -143,7 +156,16 @@ export async function runTool(
           contact: ctx.contact,
           notes: args.notes,
         });
-        return { result: `Booked for ${fmtTime(start)}. Confirm this with the caller.` };
+        // Text the caller a confirmation (no-ops if disabled / no phone / Twilio off).
+        let smsNote = '';
+        if (ctx.agent.sms_confirmations) {
+          const to = ctx.contact.phone || ctx.callerNumber;
+          if (isE164(to)) {
+            const sent = await sendSms(to!, confirmationSms(ctx.agent, start), ctx.agent.phone_number);
+            smsNote = sent ? ' A confirmation text has been sent.' : '';
+          }
+        }
+        return { result: `Booked for ${fmtTime(start)}. Confirm this with the caller.${smsNote}` };
       }
 
       case 'capture_lead': {

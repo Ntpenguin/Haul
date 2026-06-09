@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import crypto from 'node:crypto';
 import { takeSentence } from '../src/pipeline/conversation.js';
+import { isE164 } from '../src/server/twilioRest.js';
+import { confirmationSms } from '../src/agent/tools.js';
+import { AgentConfig } from '../src/agent/types.js';
 
 describe('takeSentence (TTS sentence chunking)', () => {
   it('returns null until a sentence completes', () => {
@@ -30,6 +33,22 @@ function twilioSign(authToken: string, url: string, params: Record<string, strin
     .reduce((acc, k) => acc + k + params[k], url);
   return crypto.createHmac('sha1', authToken).update(Buffer.from(data, 'utf-8')).digest('base64');
 }
+
+describe('SMS confirmation', () => {
+  it('recognizes valid E.164 numbers and rejects junk (e.g. the simulator)', () => {
+    expect(isE164('+15125551234')).toBe(true);
+    expect(isE164('15125551234')).toBe(true);
+    expect(isE164('simulator')).toBe(false);
+    expect(isE164('')).toBe(false);
+    expect(isE164(undefined)).toBe(false);
+  });
+  it('builds a confirmation message with the business name and time', () => {
+    const agent = { business_name: 'Fast Fix Work' } as AgentConfig;
+    const msg = confirmationSms(agent, '2026-06-12T14:30:00.000Z');
+    expect(msg).toContain('Fast Fix Work');
+    expect(msg).toMatch(/booked/i);
+  });
+});
 
 describe('Twilio signature algorithm', () => {
   it('produces a stable HMAC-SHA1 base64 signature', () => {

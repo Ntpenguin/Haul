@@ -110,6 +110,7 @@ async function selectAgent(id) {
   el('editor-title').textContent = 'Edit: ' + current.name;
   FIELDS.forEach((f) => { if (el('f-' + f)) el('f-' + f).value = current[f] ?? ''; });
   el('f-phone_number').value = current.phone_number ?? '';
+  el('f-sms_confirmations').checked = current.sms_confirmations !== false;
   document.querySelectorAll('#tools input').forEach((cb) => { cb.checked = (current.enabled_tools || []).includes(cb.value); });
   loadAgents();
 }
@@ -125,6 +126,7 @@ el('save-agent').onclick = async () => {
   FIELDS.forEach((f) => { if (el('f-' + f)) patch[f] = el('f-' + f).value; });
   patch.max_call_seconds = Number(patch.max_call_seconds) || 600;
   patch.phone_number = el('f-phone_number').value;
+  patch.sms_confirmations = el('f-sms_confirmations').checked;
   patch.enabled_tools = [...document.querySelectorAll('#tools input:checked')].map((c) => c.value);
   el('save-status').textContent = 'Saving…';
   try {

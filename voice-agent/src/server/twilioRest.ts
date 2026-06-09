@@ -49,3 +49,27 @@ export async function placeOutboundCall(to: string, twimlUrl: string): Promise<{
     return { ok: false };
   }
 }
+
+/** Send an SMS via Twilio. No-ops (returns false) if Twilio or a from-number is missing. */
+export async function sendSms(to: string, body: string, from?: string): Promise<boolean> {
+  if (!config.twilio.accountSid || !config.twilio.authToken) return false;
+  const fromNumber = from || config.twilio.fromNumber;
+  if (!fromNumber || !isE164(to)) return false;
+  try {
+    const res = await fetch(`${base()}/Messages.json`, {
+      method: 'POST',
+      headers: { Authorization: authHeader(), 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ To: to, From: fromNumber, Body: body }),
+    });
+    if (!res.ok) log.warn(`sendSms -> HTTP ${res.status}`, await res.text().catch(() => ''));
+    return res.ok;
+  } catch (e) {
+    log.error('sendSms failed', e);
+    return false;
+  }
+}
+
+/** Loose E.164 check (e.g. +15125551234) — guards against the simulator's fake numbers. */
+export function isE164(s: string | undefined): boolean {
+  return !!s && /^\+?[1-9]\d{7,14}$/.test(s.replace(/[\s()-]/g, ''));
+}

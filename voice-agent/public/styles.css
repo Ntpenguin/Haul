@@ -35,6 +35,8 @@ legend { color: var(--muted); font-size: 12px; padding: 0 6px; }
 .tools { display: flex; flex-wrap: wrap; gap: 12px; padding: 4px; }
 .tools label { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--text); }
 .tools input { width: auto; margin: 0; }
+.checkrow { display: flex; align-items: center; gap: 8px; color: var(--text); margin-bottom: 12px; }
+.checkrow input { width: auto; margin: 0; }
 button.primary { background: var(--accent); color: #fff; border: none; padding: 9px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; }
 button.danger { background: transparent; color: var(--danger); border: 1px solid var(--danger); padding: 9px 16px; border-radius: 8px; cursor: pointer; }
 button:not(.primary):not(.danger) { background: var(--panel2); color: var(--text); border: 1px solid var(--line); padding: 9px 16px; border-radius: 8px; cursor: pointer; }

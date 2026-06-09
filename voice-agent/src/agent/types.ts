@@ -45,6 +45,9 @@ export interface AgentConfig {
   /** What to do outside business hours: 'ai' (answer anyway) | 'voicemail' | 'transfer'. */
   after_hours: 'ai' | 'voicemail' | 'transfer';
 
+  /** Text the caller a confirmation after booking an appointment (Twilio SMS). */
+  sms_confirmations: boolean;
+
   /** Hard limits to keep calls (and your bill) bounded. */
   max_call_seconds: number;
 
@@ -97,5 +100,6 @@ export const DEFAULT_AGENT: Omit<AgentConfig, 'id' | 'name' | 'created_at' | 'up
     6: null,
   },
   after_hours: 'ai',
+  sms_confirmations: true,
   max_call_seconds: 600,
 };
