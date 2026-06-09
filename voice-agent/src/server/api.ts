@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
+import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
+import { getCalendarConnection } from '../db/index.js';
+import { googleAuthUrl } from '../integrations/googleCalendar.js';
 import {
   listAgents,
   createAgent,
@@ -78,6 +81,19 @@ apiRouter.post('/billing/checkout', async (req, res) => {
   const url = await createCheckoutSession(req.principal.tenant);
   if (!url) return res.status(500).json({ error: 'could not create checkout session' });
   res.json({ url });
+});
+
+// ── Calendar (Google) connection ──
+apiRouter.get('/calendar/status', async (req, res) => {
+  if (req.principal?.type !== 'tenant') return res.json({ connected: false });
+  const c = await getCalendarConnection(req.principal.tenant.id);
+  res.json({ connected: Boolean(c && c.refresh_token), provider: c?.provider ?? null, google_available: config.google.enabled });
+});
+apiRouter.post('/calendar/google/connect', async (req, res) => {
+  if (!config.google.enabled) return res.status(400).json({ error: 'Google Calendar not configured' });
+  if (req.principal?.type !== 'tenant') return res.status(400).json({ error: 'tenant context required' });
+  const state = jwt.sign({ cal: req.principal.tenant.id }, config.jwtSecret, { expiresIn: '15m' });
+  res.json({ url: googleAuthUrl(state) });
 });
 
 // ── Agents CRUD (tenant-scoped) ──

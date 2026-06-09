@@ -1,6 +1,6 @@
 import { AgentConfig, ToolName } from './types.js';
 import { ToolSchema } from '../providers/types.js';
-import { findAvailability, book } from '../integrations/calendar.js';
+import { findAvailability, book } from '../integrations/calendarProvider.js';
 import { postWebhook } from '../integrations/webhook.js';
 import { insertLead, setOutcome } from '../db/index.js';
 import { logger } from '../logger.js';

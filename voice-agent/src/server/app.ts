@@ -11,8 +11,10 @@ import { twimlRouter } from './twiml.js';
 import { verifyTwilioSignature } from './twilioVerify.js';
 import { apiRouter } from './api.js';
 import { authRouter } from './authRoutes.js';
+import jwt from 'jsonwebtoken';
 import { authMiddleware } from './auth.js';
 import { handleStripeWebhook } from './billing.js';
+import { googleExchangeAndStore } from '../integrations/googleCalendar.js';
 
 const log = logger('app');
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -62,6 +64,19 @@ export function createApp(): Express {
 
   // Twilio webhooks: form-encoded + signature-verified, not behind admin/tenant auth.
   app.use('/twilio', express.urlencoded({ extended: false }), verifyTwilioSignature, twimlRouter);
+
+  // Google OAuth callback — Google redirects the browser here (no bearer), so it lives
+  // outside the API auth middleware; the signed `state` carries the tenant id.
+  app.get('/calendar/google/callback', async (req, res) => {
+    try {
+      const { cal } = jwt.verify(String(req.query.state), config.jwtSecret) as { cal: string };
+      await googleExchangeAndStore(cal, String(req.query.code));
+      res.redirect('/?calendar=connected');
+    } catch (e) {
+      log.error('google callback failed', e);
+      res.status(400).send('Calendar connection failed. Please try again.');
+    }
+  });
 
   app.use(express.json());
 

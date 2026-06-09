@@ -7,19 +7,70 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
+  <!-- AUTH GATE -->
+  <div id="auth-screen" class="auth-screen hidden">
+    <div class="auth-card">
+      <div class="auth-brand">📞 OpenVoice<span>Agent</span></div>
+
+      <!-- Login / Signup form -->
+      <div id="auth-form">
+        <h1 id="auth-title">Welcome back</h1>
+        <p class="muted" id="auth-sub">Sign in to your account.</p>
+        <label id="auth-name-label">Name<input id="auth-name" autocomplete="name" /></label>
+        <label>Email<input id="auth-email" type="email" autocomplete="email" /></label>
+        <label>Password<input id="auth-password" type="password" autocomplete="current-password" /></label>
+        <div id="auth-error" class="auth-error hidden"></div>
+        <button id="auth-submit" class="primary auth-submit">Sign in</button>
+        <p class="auth-toggle muted">
+          <span id="auth-toggle-text">No account yet?</span>
+          <a href="#" id="auth-toggle">Sign up</a>
+        </p>
+      </div>
+
+      <hr />
+
+      <!-- Admin token -->
+      <details id="admin-details">
+        <summary class="muted">Use an admin token</summary>
+        <label>Admin token<input id="auth-admin-token" placeholder="paste platform admin token" /></label>
+        <div id="auth-admin-error" class="auth-error hidden"></div>
+        <button id="auth-admin-submit">Continue as admin</button>
+      </details>
+    </div>
+  </div>
+
+  <!-- DASHBOARD -->
+  <div id="dashboard" class="hidden">
   <header>
     <div class="brand">📞 OpenVoice<span>Agent</span></div>
     <nav>
       <button data-tab="agents" class="active">Agents</button>
       <button data-tab="calls">Calls</button>
       <button data-tab="crm">Leads &amp; Bookings</button>
+      <button data-tab="tenants" id="tenants-tab-btn" class="hidden">Tenants</button>
     </nav>
-    <div class="health" id="health"></div>
+    <div class="topbar">
+      <div class="usage" id="usage"></div>
+      <button id="billing-btn" class="hidden">Upgrade / Billing</button>
+      <div class="health" id="health"></div>
+      <div class="identity" id="identity"></div>
+      <button id="signout-btn">Sign out</button>
+    </div>
   </header>
 
   <main>
     <!-- AGENTS -->
     <section id="tab-agents" class="tab active">
+      <div id="calendar-card" class="cal-card hidden">
+        <div class="cal-head">
+          <span class="cal-icon">📅</span>
+          <strong>Calendar</strong>
+        </div>
+        <div id="calendar-body" class="cal-body">
+          <span class="muted">Loading…</span>
+        </div>
+        <div id="calendar-note" class="cal-note hidden"></div>
+      </div>
       <div class="cols">
         <div class="list-pane">
           <div class="pane-head">
@@ -112,7 +163,32 @@
       <h2>Appointments</h2>
       <table id="appts-table" class="data"></table>
     </section>
+
+    <!-- TENANTS (admin only) -->
+    <section id="tab-tenants" class="tab">
+      <div class="cols">
+        <div class="list-pane">
+          <div class="pane-head">
+            <h2>Tenants</h2>
+          </div>
+          <ul id="tenant-list" class="list"></ul>
+        </div>
+        <div class="edit-pane">
+          <h2>Create a tenant</h2>
+          <label>Name<input id="new-tenant-name" placeholder="Acme Plumbing" /></label>
+          <div class="row">
+            <button id="create-tenant" class="primary">+ New tenant</button>
+            <span id="tenant-status" class="muted"></span>
+          </div>
+          <div id="new-tenant-key" class="apikey-box hidden">
+            <p class="muted">Share this API key with the tenant. It is shown only once.</p>
+            <code id="new-tenant-key-val"></code>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
+  </div>
 
   <script src="/app.js"></script>
 </body>
