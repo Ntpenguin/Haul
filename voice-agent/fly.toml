@@ -1,0 +1,33 @@
+# Fly.io deployment. Quickstart:
+#   fly launch --no-deploy            # creates the app
+#   fly postgres create               # then: fly postgres attach <pg-app>  (sets DATABASE_URL)
+#   fly secrets set ADMIN_TOKEN=... JWT_SECRET=... OPENAI_API_KEY=... DEEPGRAM_API_KEY=... \
+#       ELEVENLABS_API_KEY=... TWILIO_ACCOUNT_SID=... TWILIO_AUTH_TOKEN=... TWILIO_FROM_NUMBER=... \
+#       STRIPE_SECRET_KEY=... STRIPE_WEBHOOK_SECRET=... PUBLIC_BASE_URL=https://<app>.fly.dev
+#   fly deploy
+app = "openvoice-agent"
+primary_region = "iad"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[env]
+  NODE_ENV = "production"
+  PORT = "3000"
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = false   # keep warm so calls connect instantly
+  auto_start_machines = true
+  min_machines_running = 1
+
+  [[http_service.checks]]
+    method = "GET"
+    path = "/healthz"
+    interval = "15s"
+    timeout = "3s"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

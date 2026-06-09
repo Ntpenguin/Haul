@@ -95,7 +95,7 @@ export class Conversation {
 }
 
 /** Pull a complete sentence off the front of `buf`, or null if none yet. */
-function takeSentence(buf: string): string | null {
+export function takeSentence(buf: string): string | null {
   // Sentence end: . ! ? optionally followed by quote/paren, then space — or a newline.
   const m = buf.match(/^[\s\S]*?[.!?]["')\]]?(\s|$)/);
   if (m) return m[0];

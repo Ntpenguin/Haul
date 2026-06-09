@@ -1,22 +1,53 @@
+# Production-ish self-host: app + Postgres + Caddy (automatic HTTPS).
+# 1) Point your domain's A record at this host.
+# 2) Set DOMAIN + secrets in .env.  3) docker compose up -d --build
 services:
-  voice-agent:
-    build: .
-    container_name: openvoice-agent
+  db:
+    image: postgres:16-alpine
     restart: unless-stopped
-    ports:
-      - "3000:3000"
+    environment:
+      POSTGRES_USER: openvoice
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-openvoice}
+      POSTGRES_DB: openvoice
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U openvoice"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
     env_file:
       - .env
-    volumes:
-      - ./data:/app/data
     environment:
-      - DB_PATH=/app/data/voice-agent.db
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgres://openvoice:${POSTGRES_PASSWORD:-openvoice}@db:5432/openvoice
+    expose:
+      - "3000"
 
-  # Optional: expose a public HTTPS URL for Twilio without your own domain.
-  # Set TUNNEL_TOKEN in .env (Cloudflare Zero Trust → Tunnels) to use this.
-  # tunnel:
-  #   image: cloudflare/cloudflared:latest
-  #   restart: unless-stopped
-  #   command: tunnel --no-autoupdate run
-  #   environment:
-  #     - TUNNEL_TOKEN=${TUNNEL_TOKEN}
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:

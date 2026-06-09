@@ -1,19 +1,29 @@
-# OpenVoice Agent — production image
-FROM node:20-bookworm-slim AS base
+# ── Build stage ──
+FROM node:20-bookworm-slim AS build
 WORKDIR /app
+COPY package.json package-lock.json* ./
+RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund
+COPY . .
+RUN npm run build
 
-# better-sqlite3 needs a build toolchain for its native addon
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3 make g++ ca-certificates \
+# ── Runtime stage ──
+FROM node:20-bookworm-slim AS runtime
+ENV NODE_ENV=production
+WORKDIR /app
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates wget \
   && rm -rf /var/lib/apt/lists/*
 
 COPY package.json package-lock.json* ./
-RUN npm install --omit=dev --no-audit --no-fund || npm install --no-audit --no-fund
+RUN npm ci --omit=dev --no-audit --no-fund || npm install --omit=dev --no-audit --no-fund
 
-COPY . .
-RUN npm install --no-audit --no-fund && npm run build
+# Ship compiled code + runtime assets (migrations + dashboard).
+COPY --from=build /app/dist ./dist
+COPY migrations ./migrations
+COPY public ./public
 
-ENV NODE_ENV=production
+USER node
 EXPOSE 3000
-VOLUME ["/app/data"]
+HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+  CMD wget -qO- http://localhost:3000/healthz || exit 1
+
 CMD ["node", "dist/index.js"]

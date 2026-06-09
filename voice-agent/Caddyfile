@@ -1,0 +1,6 @@
+# Automatic HTTPS via Let's Encrypt. Set DOMAIN in .env (e.g. voice.example.com).
+# Caddy transparently proxies WebSocket upgrades, so Twilio Media Streams just works.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy app:3000
+}
