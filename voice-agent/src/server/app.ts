@@ -35,8 +35,8 @@ export function createApp(): Express {
           styleSrc: ["'self'", "'unsafe-inline'"],
           connectSrc: ["'self'"],
           imgSrc: ["'self'", 'data:'],
-          // Voice preview clips are hosted on Google Cloud Storage by ElevenLabs.
-          mediaSrc: ["'self'", 'https://storage.googleapis.com'],
+          // Voice preview clips (ElevenLabs → GCS) + blob: for authed recording playback.
+          mediaSrc: ["'self'", 'blob:', 'https://storage.googleapis.com'],
         },
       },
     }),

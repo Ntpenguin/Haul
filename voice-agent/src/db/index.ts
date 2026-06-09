@@ -159,6 +159,9 @@ export const attachCallSid = (callId: string, callSid: string) =>
   query(`UPDATE calls SET call_sid=$2, status='in-progress' WHERE id=$1`, [callId, callSid]);
 
 export const callBySid = (callSid: string) => one(`SELECT * FROM calls WHERE call_sid=$1`, [callSid]);
+export const getCall = (id: string) => one(`SELECT * FROM calls WHERE id=$1`, [id]);
+export const setRecording = (callSid: string, url: string) =>
+  query(`UPDATE calls SET recording_url=$2 WHERE call_sid=$1`, [callSid, url]);
 
 export const finishCall = (callId: string, status: string, outcome?: string) =>
   query(

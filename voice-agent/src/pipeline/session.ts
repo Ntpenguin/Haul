@@ -5,7 +5,7 @@ import { ToolContext } from '../agent/tools.js';
 import { makeStt, makeLlm, makeTts } from '../providers/index.js';
 import { SttStream } from '../providers/types.js';
 import { attachCallSid, finishCall } from '../db/index.js';
-import { updateCallTwiml, transferTwiml, hangupTwiml } from '../server/twilioRest.js';
+import { updateCallTwiml, transferTwiml, hangupTwiml, startRecording } from '../server/twilioRest.js';
 import { logger } from '../logger.js';
 
 const log = logger('session');
@@ -84,6 +84,9 @@ export class CallSession {
       onFinal: (text, endOfTurn) => this.onSttFinal(text, endOfTurn),
       onError: (e) => log.error('stt error', e),
     });
+
+    // Optional call recording (off unless the agent enables it).
+    if (this.agent.record_calls && this.callSid) startRecording(this.callSid).catch(() => {});
 
     // Hard cap on call length to bound cost.
     this.maxCallTimer = setTimeout(

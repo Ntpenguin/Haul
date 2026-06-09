@@ -3,6 +3,7 @@ import crypto from 'node:crypto';
 import { takeSentence } from '../src/pipeline/conversation.js';
 import { isE164 } from '../src/server/twilioRest.js';
 import { confirmationSms } from '../src/agent/tools.js';
+import { htmlToText } from '../src/integrations/scrape.js';
 import { AgentConfig } from '../src/agent/types.js';
 
 describe('takeSentence (TTS sentence chunking)', () => {
@@ -47,6 +48,18 @@ describe('SMS confirmation', () => {
     const msg = confirmationSms(agent, '2026-06-12T14:30:00.000Z');
     expect(msg).toContain('Fast Fix Work');
     expect(msg).toMatch(/booked/i);
+  });
+});
+
+describe('htmlToText (knowledge-base scraping)', () => {
+  it('strips scripts, styles, and tags and decodes entities', () => {
+    const html = `<html><head><style>.x{color:red}</style><script>alert(1)</script></head>
+      <body><h1>Acme</h1><p>Hours: 9&ndash;5. Call us &amp; book.</p></body></html>`;
+    const text = htmlToText(html);
+    expect(text).toContain('Acme');
+    expect(text).toContain('book');
+    expect(text).not.toMatch(/alert|color:red|<p>|<script/);
+    expect(text).toContain('&'); // &amp; decoded
   });
 });
 

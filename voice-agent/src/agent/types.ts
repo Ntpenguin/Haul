@@ -48,6 +48,9 @@ export interface AgentConfig {
   /** Text the caller a confirmation after booking an appointment (Twilio SMS). */
   sms_confirmations: boolean;
 
+  /** Record calls (Twilio). Off by default — recording has consent/legal implications. */
+  record_calls: boolean;
+
   /** Hard limits to keep calls (and your bill) bounded. */
   max_call_seconds: number;
 
@@ -101,5 +104,6 @@ export const DEFAULT_AGENT: Omit<AgentConfig, 'id' | 'name' | 'created_at' | 'up
   },
   after_hours: 'ai',
   sms_confirmations: true,
+  record_calls: false,
   max_call_seconds: 600,
 };

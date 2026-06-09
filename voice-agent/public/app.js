@@ -187,6 +187,7 @@ async function selectAgent(id) {
   setVoiceSelection(current.voice_id || '');
   el('f-phone_number').value = current.phone_number ?? '';
   el('f-sms_confirmations').checked = current.sms_confirmations !== false;
+  el('f-record_calls').checked = current.record_calls === true;
   document.querySelectorAll('#tools input').forEach((cb) => { cb.checked = (current.enabled_tools || []).includes(cb.value); });
   loadAgents();
 }
@@ -203,6 +204,7 @@ el('save-agent').onclick = async () => {
   patch.max_call_seconds = Number(patch.max_call_seconds) || 600;
   patch.phone_number = el('f-phone_number').value;
   patch.sms_confirmations = el('f-sms_confirmations').checked;
+  patch.record_calls = el('f-record_calls').checked;
   patch.enabled_tools = [...document.querySelectorAll('#tools input:checked')].map((c) => c.value);
   el('save-status').textContent = 'Saving…';
   try {
@@ -221,6 +223,28 @@ el('delete-agent').onclick = async () => {
   el('editor-empty').classList.remove('hidden');
   loadAgents();
 };
+
+// ── Knowledge base import (scrape a website) ──
+el('kb-import').addEventListener('click', async () => {
+  if (!current || !current.id) return;
+  const btn = el('kb-import');
+  const status = el('kb-status');
+  status.textContent = 'Importing… (this can take ~10s)';
+  btn.disabled = true;
+  try {
+    const result = await api('/agents/' + current.id + '/scrape', {
+      method: 'POST',
+      body: JSON.stringify({ url: el('kb-url').value.trim(), replace: false }),
+    });
+    el('f-knowledge_base').value = result.knowledge_base;
+    status.textContent = '✓ Imported';
+  } catch (e) {
+    if (e instanceof AuthError) return;
+    status.textContent = '✗ ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
 
 // ── Simulator ──
 function simAppend(cls, text) {
@@ -260,8 +284,10 @@ el('outbound-call').onclick = async () => {
 };
 
 // ── Calls ──
+let callsCache = [];     // last-loaded calls (for recording lookup)
 async function loadCalls() {
   const calls = await api('/calls');
+  callsCache = Array.isArray(calls) ? calls : [];
   const ul = el('call-list');
   ul.innerHTML = '';
   calls.forEach((c) => {
@@ -277,9 +303,28 @@ async function loadTranscript(id, li) {
   document.querySelectorAll('#call-list li').forEach((x) => x.classList.remove('sel'));
   li.classList.add('sel');
   const turns = await api('/calls/' + id + '/transcript');
-  el('transcript').innerHTML = turns.length
+  const transcript = el('transcript');
+  transcript.innerHTML = turns.length
     ? turns.map((t) => `<div class="turn"><div class="role">${t.role}</div>${esc(t.content)}</div>`).join('')
     : '<span class="muted">No transcript.</span>';
+  // If this call has a recording, fetch it (with the bearer token) and show a player above the transcript.
+  const call = callsCache.find((c) => c.id === id);
+  if (call && call.recording_url) loadRecording(id, transcript);
+}
+
+// Recordings need the Authorization header, so an <audio src> can't fetch them
+// directly. Pull the audio as a blob with the token and play it via a blob URL.
+async function loadRecording(callId, container) {
+  try {
+    const res = await fetch('/api/calls/' + callId + '/recording', { headers: { Authorization: 'Bearer ' + token } });
+    if (!res.ok) return; // no recording / unavailable
+    const blob = await res.blob();
+    const audio = document.createElement('audio');
+    audio.controls = true;
+    audio.className = 'call-recording';
+    audio.src = URL.createObjectURL(blob);
+    container.prepend(audio);
+  } catch {}
 }
 
 // ── CRM ──

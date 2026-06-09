@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { config, streamWsUrl } from '../config.js';
-import { agentForNumber, getAgent, createCall, callBySid, finishCall, tenantCanCall } from '../db/index.js';
+import { agentForNumber, getAgent, createCall, callBySid, finishCall, tenantCanCall, setRecording } from '../db/index.js';
 import { logger } from '../logger.js';
 
 const log = logger('twiml');
@@ -64,6 +64,14 @@ twimlRouter.post('/status', async (req, res) => {
     const row: any = await callBySid(callSid);
     if (row && !row.ended_at) await finishCall(row.id, status === 'completed' ? 'completed' : 'failed');
   }
+  res.sendStatus(204);
+});
+
+/** Twilio posts the finished recording here. */
+twimlRouter.post('/recording-status', async (req, res) => {
+  const callSid = req.body.CallSid as string;
+  const url = req.body.RecordingUrl as string;
+  if (callSid && url) await setRecording(callSid, url);
   res.sendStatus(204);
 });
 

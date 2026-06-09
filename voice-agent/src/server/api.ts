@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { config } from '../config.js';
-import { getCalendarConnection } from '../db/index.js';
+import { getCalendarConnection, getCall } from '../db/index.js';
 import { googleAuthUrl } from '../integrations/googleCalendar.js';
 import {
   listAgents,
@@ -27,8 +27,9 @@ import {
 import { Conversation } from '../pipeline/conversation.js';
 import { makeLlm, makeTts } from '../providers/index.js';
 import { ToolContext } from '../agent/tools.js';
-import { placeOutboundCall } from './twilioRest.js';
+import { placeOutboundCall, fetchRecording } from './twilioRest.js';
 import { createCheckoutSession } from './billing.js';
+import { scrapeSite, buildKnowledgeBase } from '../integrations/scrape.js';
 import { scopedTenantId, isAdmin, requireAdmin } from './auth.js';
 import { logger } from '../logger.js';
 
@@ -131,9 +132,42 @@ apiRouter.delete('/agents/:id', async (req, res) => {
   res.sendStatus(204);
 });
 
+// Import a knowledge base by scraping the business's website.
+apiRouter.post('/agents/:id/scrape', async (req, res) => {
+  const agent = await canAccessAgent(req, req.params.id);
+  if (!agent) return res.status(404).json({ error: 'not found' });
+  const url = (req.body?.url || '').trim();
+  if (!url) return res.status(400).json({ error: 'url required' });
+  try {
+    const text = await scrapeSite(url);
+    if (!text) return res.status(422).json({ error: 'no readable text found at that URL' });
+    const kb = await buildKnowledgeBase(text);
+    const knowledge_base = req.body?.replace ? kb : [agent.knowledge_base, kb].filter(Boolean).join('\n\n');
+    await updateAgent(agent.id, { knowledge_base });
+    res.json({ knowledge_base });
+  } catch (e: any) {
+    log.error('scrape failed', e);
+    res.status(502).json({ error: e?.message || 'scrape failed' });
+  }
+});
+
 // ── Call logs / transcripts / CRM data (tenant-scoped) ──
 apiRouter.get('/calls', async (req, res) => res.json(await listCalls({ tenantId: scopedTenantId(req) })));
 apiRouter.get('/calls/:id/transcript', async (req, res) => res.json(await getTranscript(req.params.id)));
+
+// Proxy a call recording (tenant-scoped) so the dashboard can play it without Twilio creds.
+apiRouter.get('/calls/:id/recording', async (req, res) => {
+  const call: any = await getCall(req.params.id);
+  if (!call || !call.recording_url) return res.status(404).json({ error: 'no recording' });
+  if (req.principal?.type === 'tenant' && call.tenant_id !== req.principal.tenant.id)
+    return res.status(404).json({ error: 'not found' });
+  const upstream = await fetchRecording(call.recording_url);
+  if (!upstream || !upstream.body) return res.status(502).json({ error: 'recording unavailable' });
+  res.setHeader('Content-Type', 'audio/mpeg');
+  const reader = (upstream.body as any as AsyncIterable<Uint8Array>);
+  for await (const chunk of reader) res.write(Buffer.from(chunk));
+  res.end();
+});
 apiRouter.get('/leads', async (req, res) => res.json(await listLeads({ tenantId: scopedTenantId(req) })));
 apiRouter.get('/appointments', async (req, res) => res.json(await listAppointments({ tenantId: scopedTenantId(req) })));
 

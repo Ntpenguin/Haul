@@ -50,6 +50,39 @@ export async function placeOutboundCall(to: string, twimlUrl: string): Promise<{
   }
 }
 
+/** Start recording a live call. Twilio POSTs the finished RecordingUrl to our callback. */
+export async function startRecording(callSid: string): Promise<boolean> {
+  if (!config.twilio.accountSid || !config.publicBaseUrl) return false;
+  try {
+    const res = await fetch(`${base()}/Calls/${callSid}/Recordings.json`, {
+      method: 'POST',
+      headers: { Authorization: authHeader(), 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        RecordingStatusCallback: `${config.publicBaseUrl}/twilio/recording-status`,
+        RecordingStatusCallbackEvent: 'completed',
+      }),
+    });
+    if (!res.ok) log.warn(`startRecording -> HTTP ${res.status}`, await res.text().catch(() => ''));
+    return res.ok;
+  } catch (e) {
+    log.error('startRecording failed', e);
+    return false;
+  }
+}
+
+/** Fetch a Twilio recording (mp3) with auth — used to proxy playback to the dashboard. */
+export async function fetchRecording(recordingUrl: string): Promise<Response | null> {
+  if (!config.twilio.accountSid) return null;
+  const mp3 = recordingUrl.endsWith('.mp3') ? recordingUrl : `${recordingUrl}.mp3`;
+  try {
+    const res = await fetch(mp3, { headers: { Authorization: authHeader() } });
+    return res.ok ? res : null;
+  } catch (e) {
+    log.error('fetchRecording failed', e);
+    return null;
+  }
+}
+
 /** Send an SMS via Twilio. No-ops (returns false) if Twilio or a from-number is missing. */
 export async function sendSms(to: string, body: string, from?: string): Promise<boolean> {
   if (!config.twilio.accountSid || !config.twilio.authToken) return false;

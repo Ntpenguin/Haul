@@ -91,6 +91,11 @@
             <label>Persona / role<textarea id="f-persona" rows="4"></textarea></label>
             <label>Goals<textarea id="f-goals" rows="5"></textarea></label>
             <label>Knowledge base / FAQ<textarea id="f-knowledge_base" rows="6"></textarea></label>
+            <div class="kb-import-row">
+              <input id="kb-url" placeholder="https://yourbusiness.com" />
+              <button id="kb-import" type="button">Import from website</button>
+              <span id="kb-status" class="muted"></span>
+            </div>
             <div class="grid2">
               <label>Voice (TTS)
                 <div class="voice-row">
@@ -120,6 +125,7 @@
               <label>Max call seconds<input id="f-max_call_seconds" type="number" /></label>
             </div>
             <label class="checkrow"><input type="checkbox" id="f-sms_confirmations" /> Text the caller an SMS confirmation after booking</label>
+            <label class="checkrow"><input type="checkbox" id="f-record_calls" /> Record calls (Twilio)</label>
             <fieldset>
               <legend>Enabled actions</legend>
               <div id="tools" class="tools"></div>
