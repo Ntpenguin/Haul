@@ -1,67 +1,82 @@
 # Self-hosting
 
-## 1. Prerequisites
+## Prerequisites
 
-- A server reachable over **public HTTPS** (Twilio must POST to it and open a WSS
-  connection). A small VPS is plenty — this is I/O-bound, not CPU-bound.
-- A **Twilio** account + a voice-capable phone number.
+- A server reachable over **public HTTPS** (Twilio POSTs to it + opens a WSS stream;
+  Stripe + Google also call back). A small VPS is plenty — this is I/O-bound.
+- **Postgres** (the bundled compose includes it, or use managed Postgres).
+- A **Twilio** account + a voice-capable number.
 - API keys for your chosen **STT / LLM / TTS** providers.
+- Optional: **Stripe** (billing) and **Google Cloud OAuth** (calendar).
 
-## 2. Run with Docker (recommended)
+## Option A — Docker Compose (app + Postgres + Caddy, auto-HTTPS)
 
 ```bash
-cp .env.example .env        # fill keys + PUBLIC_BASE_URL
+cp .env.example .env
+#   set: DOMAIN=voice.example.com   PUBLIC_BASE_URL=https://voice.example.com
+#        ADMIN_TOKEN=<random>       JWT_SECRET=<random>   POSTGRES_PASSWORD=<random>
+#        provider keys (DEEPGRAM/OPENAI/ELEVENLABS), TWILIO_*, optional STRIPE_*/GOOGLE_*
 docker compose up -d --build
 ```
 
-The SQLite DB persists in the `./data` volume. Create your first agent in the dashboard
-(or run `npm run seed` in a local dev checkout to get the demo "Ava" agent).
+- Point your domain's A record at the host. Caddy obtains a Let's Encrypt cert
+  automatically and proxies WebSocket upgrades, so Twilio Media Streams just works.
+- Migrations run automatically on boot. The DB persists in the `pgdata` volume.
+- Create your first agent in the dashboard (sign up, or log in with `ADMIN_TOKEN`).
 
-### Getting a public HTTPS URL
+## Option B — Fly.io
 
-- **Own domain + reverse proxy**: put Caddy/Traefik/nginx in front, terminate TLS, proxy
-  `:3000`. Make sure your proxy **forwards WebSocket upgrades** on `/twilio/stream`.
-- **No domain**: use a tunnel.
-  - Cloudflare Tunnel: uncomment the `tunnel` service in `docker-compose.yml` and set
-    `TUNNEL_TOKEN`. Point a hostname at `http://voice-agent:3000`.
-  - `ngrok http 3000` (dev/testing) — copy the https URL into `PUBLIC_BASE_URL`.
+```bash
+fly launch --no-deploy
+fly postgres create && fly postgres attach <pg-app>     # sets DATABASE_URL
+fly secrets set ADMIN_TOKEN=... JWT_SECRET=... PUBLIC_BASE_URL=https://<app>.fly.dev \
+  DEEPGRAM_API_KEY=... OPENAI_API_KEY=... ELEVENLABS_API_KEY=... \
+  TWILIO_ACCOUNT_SID=... TWILIO_AUTH_TOKEN=... TWILIO_FROM_NUMBER=...
+fly deploy
+```
 
-Set `PUBLIC_BASE_URL` to that HTTPS origin (no trailing slash); the app derives the
-`wss://…/twilio/stream` URL from it automatically.
+Render/Railway work the same way: deploy the Dockerfile, add a managed Postgres, set the
+env vars. Keep at least one instance always-on so calls connect instantly.
 
-## 3. Wire up Twilio
+## Wire up Twilio
 
-1. Twilio Console → **Phone Numbers → your number → Voice → A call comes in**:
-   - Webhook: `https://YOUR_DOMAIN/twilio/inbound` · HTTP **POST**.
-   - (Optional) Status callback: `https://YOUR_DOMAIN/twilio/status`.
-2. In the dashboard, set that E.164 number as the agent's **Routed phone number**.
-   - With exactly one agent, inbound calls route to it automatically.
-   - With several, each agent is matched by its routed number → **multi-business** on one
-     instance.
+1. Console → your number → **Voice → A call comes in**: `https://YOUR_DOMAIN/twilio/inbound`
+   (HTTP **POST**). Optional status callback: `/twilio/status`.
+2. Signature verification is **on by default** (`TWILIO_VALIDATE_SIGNATURE=true`) and uses
+   `TWILIO_AUTH_TOKEN` + `PUBLIC_BASE_URL` — make sure `PUBLIC_BASE_URL` exactly matches
+   the URL Twilio calls.
+3. Set the agent's **Routed phone number** in the dashboard. One agent → all inbound
+   routes to it; several → each is matched by its number (multi-business).
 
-## 4. Security
+## Stripe (billing)
 
-- Set **`ADMIN_TOKEN`** so `/api/*` (and the dashboard) require a bearer token. The
-  `/twilio/*` webhooks stay open because Twilio can't send a bearer — for production,
-  additionally **validate the `X-Twilio-Signature`** header (add middleware on
-  `/twilio`) and/or restrict inbound to Twilio's IP ranges.
-- Put the whole thing behind HTTPS. Never expose the raw `:3000` port publicly without
-  TLS.
-- Mind **call-recording/consent laws** in your jurisdiction before enabling recording.
+1. Create a **Product** with a recurring **price** (base plan) → `STRIPE_PRICE_SUBSCRIPTION`.
+   Optionally a **metered** usage price (per minute) → `STRIPE_PRICE_METERED`.
+2. Set `STRIPE_SECRET_KEY`. Add a webhook endpoint `https://YOUR_DOMAIN/webhooks/stripe`
+   for `checkout.session.completed`, `customer.subscription.*`, `invoice.payment_failed`;
+   put its signing secret in `STRIPE_WEBHOOK_SECRET`.
+3. Tenants hit **Upgrade / Billing** in the dashboard → Stripe Checkout. Status syncs back
+   via the webhook; minutes are reported to the metered price on an interval.
 
-## 5. Multi-tenant / "SaaS mode" options
+## Google Calendar (optional)
 
-Two patterns, depending on isolation needs:
+1. Google Cloud Console → OAuth consent screen + **OAuth client (Web)**. Authorized
+   redirect URI: `https://YOUR_DOMAIN/calendar/google/callback`.
+2. Set `GOOGLE_CLIENT_ID` + `GOOGLE_CLIENT_SECRET`.
+3. Each tenant clicks **Connect Google Calendar** in the dashboard. Until connected,
+   bookings use the built-in calendar.
 
-- **Shared instance (simplest)**: one process, many `AgentConfig`s, each bound to its own
-  Twilio number. Cheapest; all tenants share one DB.
-- **Container-per-tenant (hard isolation)**: spin up one `docker compose` stack per client
-  (separate DB volume, separate env) and front them with an orchestrator like **Coolify**
-  or **Dokku**. This mirrors GHL's isolated "sub-account" model.
+## Security checklist
 
-## 6. Operating costs
+- Strong random `ADMIN_TOKEN` + `JWT_SECRET` (the app refuses to boot in production
+  without them, and without `PUBLIC_BASE_URL`).
+- Keep `TWILIO_VALIDATE_SIGNATURE=true`; keep the Stripe webhook secret set.
+- Always terminate TLS (Caddy/Fly/Render do). Never expose raw `:3000` publicly.
+- Treat tenant `api_key`s and JWTs as secrets. Set `CORS_ORIGIN` to your dashboard origin.
+- Mind call-recording/consent laws before enabling recording.
 
-You pay Twilio + STT + LLM + TTS at provider rates (see
-[RESEARCH.md §3](RESEARCH.md#cost)) — typically **≈ $0.04–0.10/min** depending on voice
-and model choice. Use Deepgram Aura + a small LLM to minimize cost, ElevenLabs + a larger
-model to maximize quality. `max_call_seconds` caps worst-case spend per call.
+## Operating cost
+
+You pay Twilio + STT + LLM + TTS at provider rates (~**$0.04–0.10/min**, see
+[RESEARCH.md §3](RESEARCH.md#cost)). `max_call_seconds` caps per-call spend; tenant
+`monthly_minute_limit` caps per-tenant spend.

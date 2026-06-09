@@ -1,89 +1,72 @@
 # SaaS mode (multi-tenant / reseller)
 
-This is the "sub-account" model — the thing that makes GoHighLevel resellable. You (the
-**platform admin**) onboard **tenants** (your client businesses); each tenant manages its
-own agents and sees only its own calls, leads, appointments, and usage.
+The "sub-account" model that makes this resellable. You (the **platform admin**) onboard
+**tenants** (client businesses); each tenant signs up, configures its own agents, and sees
+only its own data, usage, and billing.
 
 ## Roles & auth
 
-`/api/*` accepts a bearer token that is **either**:
+`/api/*` accepts a bearer token that is one of:
 
 | Principal | Token | Can do |
 |---|---|---|
-| **Platform admin** | `ADMIN_TOKEN` (env) | Everything + manage tenants + see all data + usage across tenants |
-| **Tenant** | the tenant's `api_key` | CRUD only its own agents; see only its own calls/leads/appointments/usage |
+| **Platform admin** | `ADMIN_TOKEN` | Everything + manage tenants + cross-tenant usage |
+| **Tenant (login)** | a **JWT** from `/api/auth/login` or `/signup` | CRUD only its own agents/data |
+| **Tenant (programmatic)** | the tenant's **`api_key`** | same scope, for scripts/integrations |
 
-Dev convenience: with **no** `ADMIN_TOKEN` set **and zero tenants**, the API runs open as
-admin. The moment you set `ADMIN_TOKEN` or create a tenant, auth is enforced.
+Dev convenience: with **no** `ADMIN_TOKEN` and **zero tenants**, the API runs open as
+admin. Setting `ADMIN_TOKEN` or creating a tenant enforces auth.
 
-## Lifecycle
+## Onboarding paths
+
+**Self-serve (recommended):** a tenant signs up in the dashboard →
+`POST /api/auth/signup {name,email,password}` (bcrypt, returns a JWT). They land on a low
+**trial** minute limit; clicking **Upgrade / Billing** starts Stripe Checkout. The
+subscription webhook flips them to a paid plan/limit.
+
+**Admin-provisioned:** you create the tenant via `POST /api/tenants` (admin) and hand them
+their `api_key` (shown once in the dashboard Tenants tab). Bill via Stripe metered or
+manually.
 
 ```bash
-ADMIN=...your ADMIN_TOKEN...
-
-# 1) Onboard a client (returns an api_key — give it to that client)
-curl -X POST localhost:3000/api/tenants -H "Authorization: Bearer $ADMIN" \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"Client A","plan":"pro","monthly_minute_limit":2000}'
-#  → { "id": "...", "api_key": "ova_...", "monthly_minute_limit": 2000, ... }
-
-# 2) The client uses ITS key for everything (scoped automatically)
-curl -X POST localhost:3000/api/agents -H "Authorization: Bearer ova_..." \
-  -H 'Content-Type: application/json' -d '{"name":"Reception","phone_number":"+1512..."}'
-
-# 3) Metering / billing
-curl localhost:3000/api/usage -H "Authorization: Bearer ova_..."
-#  → { "minutes": 134.2, "calls": 88, "limit": 2000, "month": "2026-06" }
-
-# 4) Suspend / change plan (admin)
-curl -X PUT localhost:3000/api/tenants/<id> -H "Authorization: Bearer $ADMIN" \
-  -H 'Content-Type: application/json' -d '{"status":"suspended"}'
+ADMIN=...; H="Authorization: Bearer $ADMIN"
+curl -X POST localhost:3000/api/tenants -H "$H" -H 'Content-Type: application/json' \
+  -d '{"name":"Client A","plan":"pro","monthly_minute_limit":2000}'   # → {api_key,...}
+curl localhost:3000/api/usage -H "$H"                                   # usage per tenant
+curl -X PUT localhost:3000/api/tenants/<id> -H "$H" -d '{"status":"suspended"}'
 ```
 
-## Usage metering & billing hook
+## Billing & metering
 
-- Every call records `duration_sec` against its `tenant_id`. `/api/usage` sums minutes for
-  the current (or `?month=YYYY-MM`) UTC month.
-- **Outbound calls are gated**: a suspended tenant, or one over `monthly_minute_limit`,
-  gets `402 Payment Required`. (Inbound gating can be added the same way in
-  `twiml.ts` before returning the `<Stream>`.)
-- To bill, run a monthly job that reads `/api/usage` per tenant and pushes minutes to
-  **Stripe metered billing** (or your invoicing system). The data model is ready; wiring
-  the Stripe meter is the only remaining piece for automated invoicing.
+- Stripe **Checkout subscription** (base plan) + optional **metered per-minute** price.
+- The webhook (`/webhooks/stripe`) keeps `tenant.status` in sync:
+  `checkout.session.completed` → active, `invoice.payment_failed` → past_due,
+  `customer.subscription.deleted` → canceled.
+- Every call records `duration_sec` against its tenant. `/api/usage` sums monthly minutes;
+  `reportUsageToStripe()` pushes them to the metered price on an interval.
+- **Call gating:** suspended / over-limit tenants can't place outbound (`402`) and inbound
+  calls are politely declined — protecting you from unpaid usage.
 
 ## Two isolation models
 
-Pick based on how much you need tenants separated:
-
-### A. Shared instance (default, cheapest)
-One process + one SQLite DB; tenants are rows. Everything above works out of the box.
-Great to start; scales to many small tenants. All data lives in one DB file — back it up.
-
-### B. Container-per-tenant (hard isolation — closest to GHL sub-accounts)
-One container + volume per tenant, fronted by an orchestrator:
-
-- Use **Coolify** or **Dokku** on a VPS.
-- On signup, your control script:
-  1. `docker compose -p tenant_<id>` up a fresh stack with its own `DB_PATH` volume and
-     env (its own `ADMIN_TOKEN`, provider keys, and `PUBLIC_BASE_URL`/subdomain);
-  2. points a subdomain (e.g. `clienta.yourvoiceplatform.com`) at it;
-  3. configures the tenant's Twilio number(s) → that container's `/twilio/inbound`.
-- Pros: blast-radius isolation, per-tenant backups/upgrades, noisy-neighbor safety.
-- Cons: more moving parts; you operate N stacks.
-
-A common hybrid: shared instance for small plans, dedicated containers for enterprise.
+- **Shared instance (default, cheapest):** one app + one Postgres; tenants are rows. All of
+  the above works out of the box. Back up the database.
+- **Container-per-tenant (hard isolation, closest to GHL sub-accounts):** one stack +
+  volume per tenant, orchestrated by **Coolify** or **Dokku**. On signup your control
+  script brings up a fresh `docker compose -p tenant_<id>` with its own `DATABASE_URL`,
+  subdomain, and Twilio number(s). Pros: blast-radius isolation, per-tenant
+  backups/upgrades. Cons: you operate N stacks. Hybrid (shared for small plans, dedicated
+  for enterprise) is common.
 
 ## White-labeling
 
-- The dashboard is static (`public/`) — rebrand colors/logo in `styles.css` / `index.html`.
-- Per-tenant subdomains + a tenant-scoped login (issue each client their `api_key`, or put
-  a thin login in front that exchanges email/password for the key) give the
-  "their-own-branded-portal" feel GHL sells.
+The dashboard is static (`public/`) — rebrand colors/logo in `styles.css`/`index.html`.
+Give each client a per-tenant subdomain; they log in with their own email/password
+(or you issue an `api_key`) for a branded portal.
 
-## Security checklist for production
+## Production security
 
-- Set a strong `ADMIN_TOKEN`; never ship the dev open-mode to production.
-- Treat `api_key`s as secrets; rotate by issuing a new tenant or adding a key-rotation
-  endpoint.
-- Validate `X-Twilio-Signature` on `/twilio/*` (left as a hook) so only Twilio can start calls.
-- Per-tenant rate limits if you expose the API publicly.
+- Strong `ADMIN_TOKEN` + `JWT_SECRET`; never ship dev open-mode.
+- Treat `api_key`s/JWTs as secrets; rotate by re-issuing.
+- Keep Twilio + Stripe signature verification on.
+- Per-tenant rate limits if you expose the API publicly (a global limiter is already on).
