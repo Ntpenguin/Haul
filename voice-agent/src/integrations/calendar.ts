@@ -2,9 +2,9 @@ import { appointmentsBetween, insertAppointment } from '../db/index.js';
 import { AgentConfig } from '../agent/types.js';
 
 /**
- * Minimal built-in calendar: 1-hour slots during business hours, no double-booking.
- * Swap this module for Google Calendar / Cal.com / GHL Calendar API in production —
- * the tool handlers only depend on these two functions.
+ * Built-in calendar: 1-hour slots during business hours, no double-booking, backed by
+ * Postgres. This is the default `CalendarProvider` (see integrations/calendarProvider.ts);
+ * the Google Calendar provider implements the same surface.
  */
 
 const SLOT_MINUTES = 60;
@@ -15,7 +15,7 @@ function parseHHMM(s: string): [number, number] {
 }
 
 /** Return up to `limit` open slot start times (ISO) over the next `days` days. */
-export function findAvailability(agent: AgentConfig, fromIso: string, days = 5, limit = 6): string[] {
+export async function findAvailability(agent: AgentConfig, fromIso: string, days = 5, limit = 6): Promise<string[]> {
   const out: string[] = [];
   const start = new Date(fromIso);
   for (let d = 0; d < days && out.length < limit; d++) {
@@ -29,32 +29,32 @@ export function findAvailability(agent: AgentConfig, fromIso: string, days = 5, 
     for (let h = oh; h < ch && out.length < limit; h++) {
       const slot = new Date(day);
       slot.setHours(h, om, 0, 0);
-      if (slot.getTime() <= Date.now()) continue; // no slots in the past
+      if (slot.getTime() <= Date.now()) continue;
       const slotEnd = new Date(slot.getTime() + SLOT_MINUTES * 60000);
-      const conflicts = appointmentsBetween(agent.id, slot.toISOString(), slotEnd.toISOString());
+      const conflicts = await appointmentsBetween(agent.id, slot.toISOString(), slotEnd.toISOString());
       if (conflicts.length === 0) out.push(slot.toISOString());
     }
   }
   return out;
 }
 
-export function isSlotOpen(agent: AgentConfig, startIso: string): boolean {
+export async function isSlotOpen(agent: AgentConfig, startIso: string): Promise<boolean> {
   const start = new Date(startIso);
   const end = new Date(start.getTime() + SLOT_MINUTES * 60000);
-  return appointmentsBetween(agent.id, start.toISOString(), end.toISOString()).length === 0;
+  return (await appointmentsBetween(agent.id, start.toISOString(), end.toISOString())).length === 0;
 }
 
-export function book(
+export async function book(
   agent: AgentConfig,
   callId: string | undefined,
   startIso: string,
   contact: { name?: string; phone?: string; email?: string },
   notes?: string,
-): { ok: boolean; id?: string; end?: string; reason?: string } {
-  if (!isSlotOpen(agent, startIso)) return { ok: false, reason: 'slot_taken' };
+): Promise<{ ok: boolean; id?: string; end?: string; reason?: string }> {
+  if (!(await isSlotOpen(agent, startIso))) return { ok: false, reason: 'slot_taken' };
   const start = new Date(startIso);
   const end = new Date(start.getTime() + SLOT_MINUTES * 60000);
-  const id = insertAppointment({
+  const id = await insertAppointment({
     agent_id: agent.id,
     tenant_id: agent.tenant_id,
     call_id: callId,

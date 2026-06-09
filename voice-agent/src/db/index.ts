@@ -1,239 +1,203 @@
-import Database from 'better-sqlite3';
-import { mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { config } from '../config.js';
-import { SCHEMA_SQL } from './schema.js';
+import { query, one } from './pool.js';
 import { AgentConfig, AgentInput, DEFAULT_AGENT } from '../agent/types.js';
-
-mkdirSync(dirname(resolve(config.dbPath)), { recursive: true });
-export const db = new Database(resolve(config.dbPath));
-db.pragma('journal_mode = WAL');
-db.exec(SCHEMA_SQL);
-
-// Lightweight migration: add tenant_id columns to DBs created before SaaS mode.
-function ensureColumn(table: string, col: string, decl: string) {
-  try {
-    db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${decl}`);
-  } catch {
-    /* column already exists */
-  }
-}
-for (const t of ['agents', 'calls', 'leads', 'appointments']) ensureColumn(t, 'tenant_id', 'TEXT');
-
-const now = () => new Date().toISOString();
 
 // ── Tenants (SaaS sub-accounts) ─────────────────────────────────────────
 export interface Tenant {
   id: string;
   name: string;
+  email: string | null;
+  password_hash: string | null;
   api_key: string;
-  status: 'active' | 'suspended';
+  status: 'active' | 'suspended' | 'past_due' | 'canceled';
   plan: string;
   monthly_minute_limit: number;
+  stripe_customer_id: string | null;
+  stripe_subscription_id: string | null;
   created_at: string;
 }
 
-export function createTenant(input: { name: string; plan?: string; monthly_minute_limit?: number }): Tenant {
-  const id = randomUUID();
-  const api_key = 'ova_' + randomUUID().replace(/-/g, '');
-  const t: Tenant = {
-    id,
-    name: input.name,
-    api_key,
-    status: 'active',
-    plan: input.plan ?? 'standard',
-    monthly_minute_limit: input.monthly_minute_limit ?? 1000,
-    created_at: now(),
-  };
-  db.prepare(
-    `INSERT INTO tenants (id, name, api_key, status, plan, monthly_minute_limit, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  ).run(t.id, t.name, t.api_key, t.status, t.plan, t.monthly_minute_limit, t.created_at);
-  return t;
+export function newApiKey(): string {
+  return 'ova_' + randomUUID().replace(/-/g, '') + randomUUID().replace(/-/g, '').slice(0, 8);
 }
 
-export function getTenant(id: string): Tenant | null {
-  return (db.prepare(`SELECT * FROM tenants WHERE id=?`).get(id) as Tenant) ?? null;
+export async function createTenant(input: {
+  name: string;
+  email?: string;
+  password_hash?: string;
+  plan?: string;
+  monthly_minute_limit?: number;
+}): Promise<Tenant> {
+  return (await one<Tenant>(
+    `INSERT INTO tenants (name, email, password_hash, api_key, plan, monthly_minute_limit)
+     VALUES ($1, $2, $3, $4, COALESCE($5,'starter'), COALESCE($6,500)) RETURNING *`,
+    [input.name, input.email ?? null, input.password_hash ?? null, newApiKey(), input.plan ?? null, input.monthly_minute_limit ?? null],
+  ))!;
 }
-export function getTenantByApiKey(key: string): Tenant | null {
-  return (db.prepare(`SELECT * FROM tenants WHERE api_key=?`).get(key) as Tenant) ?? null;
+
+export const getTenant = (id: string) => one<Tenant>(`SELECT * FROM tenants WHERE id=$1`, [id]);
+export const getTenantByApiKey = (key: string) => one<Tenant>(`SELECT * FROM tenants WHERE api_key=$1`, [key]);
+export const getTenantByEmail = (email: string) => one<Tenant>(`SELECT * FROM tenants WHERE lower(email)=lower($1)`, [email]);
+export const getTenantByStripeCustomer = (cid: string) => one<Tenant>(`SELECT * FROM tenants WHERE stripe_customer_id=$1`, [cid]);
+export const listTenants = () => query<Tenant>(`SELECT * FROM tenants ORDER BY created_at DESC`);
+
+export async function updateTenant(id: string, patch: Partial<Tenant>): Promise<Tenant | null> {
+  const cols: string[] = [];
+  const vals: unknown[] = [];
+  const allowed: (keyof Tenant)[] = [
+    'name', 'email', 'password_hash', 'status', 'plan', 'monthly_minute_limit',
+    'stripe_customer_id', 'stripe_subscription_id',
+  ];
+  for (const k of allowed) {
+    if (k in patch && patch[k] !== undefined) {
+      cols.push(`${k}=$${cols.length + 2}`);
+      vals.push(patch[k]);
+    }
+  }
+  if (!cols.length) return getTenant(id);
+  return one<Tenant>(`UPDATE tenants SET ${cols.join(', ')} WHERE id=$1 RETURNING *`, [id, ...vals]);
 }
-export function listTenants(): Tenant[] {
-  return db.prepare(`SELECT * FROM tenants ORDER BY created_at DESC`).all() as Tenant[];
-}
-export function updateTenant(id: string, patch: Partial<Tenant>): Tenant | null {
-  const t = getTenant(id);
-  if (!t) return null;
-  const next = { ...t, ...patch, id };
-  db.prepare(`UPDATE tenants SET name=?, status=?, plan=?, monthly_minute_limit=? WHERE id=?`).run(
-    next.name,
-    next.status,
-    next.plan,
-    next.monthly_minute_limit,
-    id,
+
+export const deleteTenant = (id: string) => query(`DELETE FROM tenants WHERE id=$1`, [id]);
+
+export async function usageForTenant(
+  tenantId: string,
+  monthPrefix?: string,
+): Promise<{ minutes: number; calls: number; limit: number; month: string }> {
+  const month = monthPrefix ?? new Date().toISOString().slice(0, 7);
+  const row = await one<{ secs: number; n: number }>(
+    `SELECT COALESCE(SUM(duration_sec),0)::int AS secs, COUNT(*)::int AS n
+       FROM calls WHERE tenant_id=$1 AND to_char(started_at,'YYYY-MM')=$2`,
+    [tenantId, month],
   );
-  return next;
-}
-export function deleteTenant(id: string) {
-  db.prepare(`DELETE FROM tenants WHERE id=?`).run(id);
+  const t = await getTenant(tenantId);
+  return { minutes: Math.round(((row?.secs ?? 0) / 60) * 10) / 10, calls: row?.n ?? 0, limit: t?.monthly_minute_limit ?? 0, month };
 }
 
-/** Minutes of call time used by a tenant in a given UTC month (default: current). */
-export function usageForTenant(tenantId: string, monthPrefix?: string): { minutes: number; calls: number; limit: number } {
-  const prefix = monthPrefix ?? new Date().toISOString().slice(0, 7); // YYYY-MM
-  const row = db
-    .prepare(`SELECT COALESCE(SUM(duration_sec),0) AS secs, COUNT(*) AS n FROM calls WHERE tenant_id=? AND started_at LIKE ?`)
-    .get(tenantId, prefix + '%') as any;
-  const t = getTenant(tenantId);
-  return { minutes: Math.round((row.secs / 60) * 10) / 10, calls: row.n, limit: t?.monthly_minute_limit ?? 0 };
-}
-
-/** True if the tenant is active and under its monthly minute limit. */
-export function tenantCanCall(tenantId: string): boolean {
-  const t = getTenant(tenantId);
+export async function tenantCanCall(tenantId: string): Promise<boolean> {
+  const t = await getTenant(tenantId);
   if (!t || t.status !== 'active') return false;
-  return usageForTenant(tenantId).minutes < t.monthly_minute_limit;
+  const u = await usageForTenant(tenantId);
+  return u.minutes < t.monthly_minute_limit;
 }
 
 // ── Agents ──────────────────────────────────────────────────────────────
-export function createAgent(input: AgentInput, tenantId?: string): AgentConfig {
-  const id = randomUUID();
-  const ts = now();
-  const cfg: AgentConfig = {
-    ...DEFAULT_AGENT,
-    ...input,
-    id,
-    name: input.name,
-    tenant_id: tenantId,
-    created_at: ts,
-    updated_at: ts,
-  };
-  db.prepare(
-    `INSERT INTO agents (id, tenant_id, name, config_json, phone_number, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?)`,
-  ).run(id, tenantId ?? null, cfg.name, JSON.stringify(cfg), (input as any).phone_number ?? null, ts, ts);
-  return cfg;
-}
-
-export function updateAgent(id: string, patch: Partial<AgentConfig> & { phone_number?: string }): AgentConfig | null {
-  const existing = getAgent(id);
-  if (!existing) return null;
-  const cfg: AgentConfig = { ...existing, ...patch, id, updated_at: now() };
-  db.prepare(`UPDATE agents SET name=?, config_json=?, phone_number=?, updated_at=? WHERE id=?`).run(
-    cfg.name,
-    JSON.stringify(cfg),
-    (patch as any).phone_number ?? getAgentPhone(id),
-    cfg.updated_at,
-    id,
-  );
-  return cfg;
-}
-
-export function getAgent(id: string): AgentConfig | null {
-  const row = db.prepare(`SELECT config_json, phone_number, tenant_id FROM agents WHERE id=?`).get(id) as any;
-  if (!row) return null;
+function rowToAgent(row: any): AgentConfig {
   return {
-    ...(JSON.parse(row.config_json) as AgentConfig),
-    phone_number: row.phone_number ?? '',
+    ...(row.config as AgentConfig),
+    id: row.id,
     tenant_id: row.tenant_id ?? undefined,
+    phone_number: row.phone_number ?? '',
+    created_at: row.created_at,
+    updated_at: row.updated_at,
   };
 }
 
-export function getAgentPhone(id: string): string | null {
-  const row = db.prepare(`SELECT phone_number FROM agents WHERE id=?`).get(id) as any;
-  return row?.phone_number ?? null;
+export async function createAgent(input: AgentInput, tenantId?: string): Promise<AgentConfig> {
+  const id = randomUUID();
+  const cfg: AgentConfig = { ...DEFAULT_AGENT, ...input, id, name: input.name, tenant_id: tenantId, created_at: '', updated_at: '' };
+  const phone = (input as any).phone_number || null;
+  const row = await one(
+    `INSERT INTO agents (id, tenant_id, name, config, phone_number)
+     VALUES ($1, $2, $3, $4, $5) RETURNING *`,
+    [id, tenantId ?? null, cfg.name, JSON.stringify(cfg), phone],
+  );
+  return rowToAgent(row);
 }
 
-export function listAgents(tenantId?: string): AgentConfig[] {
-  const rows = (
-    tenantId
-      ? db.prepare(`SELECT config_json, phone_number, tenant_id FROM agents WHERE tenant_id=? ORDER BY created_at DESC`).all(tenantId)
-      : db.prepare(`SELECT config_json, phone_number, tenant_id FROM agents ORDER BY created_at DESC`).all()
-  ) as any[];
-  return rows.map((r) => ({
-    ...(JSON.parse(r.config_json) as AgentConfig),
-    phone_number: r.phone_number ?? '',
-    tenant_id: r.tenant_id ?? undefined,
-  }));
+export async function updateAgent(id: string, patch: Partial<AgentConfig>): Promise<AgentConfig | null> {
+  const existing = await getAgent(id);
+  if (!existing) return null;
+  const cfg: AgentConfig = { ...existing, ...patch, id };
+  const phone = patch.phone_number !== undefined ? patch.phone_number : existing.phone_number;
+  const row = await one(
+    `UPDATE agents SET name=$2, config=$3, phone_number=$4, updated_at=now() WHERE id=$1 RETURNING *`,
+    [id, cfg.name, JSON.stringify(cfg), phone || null],
+  );
+  return row ? rowToAgent(row) : null;
 }
 
-export function deleteAgent(id: string) {
-  db.prepare(`DELETE FROM agents WHERE id=?`).run(id);
+export async function getAgent(id: string): Promise<AgentConfig | null> {
+  const row = await one(`SELECT * FROM agents WHERE id=$1`, [id]);
+  return row ? rowToAgent(row) : null;
 }
 
-/** Find the agent that owns a given Twilio number (for inbound routing). */
-export function agentForNumber(toNumber: string): AgentConfig | null {
-  const row = db.prepare(`SELECT config_json FROM agents WHERE phone_number=?`).get(toNumber) as any;
-  if (row) return JSON.parse(row.config_json) as AgentConfig;
-  // Fallback: if exactly one agent exists, use it (single-tenant convenience).
-  const all = listAgents();
-  return all.length === 1 ? all[0] : null;
+export async function listAgents(tenantId?: string): Promise<AgentConfig[]> {
+  const rows = tenantId
+    ? await query(`SELECT * FROM agents WHERE tenant_id=$1 ORDER BY created_at DESC`, [tenantId])
+    : await query(`SELECT * FROM agents ORDER BY created_at DESC`);
+  return rows.map(rowToAgent);
+}
+
+export const deleteAgent = (id: string) => query(`DELETE FROM agents WHERE id=$1`, [id]);
+
+export async function agentForNumber(toNumber: string): Promise<AgentConfig | null> {
+  const row = await one(`SELECT * FROM agents WHERE phone_number=$1`, [toNumber]);
+  if (row) return rowToAgent(row);
+  const all = await listAgents();
+  return all.length === 1 ? all[0] : null; // single-tenant convenience
 }
 
 // ── Calls ───────────────────────────────────────────────────────────────
-export function createCall(args: {
+export async function createCall(args: {
   agent_id: string;
   tenant_id?: string;
   direction: 'inbound' | 'outbound';
   from_number?: string;
   to_number?: string;
   call_sid?: string;
-}): string {
-  const id = randomUUID();
-  db.prepare(
-    `INSERT INTO calls (id, call_sid, agent_id, tenant_id, direction, from_number, to_number, status, started_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, 'ringing', ?)`,
-  ).run(id, args.call_sid ?? null, args.agent_id, args.tenant_id ?? null, args.direction, args.from_number ?? null, args.to_number ?? null, now());
-  return id;
-}
-
-export function attachCallSid(callId: string, callSid: string) {
-  db.prepare(`UPDATE calls SET call_sid=?, status='in-progress' WHERE id=?`).run(callSid, callId);
-}
-
-export function callBySid(callSid: string): any {
-  return db.prepare(`SELECT * FROM calls WHERE call_sid=?`).get(callSid);
-}
-
-export function finishCall(callId: string, status: string, outcome?: string) {
-  const row = db.prepare(`SELECT started_at FROM calls WHERE id=?`).get(callId) as any;
-  const dur = row ? Math.round((Date.now() - new Date(row.started_at).getTime()) / 1000) : 0;
-  db.prepare(`UPDATE calls SET status=?, ended_at=?, duration_sec=?, outcome=COALESCE(?, outcome) WHERE id=?`).run(
-    status,
-    now(),
-    dur,
-    outcome ?? null,
-    callId,
+}): Promise<string> {
+  const row = await one<{ id: string }>(
+    `INSERT INTO calls (call_sid, agent_id, tenant_id, direction, from_number, to_number, status)
+     VALUES ($1,$2,$3,$4,$5,$6,'ringing') RETURNING id`,
+    [args.call_sid ?? null, args.agent_id, args.tenant_id ?? null, args.direction, args.from_number ?? null, args.to_number ?? null],
   );
+  return row!.id;
 }
 
-export function setOutcome(callId: string, outcome: string) {
-  db.prepare(`UPDATE calls SET outcome=? WHERE id=?`).run(outcome, callId);
+export const attachCallSid = (callId: string, callSid: string) =>
+  query(`UPDATE calls SET call_sid=$2, status='in-progress' WHERE id=$1`, [callId, callSid]);
+
+export const callBySid = (callSid: string) => one(`SELECT * FROM calls WHERE call_sid=$1`, [callSid]);
+
+export const finishCall = (callId: string, status: string, outcome?: string) =>
+  query(
+    `UPDATE calls SET status=$2, ended_at=now(),
+       duration_sec=GREATEST(0, EXTRACT(EPOCH FROM now()-started_at)::int),
+       outcome=COALESCE($3, outcome)
+     WHERE id=$1 AND ended_at IS NULL`,
+    [callId, status, outcome ?? null],
+  );
+
+export const setOutcome = (callId: string, outcome: string) =>
+  query(`UPDATE calls SET outcome=$2 WHERE id=$1`, [callId, outcome]);
+
+export function listCalls(opts: { agentId?: string; tenantId?: string } = {}) {
+  if (opts.tenantId) return query(`SELECT * FROM calls WHERE tenant_id=$1 ORDER BY started_at DESC LIMIT 200`, [opts.tenantId]);
+  if (opts.agentId) return query(`SELECT * FROM calls WHERE agent_id=$1 ORDER BY started_at DESC LIMIT 200`, [opts.agentId]);
+  return query(`SELECT * FROM calls ORDER BY started_at DESC LIMIT 200`);
 }
 
-export function listCalls(opts: { agentId?: string; tenantId?: string } = {}): any[] {
-  if (opts.tenantId)
-    return db.prepare(`SELECT * FROM calls WHERE tenant_id=? ORDER BY started_at DESC LIMIT 200`).all(opts.tenantId);
-  if (opts.agentId) return db.prepare(`SELECT * FROM calls WHERE agent_id=? ORDER BY started_at DESC`).all(opts.agentId);
-  return db.prepare(`SELECT * FROM calls ORDER BY started_at DESC LIMIT 200`).all();
-}
-
-export function addTurn(callId: string, role: string, content: string, meta?: unknown) {
-  db.prepare(`INSERT INTO transcript_turns (call_id, role, content, meta_json, ts) VALUES (?, ?, ?, ?, ?)`).run(
+export const addTurn = (callId: string, role: string, content: string, meta?: unknown) =>
+  query(`INSERT INTO transcript_turns (call_id, role, content, meta) VALUES ($1,$2,$3,$4)`, [
     callId,
     role,
     content,
     meta ? JSON.stringify(meta) : null,
-    now(),
-  );
-}
+  ]);
 
-export function getTranscript(callId: string): any[] {
-  return db.prepare(`SELECT role, content, meta_json, ts FROM transcript_turns WHERE call_id=? ORDER BY id`).all(callId);
-}
+export const getTranscript = (callId: string) =>
+  query(`SELECT role, content, meta, ts FROM transcript_turns WHERE call_id=$1 ORDER BY id`, [callId]);
+
+/** Completed, not-yet-billed calls for a tenant (for Stripe metering). */
+export const unbilledCalls = (tenantId: string) =>
+  query(`SELECT id, duration_sec FROM calls WHERE tenant_id=$1 AND billed=false AND ended_at IS NOT NULL`, [tenantId]);
+
+export const markBilled = (callIds: string[]) =>
+  callIds.length ? query(`UPDATE calls SET billed=true WHERE id = ANY($1::uuid[])`, [callIds]) : Promise.resolve([]);
 
 // ── Appointments & leads ────────────────────────────────────────────────
-export function insertAppointment(a: {
+export async function insertAppointment(a: {
   agent_id: string;
   tenant_id?: string;
   call_id?: string;
@@ -243,40 +207,26 @@ export function insertAppointment(a: {
   start_at: string;
   end_at: string;
   notes?: string;
-}): string {
-  const id = randomUUID();
-  db.prepare(
-    `INSERT INTO appointments (id, agent_id, tenant_id, call_id, contact_name, contact_phone, contact_email, start_at, end_at, notes, created_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(
-    id,
-    a.agent_id,
-    a.tenant_id ?? null,
-    a.call_id ?? null,
-    a.contact_name ?? null,
-    a.contact_phone ?? null,
-    a.contact_email ?? null,
-    a.start_at,
-    a.end_at,
-    a.notes ?? null,
-    now(),
+  external_id?: string;
+}): Promise<string> {
+  const row = await one<{ id: string }>(
+    `INSERT INTO appointments (agent_id, tenant_id, call_id, contact_name, contact_phone, contact_email, start_at, end_at, notes, external_id)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
+    [a.agent_id, a.tenant_id ?? null, a.call_id ?? null, a.contact_name ?? null, a.contact_phone ?? null, a.contact_email ?? null, a.start_at, a.end_at, a.notes ?? null, a.external_id ?? null],
   );
-  return id;
+  return row!.id;
 }
 
-export function appointmentsBetween(agentId: string, startIso: string, endIso: string): any[] {
-  return db
-    .prepare(`SELECT * FROM appointments WHERE agent_id=? AND start_at < ? AND end_at > ? ORDER BY start_at`)
-    .all(agentId, endIso, startIso);
+export const appointmentsBetween = (agentId: string, startIso: string, endIso: string) =>
+  query(`SELECT * FROM appointments WHERE agent_id=$1 AND start_at < $3 AND end_at > $2 ORDER BY start_at`, [agentId, startIso, endIso]);
+
+export function listAppointments(opts: { agentId?: string; tenantId?: string } = {}) {
+  if (opts.tenantId) return query(`SELECT * FROM appointments WHERE tenant_id=$1 ORDER BY start_at DESC LIMIT 200`, [opts.tenantId]);
+  if (opts.agentId) return query(`SELECT * FROM appointments WHERE agent_id=$1 ORDER BY start_at DESC LIMIT 200`, [opts.agentId]);
+  return query(`SELECT * FROM appointments ORDER BY start_at DESC LIMIT 200`);
 }
 
-export function listAppointments(opts: { agentId?: string; tenantId?: string } = {}): any[] {
-  if (opts.tenantId) return db.prepare(`SELECT * FROM appointments WHERE tenant_id=? ORDER BY start_at DESC LIMIT 200`).all(opts.tenantId);
-  if (opts.agentId) return db.prepare(`SELECT * FROM appointments WHERE agent_id=? ORDER BY start_at DESC`).all(opts.agentId);
-  return db.prepare(`SELECT * FROM appointments ORDER BY start_at DESC LIMIT 200`).all();
-}
-
-export function insertLead(l: {
+export async function insertLead(l: {
   agent_id: string;
   tenant_id?: string;
   call_id?: string;
@@ -284,16 +234,38 @@ export function insertLead(l: {
   phone?: string;
   email?: string;
   notes?: string;
-}): string {
-  const id = randomUUID();
-  db.prepare(
-    `INSERT INTO leads (id, agent_id, tenant_id, call_id, name, phone, email, notes, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-  ).run(id, l.agent_id, l.tenant_id ?? null, l.call_id ?? null, l.name ?? null, l.phone ?? null, l.email ?? null, l.notes ?? null, now());
-  return id;
+}): Promise<string> {
+  const row = await one<{ id: string }>(
+    `INSERT INTO leads (agent_id, tenant_id, call_id, name, phone, email, notes)
+     VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+    [l.agent_id, l.tenant_id ?? null, l.call_id ?? null, l.name ?? null, l.phone ?? null, l.email ?? null, l.notes ?? null],
+  );
+  return row!.id;
 }
 
-export function listLeads(opts: { agentId?: string; tenantId?: string } = {}): any[] {
-  if (opts.tenantId) return db.prepare(`SELECT * FROM leads WHERE tenant_id=? ORDER BY created_at DESC LIMIT 200`).all(opts.tenantId);
-  if (opts.agentId) return db.prepare(`SELECT * FROM leads WHERE agent_id=? ORDER BY created_at DESC`).all(opts.agentId);
-  return db.prepare(`SELECT * FROM leads ORDER BY created_at DESC LIMIT 200`).all();
+export function listLeads(opts: { agentId?: string; tenantId?: string } = {}) {
+  if (opts.tenantId) return query(`SELECT * FROM leads WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 200`, [opts.tenantId]);
+  if (opts.agentId) return query(`SELECT * FROM leads WHERE agent_id=$1 ORDER BY created_at DESC LIMIT 200`, [opts.agentId]);
+  return query(`SELECT * FROM leads ORDER BY created_at DESC LIMIT 200`);
 }
+
+// ── Calendar connections (per-tenant OAuth) ─────────────────────────────
+export interface CalendarConnection {
+  tenant_id: string;
+  provider: string;
+  access_token: string | null;
+  refresh_token: string | null;
+  calendar_id: string;
+  expiry: string | null;
+}
+
+export const getCalendarConnection = (tenantId: string) =>
+  one<CalendarConnection>(`SELECT * FROM calendar_connections WHERE tenant_id=$1`, [tenantId]);
+
+export const upsertCalendarConnection = (c: CalendarConnection) =>
+  query(
+    `INSERT INTO calendar_connections (tenant_id, provider, access_token, refresh_token, calendar_id, expiry)
+     VALUES ($1,$2,$3,$4,$5,$6)
+     ON CONFLICT (tenant_id) DO UPDATE SET provider=$2, access_token=$3, refresh_token=$4, calendar_id=$5, expiry=$6`,
+    [c.tenant_id, c.provider, c.access_token, c.refresh_token, c.calendar_id, c.expiry],
+  );

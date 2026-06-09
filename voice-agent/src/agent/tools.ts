@@ -121,7 +121,7 @@ export async function runTool(
       case 'check_availability': {
         const from = (args.from as string) || new Date().toISOString();
         const days = (args.days as number) || 5;
-        const slots = findAvailability(ctx.agent, from, days);
+        const slots = await findAvailability(ctx.agent, from, days);
         if (!slots.length) return { result: 'No open slots in that window.' };
         return { result: 'Open slots: ' + slots.map(fmtTime).join('; ') + '. (ISO: ' + slots.join(', ') + ')' };
       }
@@ -129,12 +129,12 @@ export async function runTool(
       case 'book_appointment': {
         const start = args.start as string;
         if (!start) return { result: 'Error: a start time is required.' };
-        const res = book(ctx.agent, ctx.callId, start, ctx.contact, args.notes as string);
+        const res = await book(ctx.agent, ctx.callId, start, ctx.contact, args.notes as string);
         if (!res.ok) {
           if (res.reason === 'slot_taken') return { result: 'That slot was just taken. Offer another time.' };
           return { result: 'Could not book that time.' };
         }
-        setOutcome(ctx.callId, 'booked');
+        await setOutcome(ctx.callId, 'booked');
         await postWebhook(ctx.agent.webhook_url, {
           type: 'appointment_booked',
           agent_id: ctx.agent.id,
@@ -147,7 +147,7 @@ export async function runTool(
       }
 
       case 'capture_lead': {
-        const id = insertLead({
+        const id = await insertLead({
           agent_id: ctx.agent.id,
           tenant_id: ctx.agent.tenant_id,
           call_id: ctx.callId,
@@ -156,7 +156,7 @@ export async function runTool(
           email: ctx.contact.email,
           notes: args.notes as string,
         });
-        setOutcome(ctx.callId, 'captured');
+        await setOutcome(ctx.callId, 'captured');
         await postWebhook(ctx.agent.webhook_url, {
           type: 'lead_captured',
           agent_id: ctx.agent.id,

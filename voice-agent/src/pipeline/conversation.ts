@@ -28,16 +28,16 @@ export class Conversation {
   }
 
   /** Seed the opening greeting without an LLM round-trip. */
-  greeting(): string {
+  async greeting(): Promise<string> {
     this.messages.push({ role: 'assistant', content: this.agent.greeting });
-    addTurn(this.ctx.callId, 'assistant', this.agent.greeting);
+    await addTurn(this.ctx.callId, 'assistant', this.agent.greeting);
     return this.agent.greeting;
   }
 
   /** Push a caller utterance and stream the agent's response. */
   async *respondTo(userText: string): AsyncGenerator<ConvEvent> {
     this.messages.push({ role: 'user', content: userText });
-    addTurn(this.ctx.callId, 'user', userText);
+    await addTurn(this.ctx.callId, 'user', userText);
     yield* this.run();
   }
 
@@ -67,7 +67,7 @@ export class Conversation {
       const tail = buffer.trim();
       if (tail) yield { type: 'say', text: tail };
 
-      if (full.trim()) addTurn(this.ctx.callId, 'assistant', full.trim());
+      if (full.trim()) await addTurn(this.ctx.callId, 'assistant', full.trim());
 
       if (toolCalls.length === 0) return; // plain answer — done
 
@@ -77,7 +77,7 @@ export class Conversation {
       let pendingControl: ControlAction | undefined;
       for (const call of toolCalls) {
         const res = await runTool(call.name, call.arguments, this.ctx);
-        addTurn(this.ctx.callId, 'tool', res.result, { name: call.name, args: call.arguments });
+        await addTurn(this.ctx.callId, 'tool', res.result, { name: call.name, args: call.arguments });
         this.messages.push({ role: 'tool', tool_call_id: call.id, content: res.result });
         if (res.control) pendingControl = res.control;
       }

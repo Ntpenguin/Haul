@@ -24,6 +24,7 @@ import { Conversation } from '../pipeline/conversation.js';
 import { makeLlm } from '../providers/index.js';
 import { ToolContext } from '../agent/tools.js';
 import { placeOutboundCall } from './twilioRest.js';
+import { createCheckoutSession } from './billing.js';
 import { scopedTenantId, isAdmin, requireAdmin } from './auth.js';
 import { logger } from '../logger.js';
 
@@ -34,83 +35,90 @@ export const apiRouter = Router();
 const simSessions = new Map<string, { conv: Conversation }>();
 
 /** Ensure the caller may touch this agent (tenants only see their own). */
-function canAccessAgent(req: any, agentId: string) {
-  const a = getAgent(agentId);
+async function canAccessAgent(req: any, agentId: string) {
+  const a = await getAgent(agentId);
   if (!a) return null;
-  const tid = scopedTenantId(req);
-  if (req.principal?.type === 'tenant' && a.tenant_id !== tid) return null;
+  if (req.principal?.type === 'tenant' && a.tenant_id !== req.principal.tenant.id) return null;
   return a;
 }
 
 // ── Tenants (admin only) ──
-apiRouter.get('/tenants', requireAdmin, (_req, res) => res.json(listTenants()));
-apiRouter.post('/tenants', requireAdmin, (req, res) => {
+apiRouter.get('/tenants', requireAdmin, async (_req, res) => res.json(await listTenants()));
+apiRouter.post('/tenants', requireAdmin, async (req, res) => {
   if (!req.body?.name) return res.status(400).json({ error: 'name required' });
-  res.status(201).json(createTenant(req.body));
+  res.status(201).json(await createTenant(req.body));
 });
-apiRouter.get('/tenants/:id', requireAdmin, (req, res) => {
-  const t = getTenant(req.params.id);
+apiRouter.get('/tenants/:id', requireAdmin, async (req, res) => {
+  const t = await getTenant(req.params.id);
   return t ? res.json(t) : res.status(404).json({ error: 'not found' });
 });
-apiRouter.put('/tenants/:id', requireAdmin, (req, res) => {
-  const t = updateTenant(req.params.id, req.body);
+apiRouter.put('/tenants/:id', requireAdmin, async (req, res) => {
+  const t = await updateTenant(req.params.id, req.body);
   return t ? res.json(t) : res.status(404).json({ error: 'not found' });
 });
-apiRouter.delete('/tenants/:id', requireAdmin, (req, res) => {
-  deleteTenant(req.params.id);
+apiRouter.delete('/tenants/:id', requireAdmin, async (req, res) => {
+  await deleteTenant(req.params.id);
   res.sendStatus(204);
 });
 
 // ── Usage / billing ──
-apiRouter.get('/usage', (req, res) => {
+apiRouter.get('/usage', async (req, res) => {
   const tid = scopedTenantId(req);
   if (!tid) {
-    // Admin with no filter → usage for every tenant this month.
-    return res.json(listTenants().map((t) => ({ tenant: t.name, id: t.id, ...usageForTenant(t.id) })));
+    const tenants = await listTenants();
+    return res.json(await Promise.all(tenants.map(async (t) => ({ tenant: t.name, id: t.id, ...(await usageForTenant(t.id)) }))));
   }
-  res.json({ tenantId: tid, month: new Date().toISOString().slice(0, 7), ...usageForTenant(tid, req.query.month as string) });
+  res.json(await usageForTenant(tid, req.query.month as string));
+});
+
+// ── Billing: start a Stripe Checkout subscription (tenant self-serve) ──
+apiRouter.post('/billing/checkout', async (req, res) => {
+  if (req.principal?.type !== 'tenant') return res.status(400).json({ error: 'tenant context required' });
+  if (!config.stripe.enabled) return res.status(400).json({ error: 'billing not configured' });
+  const url = await createCheckoutSession(req.principal.tenant);
+  if (!url) return res.status(500).json({ error: 'could not create checkout session' });
+  res.json({ url });
 });
 
 // ── Agents CRUD (tenant-scoped) ──
-apiRouter.get('/agents', (req, res) => res.json(listAgents(scopedTenantId(req))));
-apiRouter.post('/agents', (req, res) => {
+apiRouter.get('/agents', async (req, res) => res.json(await listAgents(scopedTenantId(req))));
+apiRouter.post('/agents', async (req, res) => {
   if (!req.body?.name) return res.status(400).json({ error: 'name required' });
-  // Admins may assign a tenant via body.tenant_id; tenants always own their agents.
   const tid = req.principal?.type === 'tenant' ? req.principal.tenant.id : req.body.tenant_id;
-  res.status(201).json(createAgent(req.body, tid));
+  res.status(201).json(await createAgent(req.body, tid));
 });
-apiRouter.get('/agents/:id', (req, res) => {
-  const a = canAccessAgent(req, req.params.id);
+apiRouter.get('/agents/:id', async (req, res) => {
+  const a = await canAccessAgent(req, req.params.id);
   return a ? res.json(a) : res.status(404).json({ error: 'not found' });
 });
-apiRouter.put('/agents/:id', (req, res) => {
-  if (!canAccessAgent(req, req.params.id)) return res.status(404).json({ error: 'not found' });
-  const a = updateAgent(req.params.id, req.body);
+apiRouter.put('/agents/:id', async (req, res) => {
+  if (!(await canAccessAgent(req, req.params.id))) return res.status(404).json({ error: 'not found' });
+  const a = await updateAgent(req.params.id, req.body);
   return a ? res.json(a) : res.status(404).json({ error: 'not found' });
 });
-apiRouter.delete('/agents/:id', (req, res) => {
-  if (!canAccessAgent(req, req.params.id)) return res.status(404).json({ error: 'not found' });
-  deleteAgent(req.params.id);
+apiRouter.delete('/agents/:id', async (req, res) => {
+  if (!(await canAccessAgent(req, req.params.id))) return res.status(404).json({ error: 'not found' });
+  await deleteAgent(req.params.id);
   res.sendStatus(204);
 });
 
 // ── Call logs / transcripts / CRM data (tenant-scoped) ──
-apiRouter.get('/calls', (req, res) => res.json(listCalls({ tenantId: scopedTenantId(req) })));
-apiRouter.get('/calls/:id/transcript', (req, res) => res.json(getTranscript(req.params.id)));
-apiRouter.get('/leads', (req, res) => res.json(listLeads({ tenantId: scopedTenantId(req) })));
-apiRouter.get('/appointments', (req, res) => res.json(listAppointments({ tenantId: scopedTenantId(req) })));
+apiRouter.get('/calls', async (req, res) => res.json(await listCalls({ tenantId: scopedTenantId(req) })));
+apiRouter.get('/calls/:id/transcript', async (req, res) => res.json(await getTranscript(req.params.id)));
+apiRouter.get('/leads', async (req, res) => res.json(await listLeads({ tenantId: scopedTenantId(req) })));
+apiRouter.get('/appointments', async (req, res) => res.json(await listAppointments({ tenantId: scopedTenantId(req) })));
 
 // ── Outbound call ──
 apiRouter.post('/calls/outbound', async (req, res) => {
   const { agentId, to } = req.body || {};
-  const agent = canAccessAgent(req, agentId);
+  const agent = await canAccessAgent(req, agentId);
   if (!agent) return res.status(404).json({ error: 'agent not found' });
   if (!to) return res.status(400).json({ error: 'to required' });
   if (!config.twilio.accountSid) return res.status(400).json({ error: 'Twilio not configured' });
-  if (agent.tenant_id && !tenantCanCall(agent.tenant_id))
+  if (agent.tenant_id && !(await tenantCanCall(agent.tenant_id)))
     return res.status(402).json({ error: 'tenant suspended or over monthly minute limit' });
 
-  const callId = createCall({ agent_id: agentId, tenant_id: agent.tenant_id, direction: 'outbound', to_number: to });
+  const callId = await createCall({ agent_id: agentId, tenant_id: agent.tenant_id, direction: 'outbound', to_number: to });
   const url = `${config.publicBaseUrl}/twilio/outbound-twiml?agentId=${agentId}&callId=${callId}`;
   const result = await placeOutboundCall(to, url);
   if (!result.ok) return res.status(502).json({ error: 'failed to place call' });
@@ -121,7 +129,7 @@ apiRouter.post('/calls/outbound', async (req, res) => {
 apiRouter.post('/simulate', async (req, res) => {
   const { agentId, message } = req.body || {};
   let sessionId: string = req.body?.sessionId;
-  const agent = canAccessAgent(req, agentId);
+  const agent = await canAccessAgent(req, agentId);
   if (!agent) return res.status(404).json({ error: 'agent not found' });
 
   let session = sessionId ? simSessions.get(sessionId) : undefined;
@@ -130,12 +138,12 @@ apiRouter.post('/simulate', async (req, res) => {
 
   if (!session) {
     sessionId = randomUUID();
-    const callId = createCall({ agent_id: agentId, tenant_id: agent.tenant_id, direction: 'inbound', from_number: 'simulator' });
+    const callId = await createCall({ agent_id: agentId, tenant_id: agent.tenant_id, direction: 'inbound', from_number: 'simulator' });
     const ctx: ToolContext = { agent, callId, contact: {}, callerNumber: 'simulator' };
     const conv = new Conversation(makeLlm(), agent, ctx);
     session = { conv };
     simSessions.set(sessionId, session);
-    replies.push(conv.greeting());
+    replies.push(await conv.greeting());
     if (!message) return res.json({ sessionId, replies, control });
   }
 
@@ -154,13 +162,13 @@ apiRouter.post('/simulate', async (req, res) => {
   res.json({ sessionId, replies, control });
 });
 
-apiRouter.get('/health', (req, res) =>
+apiRouter.get('/health', async (req, res) =>
   res.json({
     ok: true,
     role: isAdmin(req) ? 'admin' : 'tenant',
     providers: config.providers,
     twilio: Boolean(config.twilio.accountSid),
+    billing: config.stripe.enabled,
     publicBaseUrl: config.publicBaseUrl || null,
-    tenants: isAdmin(req) ? listTenants().length : undefined,
   }),
 );

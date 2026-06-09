@@ -51,7 +51,7 @@ export class CallSession {
       case 'start':
         this.streamSid = msg.start.streamSid;
         this.callSid = msg.start.callSid;
-        attachCallSid(this.callId, this.callSid);
+        await attachCallSid(this.callId, this.callSid);
         await this.begin();
         break;
       case 'media':
@@ -92,7 +92,7 @@ export class CallSession {
     );
 
     // Speak the greeting immediately.
-    await this.speak(this.conv.greeting());
+    await this.speak(await this.conv.greeting());
   }
 
   private onSttFinal(text: string, endOfTurn: boolean) {
@@ -227,7 +227,7 @@ export class CallSession {
     } catch {
       /* ignore */
     }
-    finishCall(this.callId, status);
+    finishCall(this.callId, status).catch((e) => log.error('finishCall failed', e));
     log.info(`call ${this.callId} ${status}`);
   }
 }

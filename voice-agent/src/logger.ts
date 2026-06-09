@@ -1,22 +1,23 @@
-/** Tiny leveled logger. Keeps call-scoped context (callSid) readable in logs. */
-type Level = 'debug' | 'info' | 'warn' | 'error';
-const order: Record<Level, number> = { debug: 0, info: 1, warn: 2, error: 3 };
-const threshold: Level = (process.env.LOG_LEVEL as Level) || 'info';
+import pino from 'pino';
+import { config } from './config.js';
 
-function log(level: Level, scope: string, msg: string, extra?: unknown) {
-  if (order[level] < order[threshold]) return;
-  const ts = new Date().toISOString();
-  const line = `${ts} ${level.toUpperCase().padEnd(5)} [${scope}] ${msg}`;
-  const fn = level === 'error' ? console.error : level === 'warn' ? console.warn : console.log;
-  if (extra !== undefined) fn(line, extra);
-  else fn(line);
-}
+/** Structured JSON logging in prod; pretty-ish single line in dev via pino defaults. */
+export const rootLogger = pino({
+  level: config.logLevel,
+  base: undefined, // omit pid/hostname noise
+  redact: {
+    paths: ['*.api_key', '*.password', '*.password_hash', 'req.headers.authorization'],
+    censor: '[redacted]',
+  },
+});
 
+/** Backwards-compatible scoped logger used across the codebase. */
 export function logger(scope: string) {
+  const child = rootLogger.child({ scope });
   return {
-    debug: (m: string, e?: unknown) => log('debug', scope, m, e),
-    info: (m: string, e?: unknown) => log('info', scope, m, e),
-    warn: (m: string, e?: unknown) => log('warn', scope, m, e),
-    error: (m: string, e?: unknown) => log('error', scope, m, e),
+    debug: (m: string, e?: unknown) => (e !== undefined ? child.debug({ e }, m) : child.debug(m)),
+    info: (m: string, e?: unknown) => (e !== undefined ? child.info({ e }, m) : child.info(m)),
+    warn: (m: string, e?: unknown) => (e !== undefined ? child.warn({ e }, m) : child.warn(m)),
+    error: (m: string, e?: unknown) => (e !== undefined ? child.error({ e }, m) : child.error(m)),
   };
 }
