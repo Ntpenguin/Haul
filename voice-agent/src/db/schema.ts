@@ -3,8 +3,20 @@
  * copy .sql files). The canonical, human-readable copy lives in schema.sql.
  */
 export const SCHEMA_SQL = `
+-- Tenants = reseller "sub-accounts" (one per client business). SaaS-mode.
+CREATE TABLE IF NOT EXISTS tenants (
+  id                    TEXT PRIMARY KEY,
+  name                  TEXT NOT NULL,
+  api_key               TEXT NOT NULL UNIQUE,
+  status                TEXT NOT NULL DEFAULT 'active',   -- active | suspended
+  plan                  TEXT NOT NULL DEFAULT 'standard',
+  monthly_minute_limit  INTEGER NOT NULL DEFAULT 1000,
+  created_at            TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS agents (
   id            TEXT PRIMARY KEY,
+  tenant_id     TEXT,
   name          TEXT NOT NULL,
   config_json   TEXT NOT NULL,
   phone_number  TEXT,
@@ -16,6 +28,7 @@ CREATE TABLE IF NOT EXISTS calls (
   id            TEXT PRIMARY KEY,
   call_sid      TEXT,
   agent_id      TEXT NOT NULL,
+  tenant_id     TEXT,
   direction     TEXT NOT NULL,
   from_number   TEXT,
   to_number     TEXT,
@@ -41,6 +54,7 @@ CREATE TABLE IF NOT EXISTS transcript_turns (
 CREATE TABLE IF NOT EXISTS appointments (
   id          TEXT PRIMARY KEY,
   agent_id    TEXT NOT NULL,
+  tenant_id   TEXT,
   call_id     TEXT,
   contact_name  TEXT,
   contact_phone TEXT,
@@ -54,6 +68,7 @@ CREATE TABLE IF NOT EXISTS appointments (
 CREATE TABLE IF NOT EXISTS leads (
   id          TEXT PRIMARY KEY,
   agent_id    TEXT NOT NULL,
+  tenant_id   TEXT,
   call_id     TEXT,
   name        TEXT,
   phone       TEXT,
@@ -63,6 +78,8 @@ CREATE TABLE IF NOT EXISTS leads (
 );
 
 CREATE INDEX IF NOT EXISTS idx_calls_agent ON calls(agent_id);
+CREATE INDEX IF NOT EXISTS idx_calls_tenant ON calls(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_turns_call ON transcript_turns(call_id);
 CREATE INDEX IF NOT EXISTS idx_appt_agent ON appointments(agent_id);
+CREATE INDEX IF NOT EXISTS idx_agents_tenant ON agents(tenant_id);
 `;

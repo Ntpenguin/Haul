@@ -51,6 +51,9 @@ export interface AgentConfig {
   /** Twilio number routed to this agent (E.164). Stored in its own column. */
   phone_number?: string;
 
+  /** Owning tenant (SaaS sub-account). Stored in its own column; null = platform-owned. */
+  tenant_id?: string;
+
   created_at: string;
   updated_at: string;
 }

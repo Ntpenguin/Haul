@@ -46,12 +46,12 @@ const callId = createCall({ agent_id: agent.id, direction: 'inbound', from_numbe
 const ctx: ToolContext = { agent, callId, contact: {}, callerNumber: '+15125559999' };
 const conv = new Conversation(new StubLlm(), agent, ctx);
 
-const before = listAppointments(agent.id).length;
+const before = listAppointments({ agentId: agent.id }).length;
 const replies: string[] = [];
 for await (const ev of conv.respondTo('I want to book a move for my apartment')) {
   if (ev.type === 'say') replies.push(ev.text);
 }
-const after = listAppointments(agent.id).length;
+const after = listAppointments({ agentId: agent.id }).length;
 
 console.log('Agent replies:', replies);
 assert(replies.some((r) => /all set|set/i.test(r)), 'expected a confirmation reply');

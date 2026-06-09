@@ -7,6 +7,7 @@ import { config, streamWsUrl } from './config.js';
 import { logger } from './logger.js';
 import { twimlRouter } from './server/twiml.js';
 import { apiRouter } from './server/api.js';
+import { authMiddleware } from './server/auth.js';
 import { getAgent } from './db/index.js';
 import { CallSession } from './pipeline/session.js';
 
@@ -20,13 +21,8 @@ app.use(express.json());
 // Twilio webhooks (must NOT require the admin token — Twilio can't send it).
 app.use('/twilio', twimlRouter);
 
-// Optional bearer-token auth for the dashboard API.
-app.use('/api', (req, res, next) => {
-  if (!config.adminToken) return next();
-  const hdr = req.headers.authorization || '';
-  if (hdr === `Bearer ${config.adminToken}`) return next();
-  res.status(401).json({ error: 'unauthorized' });
-});
+// Auth: platform admin (ADMIN_TOKEN) or tenant api_key. See server/auth.ts.
+app.use('/api', authMiddleware);
 app.use('/api', apiRouter);
 
 // Static dashboard.

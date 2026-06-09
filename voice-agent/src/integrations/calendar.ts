@@ -56,6 +56,7 @@ export function book(
   const end = new Date(start.getTime() + SLOT_MINUTES * 60000);
   const id = insertAppointment({
     agent_id: agent.id,
+    tenant_id: agent.tenant_id,
     call_id: callId,
     contact_name: contact.name,
     contact_phone: contact.phone,

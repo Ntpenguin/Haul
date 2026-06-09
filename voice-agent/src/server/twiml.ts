@@ -30,7 +30,7 @@ twimlRouter.post('/inbound', (req, res) => {
     );
     return;
   }
-  const callId = createCall({ agent_id: agent.id, direction: 'inbound', from_number: from, to_number: to, call_sid: callSid });
+  const callId = createCall({ agent_id: agent.id, tenant_id: agent.tenant_id, direction: 'inbound', from_number: from, to_number: to, call_sid: callSid });
   log.info(`inbound ${from} -> ${to} (agent ${agent.name}, call ${callId})`);
   res.type('text/xml').send(streamTwiml({ agentId: agent.id, callId, from }));
 });

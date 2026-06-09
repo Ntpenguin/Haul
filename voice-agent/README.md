@@ -111,6 +111,13 @@ docker compose up -d --build
 See **[docs/SELF_HOSTING.md](docs/SELF_HOSTING.md)** for VPS, HTTPS/tunnel, and
 multi-agent (multi-business) notes.
 
+### Reselling it (SaaS / multi-tenant mode)
+
+Built in: **tenants** (reseller "sub-accounts"), per-tenant **API keys** with full data
+isolation, and **usage metering** with monthly minute limits + outbound gating for
+billing. One instance can serve many client businesses, or you can run a
+container-per-tenant for hard isolation. Full guide: **[docs/SAAS.md](docs/SAAS.md)**.
+
 ---
 
 ## Configuration
@@ -139,11 +146,14 @@ Provider selection + keys live in `.env` (`LLM_PROVIDER`, `TTS_PROVIDER`, etc.).
 | GET | `/api/leads`, `/api/appointments` | captured CRM data |
 | POST | `/api/calls/outbound` | place an outbound call `{agentId,to}` |
 | POST | `/api/simulate` | drive the brain over text `{agentId,sessionId?,message}` |
+| GET/POST/PUT/DELETE | `/api/tenants` | manage reseller sub-accounts (**admin only**) |
+| GET | `/api/usage` | per-tenant call-minute usage (for billing) |
 | POST | `/twilio/inbound` | Twilio inbound webhook (returns TwiML) |
 | WS | `/twilio/stream` | Twilio Media Streams audio socket |
 
-Set `ADMIN_TOKEN` in `.env` to require `Authorization: Bearer <token>` on `/api/*`
-(the `/twilio/*` webhooks stay open for Twilio).
+Auth: `/api/*` accepts either the platform `ADMIN_TOKEN` (full access + tenant management)
+or a **tenant's `api_key`** (auto-scoped to that tenant's data). The `/twilio/*` webhooks
+stay open for Twilio. See **[docs/SAAS.md](docs/SAAS.md)**.
 
 ---
 

@@ -149,6 +149,7 @@ export async function runTool(
       case 'capture_lead': {
         const id = insertLead({
           agent_id: ctx.agent.id,
+          tenant_id: ctx.agent.tenant_id,
           call_id: ctx.callId,
           name: ctx.contact.name,
           phone: ctx.contact.phone || ctx.callerNumber,
