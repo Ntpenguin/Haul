@@ -1,6 +1,6 @@
 import { config } from '../../config.js';
 import { logger } from '../../logger.js';
-import { TtsProvider } from '../types.js';
+import { TtsProvider, VoiceInfo } from '../types.js';
 
 const log = logger('tts:elevenlabs');
 
@@ -35,6 +35,29 @@ export class ElevenLabsTts implements TtsProvider {
     // Node's fetch body is an async-iterable of Uint8Array chunks.
     for await (const chunk of res.body as any as AsyncIterable<Uint8Array>) {
       yield Buffer.from(chunk);
+    }
+  }
+
+  async listVoices(): Promise<VoiceInfo[]> {
+    if (!config.elevenlabs.apiKey) return [];
+    try {
+      const res = await fetch('https://api.elevenlabs.io/v1/voices', {
+        headers: { 'xi-api-key': config.elevenlabs.apiKey },
+      });
+      if (!res.ok) {
+        log.warn(`listVoices HTTP ${res.status}`);
+        return [];
+      }
+      const data = (await res.json()) as any;
+      return (data.voices ?? []).map((v: any) => ({
+        id: v.voice_id,
+        name: v.name,
+        preview_url: v.preview_url,
+        description: [v.labels?.accent, v.labels?.gender, v.labels?.description].filter(Boolean).join(' · '),
+      }));
+    } catch (e) {
+      log.error('listVoices failed', e);
+      return [];
     }
   }
 }

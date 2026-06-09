@@ -27,6 +27,7 @@ const FIELDS = ['name', 'business_name', 'greeting', 'persona', 'goals', 'knowle
 let agents = [];
 let current = null;       // selected agent
 let simSession = null;    // simulator session id
+let voices = [];          // cached TTS voices from GET /api/voices
 
 // ── Tabs ──
 document.querySelectorAll('nav button').forEach((b) =>
@@ -37,6 +38,7 @@ document.querySelectorAll('nav button').forEach((b) =>
     el('tab-' + b.dataset.tab).classList.add('active');
     if (b.dataset.tab === 'calls') loadCalls();
     if (b.dataset.tab === 'crm') loadCrm();
+    if (b.dataset.tab === 'analytics') loadAnalytics();
     if (b.dataset.tab === 'tenants') loadTenants();
   }),
 );
@@ -79,6 +81,76 @@ async function loadUsage() {
   } catch (e) { if (!(e instanceof AuthError)) el('usage').textContent = ''; }
 }
 
+// ── Voices (TTS picker) ──
+async function loadVoices() {
+  try {
+    const v = await api('/voices');
+    voices = Array.isArray(v) ? v : [];
+  } catch (e) {
+    if (e instanceof AuthError) return;
+    voices = [];
+  }
+  populateVoiceSelect();
+}
+
+// (Re)build the <select id="f-voice_id"> options from the cached `voices`.
+// Always keeps a leading "Provider default" option. Preserves current selection.
+function populateVoiceSelect() {
+  const sel = el('f-voice_id');
+  if (!sel) return;
+  const prev = sel.value;
+  sel.textContent = '';
+  const def = document.createElement('option');
+  def.value = '';
+  def.textContent = 'Provider default';
+  sel.appendChild(def);
+  voices.forEach((v) => {
+    const opt = document.createElement('option');
+    opt.value = v.id;
+    opt.textContent = v.name + (v.description ? ' — ' + v.description : '');
+    sel.appendChild(opt);
+  });
+  sel.value = prev;
+}
+
+// Ensure a value is selectable in the voice <select>, even if it's a custom id
+// not present in the fetched voices list. Returns the select element.
+function setVoiceSelection(voiceId) {
+  const sel = el('f-voice_id');
+  if (!sel) return null;
+  const id = voiceId || '';
+  if (id && !voices.some((v) => v.id === id)) {
+    // Add a temporary option so a custom/unknown id still shows selected.
+    const opt = document.createElement('option');
+    opt.value = id;
+    opt.textContent = id + ' (custom)';
+    opt.dataset.custom = '1';
+    sel.appendChild(opt);
+  }
+  sel.value = id;
+  return sel;
+}
+
+(function bindVoicePreview() {
+  const btn = el('voice-preview');
+  if (!btn) return;
+  btn.addEventListener('click', () => {
+    const sel = el('f-voice_id');
+    const audio = el('voice-audio');
+    const note = el('voice-preview-note');
+    if (note) note.textContent = '';
+    const v = voices.find((x) => x.id === (sel ? sel.value : ''));
+    const url = v && v.preview_url;
+    if (url && audio) {
+      audio.src = url;
+      audio.play().catch(() => { if (note) note.textContent = '(playback failed)'; });
+    } else if (note) {
+      note.textContent = '(no preview)';
+      setTimeout(() => { if (note.textContent === '(no preview)') note.textContent = ''; }, 2500);
+    }
+  });
+})();
+
 // ── Agents ──
 async function loadAgents() {
   agents = await api('/agents');
@@ -109,6 +181,10 @@ async function selectAgent(id) {
   el('agent-editor').classList.remove('hidden');
   el('editor-title').textContent = 'Edit: ' + current.name;
   FIELDS.forEach((f) => { if (el('f-' + f)) el('f-' + f).value = current[f] ?? ''; });
+  // Voice select: rebuild known options, then select current (adding a temp
+  // option if it's a custom id not in the fetched list).
+  populateVoiceSelect();
+  setVoiceSelection(current.voice_id || '');
   el('f-phone_number').value = current.phone_number ?? '';
   el('f-sms_confirmations').checked = current.sms_confirmations !== false;
   document.querySelectorAll('#tools input').forEach((cb) => { cb.checked = (current.enabled_tools || []).includes(cb.value); });
@@ -216,6 +292,103 @@ async function loadCrm() {
   el('appts-table').innerHTML =
     '<tr><th>Contact</th><th>Phone</th><th>Start</th><th>Notes</th></tr>' +
     appts.map((a) => `<tr><td>${esc(a.contact_name)}</td><td>${esc(a.contact_phone)}</td><td>${fmt(a.start_at)}</td><td>${esc(a.notes)}</td></tr>`).join('');
+}
+
+// ── Analytics ──
+function fmtMMSS(sec) {
+  const s = Math.max(0, Math.round(Number(sec) || 0));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return m + ':' + String(r).padStart(2, '0');
+}
+
+function statCard(label, value) {
+  const card = document.createElement('div');
+  card.className = 'stat-card';
+  const v = document.createElement('div');
+  v.className = 'stat-value';
+  v.textContent = value;
+  const l = document.createElement('div');
+  l.className = 'stat-label';
+  l.textContent = label;
+  card.appendChild(v);
+  card.appendChild(l);
+  return card;
+}
+
+async function loadAnalytics() {
+  const cards = el('analytics-cards');
+  const chart = el('analytics-chart');
+  const empty = el('analytics-empty');
+  cards.textContent = '';
+  chart.textContent = '';
+  empty.classList.add('hidden');
+
+  let data;
+  try {
+    data = await api('/analytics');
+  } catch (e) {
+    if (e instanceof AuthError) return;
+    empty.textContent = 'Analytics unavailable.';
+    empty.classList.remove('hidden');
+    return;
+  }
+
+  const t = (data && data.totals) || {};
+  const byDay = (data && Array.isArray(data.by_day)) ? data.by_day : [];
+
+  if (!t.calls) {
+    empty.textContent = 'No calls yet.';
+    empty.classList.remove('hidden');
+    return;
+  }
+
+  cards.appendChild(statCard('Calls', t.calls || 0));
+  cards.appendChild(statCard('Booked', t.booked || 0));
+  cards.appendChild(statCard('Booked rate', (t.booked_rate ?? 0) + '%'));
+  cards.appendChild(statCard('Minutes used', t.minutes || 0));
+  cards.appendChild(statCard('Leads captured', t.captured || 0));
+  cards.appendChild(statCard('Transferred', t.transferred || 0));
+  cards.appendChild(statCard('Avg call', fmtMMSS(t.avg_sec)));
+
+  // ── 14-day bar chart (CSS-only) ──
+  const days = byDay.slice(-14);
+  const maxCalls = days.reduce((m, d) => Math.max(m, Number(d.calls) || 0), 0) || 1;
+  days.forEach((d) => {
+    const calls = Number(d.calls) || 0;
+    const booked = Math.min(Number(d.booked) || 0, calls);
+    const col = document.createElement('div');
+    col.className = 'bar-col';
+    col.title = (d.day || '') + ' · ' + calls + ' calls, ' + booked + ' booked';
+
+    const track = document.createElement('div');
+    track.className = 'bar-track';
+    const bar = document.createElement('div');
+    bar.className = 'bar';
+    bar.style.height = Math.round((calls / maxCalls) * 100) + '%';
+    if (calls > 0) {
+      const sub = document.createElement('div');
+      sub.className = 'bar-booked';
+      sub.style.height = Math.round((booked / calls) * 100) + '%';
+      bar.appendChild(sub);
+    }
+    track.appendChild(bar);
+
+    const lbl = document.createElement('div');
+    lbl.className = 'bar-label';
+    lbl.textContent = dayLabel(d.day);
+
+    col.appendChild(track);
+    col.appendChild(lbl);
+    chart.appendChild(col);
+  });
+}
+
+// Extract day-of-month from a "YYYY-MM-DD" string for the bar label.
+function dayLabel(day) {
+  if (!day) return '';
+  const m = /\d{4}-\d{2}-(\d{2})/.exec(day);
+  return m ? String(Number(m[1])) : day;
 }
 
 // ── Tenants (admin only) ──
@@ -473,6 +646,7 @@ async function init() {
   await loadHealth();
   setIdentity();
   loadUsage();
+  loadVoices();
   loadAgents();
   // Returning from Google OAuth: show a success note + clean the URL.
   let justConnected = false;

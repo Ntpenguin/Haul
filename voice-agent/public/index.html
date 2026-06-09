@@ -47,6 +47,7 @@
       <button data-tab="agents" class="active">Agents</button>
       <button data-tab="calls">Calls</button>
       <button data-tab="crm">Leads &amp; Bookings</button>
+      <button data-tab="analytics">Analytics</button>
       <button data-tab="tenants" id="tenants-tab-btn" class="hidden">Tenants</button>
     </nav>
     <div class="topbar">
@@ -91,7 +92,16 @@
             <label>Goals<textarea id="f-goals" rows="5"></textarea></label>
             <label>Knowledge base / FAQ<textarea id="f-knowledge_base" rows="6"></textarea></label>
             <div class="grid2">
-              <label>Voice ID (TTS)<input id="f-voice_id" placeholder="provider voice id (blank = default)" /></label>
+              <label>Voice (TTS)
+                <div class="voice-row">
+                  <select id="f-voice_id">
+                    <option value="">Provider default</option>
+                  </select>
+                  <button id="voice-preview" type="button">▶ Preview</button>
+                </div>
+                <audio id="voice-audio" class="hidden"></audio>
+                <span id="voice-preview-note" class="muted"></span>
+              </label>
               <label>Language<input id="f-language" placeholder="en" /></label>
             </div>
             <div class="grid2">
@@ -163,6 +173,15 @@
       <table id="leads-table" class="data"></table>
       <h2>Appointments</h2>
       <table id="appts-table" class="data"></table>
+    </section>
+
+    <!-- ANALYTICS -->
+    <section id="tab-analytics" class="tab">
+      <h2>Analytics</h2>
+      <div id="analytics-cards" class="stat-cards"></div>
+      <h3>Calls — last 14 days</h3>
+      <div id="analytics-chart" class="bar-chart"></div>
+      <div id="analytics-empty" class="muted hidden">No calls yet.</div>
     </section>
 
     <!-- TENANTS (admin only) -->

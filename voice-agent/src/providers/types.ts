@@ -54,7 +54,16 @@ export interface LlmProvider {
 }
 
 // ── Text-to-speech (streaming) ──
+export interface VoiceInfo {
+  id: string;
+  name: string;
+  preview_url?: string;
+  description?: string;
+}
+
 export interface TtsProvider {
   /** Synthesize `text`; yields 8kHz μ-law audio chunks ready for Twilio. */
   synthesize(text: string, voiceId?: string): AsyncGenerator<Buffer>;
+  /** List selectable voices for the dashboard picker. */
+  listVoices(): Promise<VoiceInfo[]>;
 }

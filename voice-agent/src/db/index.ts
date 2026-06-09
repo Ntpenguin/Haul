@@ -196,6 +196,47 @@ export const unbilledCalls = (tenantId: string) =>
 export const markBilled = (callIds: string[]) =>
   callIds.length ? query(`UPDATE calls SET billed=true WHERE id = ANY($1::uuid[])`, [callIds]) : Promise.resolve([]);
 
+/** Aggregate call stats for a tenant (or platform-wide when tenantId is undefined). */
+export async function analyticsFor(tenantId?: string): Promise<{
+  totals: { calls: number; completed: number; minutes: number; booked: number; captured: number; transferred: number; booked_rate: number; avg_sec: number };
+  by_day: { day: string; calls: number; booked: number }[];
+}> {
+  const t = tenantId ?? null;
+  const totals = (await one<any>(
+    `SELECT
+       COUNT(*)::int AS calls,
+       COUNT(*) FILTER (WHERE status IN ('completed','transferred'))::int AS completed,
+       COALESCE(SUM(duration_sec),0)::int AS total_sec,
+       COUNT(*) FILTER (WHERE outcome='booked')::int AS booked,
+       COUNT(*) FILTER (WHERE outcome='captured')::int AS captured,
+       COUNT(*) FILTER (WHERE outcome='transferred')::int AS transferred
+     FROM calls WHERE ($1::uuid IS NULL OR tenant_id=$1)`,
+    [t],
+  ))!;
+  const by_day = await query<{ day: string; calls: number; booked: number }>(
+    `SELECT to_char(started_at,'YYYY-MM-DD') AS day, COUNT(*)::int AS calls,
+            COUNT(*) FILTER (WHERE outcome='booked')::int AS booked
+     FROM calls
+     WHERE started_at > now() - interval '14 days' AND ($1::uuid IS NULL OR tenant_id=$1)
+     GROUP BY 1 ORDER BY 1`,
+    [t],
+  );
+  const calls = totals.calls || 0;
+  return {
+    totals: {
+      calls,
+      completed: totals.completed || 0,
+      minutes: Math.round((totals.total_sec / 60) * 10) / 10,
+      booked: totals.booked || 0,
+      captured: totals.captured || 0,
+      transferred: totals.transferred || 0,
+      booked_rate: calls ? Math.round((totals.booked / calls) * 100) : 0,
+      avg_sec: calls ? Math.round(totals.total_sec / calls) : 0,
+    },
+    by_day,
+  };
+}
+
 // ── Appointments & leads ────────────────────────────────────────────────
 export async function insertAppointment(a: {
   agent_id: string;

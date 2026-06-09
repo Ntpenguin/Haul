@@ -14,6 +14,7 @@
     "start": "node dist/index.js",
     "migrate": "tsx src/db/migrate.ts",
     "seed": "tsx scripts/seed.ts",
+    "stripe:setup": "tsx scripts/stripe-setup.ts",
     "selftest": "tsx scripts/selftest.ts",
     "test": "vitest run",
     "test:watch": "vitest",

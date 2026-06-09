@@ -22,9 +22,10 @@ import {
   deleteTenant,
   usageForTenant,
   tenantCanCall,
+  analyticsFor,
 } from '../db/index.js';
 import { Conversation } from '../pipeline/conversation.js';
-import { makeLlm } from '../providers/index.js';
+import { makeLlm, makeTts } from '../providers/index.js';
 import { ToolContext } from '../agent/tools.js';
 import { placeOutboundCall } from './twilioRest.js';
 import { createCheckoutSession } from './billing.js';
@@ -95,6 +96,18 @@ apiRouter.post('/calendar/google/connect', async (req, res) => {
   const state = jwt.sign({ cal: req.principal.tenant.id }, config.jwtSecret, { expiresIn: '15m' });
   res.json({ url: googleAuthUrl(state) });
 });
+
+// ── Voices (for the agent voice picker) ──
+let voiceCache: { at: number; voices: unknown[] } | null = null;
+apiRouter.get('/voices', async (_req, res) => {
+  if (voiceCache && Date.now() - voiceCache.at < 5 * 60 * 1000) return res.json(voiceCache.voices);
+  const voices = await makeTts().listVoices();
+  voiceCache = { at: Date.now(), voices };
+  res.json(voices);
+});
+
+// ── Analytics (tenant-scoped; admin sees platform-wide) ──
+apiRouter.get('/analytics', async (req, res) => res.json(await analyticsFor(scopedTenantId(req))));
 
 // ── Agents CRUD (tenant-scoped) ──
 apiRouter.get('/agents', async (req, res) => res.json(await listAgents(scopedTenantId(req))));
