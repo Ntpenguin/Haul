@@ -69,9 +69,18 @@ npm run dev                     # http://localhost:3000
 ```
 
 Open the dashboard → sign up (or use your `ADMIN_TOKEN`) → pick an agent →
-**Test the agent (text simulator)** to talk to the brain with **no phone** (needs only an
-LLM key). `npm run selftest` runs the full booking flow against a **stubbed LLM** (no AI
-keys, no telephony).
+**Test the agent (text simulator)** to talk to the brain.
+
+### Try it with zero API keys (demo mode)
+
+Set `STT_PROVIDER=mock`, `LLM_PROVIDER=mock`, `TTS_PROVIDER=mock` in `.env`. A rule-based
+receptionist then drives the **entire flow** — greeting, checking availability, booking,
+lead capture, transfer, and hangup — so the dashboard simulator (and even a real Twilio
+call) work with **no provider keys at all**. Great for demos and local development.
+
+`npm run selftest` runs the booking flow against a stubbed LLM, and `npm test` includes a
+**full simulated phone call** through the real WebSocket pipeline (greeting → barge-in →
+booking → hangup) — all with no external APIs.
 
 ### Go live on a phone number
 

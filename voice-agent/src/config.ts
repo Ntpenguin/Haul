@@ -17,9 +17,9 @@ const Env = z.object({
   JWT_SECRET: z.string().default(''),
   CORS_ORIGIN: z.string().default('*'),
 
-  STT_PROVIDER: z.enum(['deepgram']).default('deepgram'),
-  LLM_PROVIDER: z.enum(['openai', 'anthropic']).default('openai'),
-  TTS_PROVIDER: z.enum(['elevenlabs', 'deepgram']).default('elevenlabs'),
+  STT_PROVIDER: z.enum(['deepgram', 'mock']).default('deepgram'),
+  LLM_PROVIDER: z.enum(['openai', 'anthropic', 'mock']).default('openai'),
+  TTS_PROVIDER: z.enum(['elevenlabs', 'deepgram', 'mock']).default('elevenlabs'),
 
   DEEPGRAM_API_KEY: z.string().default(''),
   DEEPGRAM_STT_MODEL: z.string().default('nova-2-phonecall'),

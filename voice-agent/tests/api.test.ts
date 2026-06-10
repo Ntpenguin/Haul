@@ -1,8 +1,8 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest';
+import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
 import { createApp } from '../src/server/app.js';
 import { runMigrations } from '../src/db/migrate.js';
-import { pool, closePool } from '../src/db/pool.js';
+import { pool } from '../src/db/pool.js';
 
 const app = createApp();
 const ADMIN = 'test-admin-token';
@@ -11,9 +11,8 @@ beforeAll(async () => {
   await runMigrations();
   await pool.query('TRUNCATE tenants, agents, calls, transcript_turns, appointments, leads, calendar_connections RESTART IDENTITY CASCADE');
 });
-afterAll(async () => {
-  await closePool();
-});
+// The pg pool is a singleton shared across test files (singleFork); the worker
+// process exits at the end of the run, so we don't close it per-file.
 
 describe('tenant self-serve auth', () => {
   let token = '';
