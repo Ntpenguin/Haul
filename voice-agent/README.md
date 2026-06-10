@@ -32,7 +32,8 @@ billing with metered minutes, and one-command Docker deployment with automatic H
 | Per-minute billing | self-serve Stripe subscription + **metered minutes**; you pay providers at cost |
 | Sub-accounts (SaaS mode) | **tenants** with isolation + per-tenant API keys/logins |
 
-Feature research + cost comparison: **[docs/RESEARCH.md](docs/RESEARCH.md)**.
+**Full capability list: [docs/FEATURES.md](docs/FEATURES.md).** Feature research + cost
+comparison: **[docs/RESEARCH.md](docs/RESEARCH.md)**.
 
 ---
 

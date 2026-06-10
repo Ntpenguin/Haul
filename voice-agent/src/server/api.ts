@@ -23,7 +23,10 @@ import {
   usageForTenant,
   tenantCanCall,
   analyticsFor,
+  listVoicemails,
 } from '../db/index.js';
+import { AGENT_TEMPLATES, getTemplate } from '../agent/templates.js';
+import { toCsv } from './csv.js';
 import { Conversation } from '../pipeline/conversation.js';
 import { makeLlm, makeTts } from '../providers/index.js';
 import { ToolContext } from '../agent/tools.js';
@@ -110,12 +113,21 @@ apiRouter.get('/voices', async (_req, res) => {
 // ── Analytics (tenant-scoped; admin sees platform-wide) ──
 apiRouter.get('/analytics', async (req, res) => res.json(await analyticsFor(scopedTenantId(req))));
 
+// ── Agent templates (industry presets) ──
+apiRouter.get('/agent-templates', (_req, res) =>
+  res.json(AGENT_TEMPLATES.map((t) => ({ id: t.id, label: t.label, description: t.description }))),
+);
+
 // ── Agents CRUD (tenant-scoped) ──
 apiRouter.get('/agents', async (req, res) => res.json(await listAgents(scopedTenantId(req))));
 apiRouter.post('/agents', async (req, res) => {
-  if (!req.body?.name) return res.status(400).json({ error: 'name required' });
-  const tid = req.principal?.type === 'tenant' ? req.principal.tenant.id : req.body.tenant_id;
-  res.status(201).json(await createAgent(req.body, tid));
+  // Optionally seed from an industry template.
+  const tpl = req.body?.template ? getTemplate(req.body.template) : undefined;
+  const body = { ...(tpl?.config || {}), ...req.body };
+  delete body.template;
+  if (!body.name) return res.status(400).json({ error: 'name required' });
+  const tid = req.principal?.type === 'tenant' ? req.principal.tenant.id : body.tenant_id;
+  res.status(201).json(await createAgent(body, tid));
 });
 apiRouter.get('/agents/:id', async (req, res) => {
   const a = await canAccessAgent(req, req.params.id);
@@ -170,6 +182,23 @@ apiRouter.get('/calls/:id/recording', async (req, res) => {
 });
 apiRouter.get('/leads', async (req, res) => res.json(await listLeads({ tenantId: scopedTenantId(req) })));
 apiRouter.get('/appointments', async (req, res) => res.json(await listAppointments({ tenantId: scopedTenantId(req) })));
+apiRouter.get('/voicemails', async (req, res) => res.json(await listVoicemails({ tenantId: scopedTenantId(req) })));
+
+// ── CSV exports (tenant-scoped) ──
+function sendCsv(res: any, name: string, rows: any[], cols: string[]) {
+  res.setHeader('Content-Type', 'text/csv');
+  res.setHeader('Content-Disposition', `attachment; filename="${name}.csv"`);
+  res.send(toCsv(rows, cols));
+}
+apiRouter.get('/leads.csv', async (req, res) =>
+  sendCsv(res, 'leads', await listLeads({ tenantId: scopedTenantId(req) }), ['name', 'phone', 'email', 'notes', 'created_at']),
+);
+apiRouter.get('/appointments.csv', async (req, res) =>
+  sendCsv(res, 'appointments', await listAppointments({ tenantId: scopedTenantId(req) }), ['contact_name', 'contact_phone', 'contact_email', 'start_at', 'end_at', 'notes', 'created_at']),
+);
+apiRouter.get('/calls.csv', async (req, res) =>
+  sendCsv(res, 'calls', await listCalls({ tenantId: scopedTenantId(req) }), ['from_number', 'to_number', 'direction', 'status', 'outcome', 'duration_sec', 'started_at']),
+);
 
 // ── Outbound call ──
 apiRouter.post('/calls/outbound', async (req, res) => {

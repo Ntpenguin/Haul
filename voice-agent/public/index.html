@@ -79,7 +79,10 @@
         <div class="list-pane">
           <div class="pane-head">
             <h2>Agents</h2>
-            <button id="new-agent" class="primary">+ New</button>
+            <div class="row">
+              <select id="new-agent-template"><option value="">Blank agent</option></select>
+              <button id="new-agent" class="primary">+ New</button>
+            </div>
           </div>
           <ul id="agent-list" class="list"></ul>
         </div>
@@ -115,6 +118,9 @@
             <div class="grid2">
               <label>Routed phone number (E.164)<input id="f-phone_number" placeholder="+15125551234" /></label>
               <label>Transfer-to number<input id="f-transfer_number" placeholder="+15125550000" /></label>
+            </div>
+            <div class="grid2">
+              <label>Owner notify number (SMS)<input id="f-notify_number" placeholder="+1512..." /></label>
             </div>
             <label>CRM / automation webhook URL<input id="f-webhook_url" placeholder="https://your-crm/webhook" /></label>
             <div class="grid2">
@@ -166,7 +172,10 @@
     <section id="tab-calls" class="tab">
       <div class="cols">
         <div class="list-pane">
-          <h2>Recent calls</h2>
+          <div class="pane-head">
+            <h2>Recent calls</h2>
+            <button id="export-calls">Export calls CSV</button>
+          </div>
           <ul id="call-list" class="list"></ul>
         </div>
         <div class="edit-pane">
@@ -178,10 +187,18 @@
 
     <!-- CRM -->
     <section id="tab-crm" class="tab">
-      <h2>Leads</h2>
+      <div class="pane-head">
+        <h2>Leads</h2>
+        <div class="row">
+          <button id="export-leads">Export leads CSV</button>
+          <button id="export-appts">Export appointments CSV</button>
+        </div>
+      </div>
       <table id="leads-table" class="data"></table>
       <h2>Appointments</h2>
       <table id="appts-table" class="data"></table>
+      <h2>Voicemails</h2>
+      <table id="voicemails-table" class="data"></table>
     </section>
 
     <!-- ANALYTICS -->

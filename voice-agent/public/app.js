@@ -22,7 +22,7 @@ const $ = (s) => document.querySelector(s);
 const el = (id) => document.getElementById(id);
 
 const TOOLS = ['check_availability', 'book_appointment', 'capture_lead', 'transfer_call', 'trigger_workflow', 'end_call'];
-const FIELDS = ['name', 'business_name', 'greeting', 'persona', 'goals', 'knowledge_base', 'voice_id', 'language', 'transfer_number', 'webhook_url', 'after_hours', 'max_call_seconds'];
+const FIELDS = ['name', 'business_name', 'greeting', 'persona', 'goals', 'knowledge_base', 'voice_id', 'language', 'transfer_number', 'notify_number', 'webhook_url', 'after_hours', 'max_call_seconds'];
 
 let agents = [];
 let current = null;       // selected agent
@@ -192,8 +192,36 @@ async function selectAgent(id) {
   loadAgents();
 }
 
+// Populate the new-from-template <select> with presets from the server.
+async function loadTemplates() {
+  const sel = el('new-agent-template');
+  if (!sel) return;
+  let templates = [];
+  try {
+    templates = await api('/agent-templates');
+  } catch (e) {
+    if (e instanceof AuthError) return;
+    templates = [];
+  }
+  sel.textContent = '';
+  const blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = 'Blank agent';
+  sel.appendChild(blank);
+  (Array.isArray(templates) ? templates : []).forEach((t) => {
+    const opt = document.createElement('option');
+    opt.value = t.id;
+    opt.textContent = t.label;
+    if (t.description) opt.title = t.description;
+    sel.appendChild(opt);
+  });
+}
+
 el('new-agent').onclick = async () => {
-  const a = await api('/agents', { method: 'POST', body: JSON.stringify({ name: 'New Agent' }) });
+  const body = { name: 'New Agent' };
+  const tpl = el('new-agent-template');
+  if (tpl && tpl.value) body.template = tpl.value;
+  const a = await api('/agents', { method: 'POST', body: JSON.stringify(body) });
   await loadAgents();
   selectAgent(a.id);
 };
@@ -327,6 +355,23 @@ async function loadRecording(callId, container) {
   } catch {}
 }
 
+// ── CSV export ──
+// CSV endpoints require the Authorization header, so fetch as a blob with the
+// token and trigger a client-side download.
+async function downloadCsv(path, filename) {
+  const res = await fetch('/api' + path, { headers: { Authorization: 'Bearer ' + token } });
+  if (!res.ok) return alert('Export failed');
+  const blob = await res.blob();
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+el('export-leads').addEventListener('click', () => downloadCsv('/leads.csv', 'leads.csv'));
+el('export-appts').addEventListener('click', () => downloadCsv('/appointments.csv', 'appointments.csv'));
+el('export-calls').addEventListener('click', () => downloadCsv('/calls.csv', 'calls.csv'));
+
 // ── CRM ──
 async function loadCrm() {
   const leads = await api('/leads');
@@ -337,6 +382,13 @@ async function loadCrm() {
   el('appts-table').innerHTML =
     '<tr><th>Contact</th><th>Phone</th><th>Start</th><th>Notes</th></tr>' +
     appts.map((a) => `<tr><td>${esc(a.contact_name)}</td><td>${esc(a.contact_phone)}</td><td>${fmt(a.start_at)}</td><td>${esc(a.notes)}</td></tr>`).join('');
+  let voicemails = [];
+  try { voicemails = await api('/voicemails'); } catch (e) { if (e instanceof AuthError) return; voicemails = []; }
+  voicemails = Array.isArray(voicemails) ? voicemails : [];
+  el('voicemails-table').innerHTML = voicemails.length
+    ? '<tr><th>From</th><th>Transcript</th><th>When</th></tr>' +
+      voicemails.map((v) => `<tr><td>${esc(v.from_number)}</td><td>${esc(v.transcript)}</td><td>${fmt(v.created_at)}</td></tr>`).join('')
+    : '<tr><td class="muted">No voicemails</td></tr>';
 }
 
 // ── Analytics ──
@@ -692,6 +744,7 @@ async function init() {
   setIdentity();
   loadUsage();
   loadVoices();
+  loadTemplates();
   loadAgents();
   // Returning from Google OAuth: show a success note + clean the URL.
   let justConnected = false;

@@ -4,6 +4,9 @@ import { takeSentence } from '../src/pipeline/conversation.js';
 import { isE164 } from '../src/server/twilioRest.js';
 import { confirmationSms } from '../src/agent/tools.js';
 import { htmlToText } from '../src/integrations/scrape.js';
+import { isWithinBusinessHours } from '../src/agent/hours.js';
+import { AGENT_TEMPLATES, getTemplate } from '../src/agent/templates.js';
+import { toCsv } from '../src/server/csv.js';
 import { AgentConfig } from '../src/agent/types.js';
 
 describe('takeSentence (TTS sentence chunking)', () => {
@@ -60,6 +63,32 @@ describe('htmlToText (knowledge-base scraping)', () => {
     expect(text).toContain('book');
     expect(text).not.toMatch(/alert|color:red|<p>|<script/);
     expect(text).toContain('&'); // &amp; decoded
+  });
+});
+
+describe('business hours', () => {
+  const agent = { business_hours: { 0: null, 1: ['08:00', '18:00'], 2: ['08:00', '18:00'], 3: ['08:00', '18:00'], 4: ['08:00', '18:00'], 5: ['08:00', '18:00'], 6: null } } as AgentConfig;
+  it('is open midday on a weekday and closed at night / weekends', () => {
+    expect(isWithinBusinessHours(agent, new Date('2026-06-10T13:00:00'))).toBe(true);  // Wed 1pm
+    expect(isWithinBusinessHours(agent, new Date('2026-06-10T22:00:00'))).toBe(false); // Wed 10pm
+    expect(isWithinBusinessHours(agent, new Date('2026-06-10T07:00:00'))).toBe(false); // Wed 7am
+    expect(isWithinBusinessHours(agent, new Date('2026-06-14T13:00:00'))).toBe(false); // Sunday
+  });
+});
+
+describe('agent templates', () => {
+  it('exposes industry presets with valid configs', () => {
+    expect(AGENT_TEMPLATES.length).toBeGreaterThanOrEqual(5);
+    const moving = getTemplate('moving');
+    expect(moving?.config.enabled_tools).toContain('book_appointment');
+    expect(getTemplate('nope')).toBeUndefined();
+  });
+});
+
+describe('CSV export', () => {
+  it('renders rows with quoting for commas/quotes/newlines', () => {
+    const csv = toCsv([{ name: 'Jane', notes: 'wants, a "quote"\nASAP' }], ['name', 'notes']);
+    expect(csv).toBe('name,notes\nJane,"wants, a ""quote""\nASAP"\n');
   });
 });
 

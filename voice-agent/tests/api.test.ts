@@ -75,6 +75,47 @@ describe('authorization & isolation', () => {
   });
 });
 
+describe('after-hours inbound handling', () => {
+  const closed = { 0: null, 1: null, 2: null, 3: null, 4: null, 5: null, 6: null };
+
+  it('returns voicemail TwiML when closed + after_hours=voicemail', async () => {
+    const num = '+1512000' + Math.floor(1000 + Math.random() * 8999);
+    await request(app).post('/api/agents').set('Authorization', `Bearer ${ADMIN}`)
+      .send({ name: 'VM', business_name: 'VM Co', phone_number: num, business_hours: closed, after_hours: 'voicemail' });
+    const res = await request(app).post('/twilio/inbound').type('form').send({ To: num, From: '+15125559999', CallSid: 'CAvm' });
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('<Record');
+    expect(res.text).toContain('leave a message');
+  });
+
+  it('returns transfer TwiML when closed + after_hours=transfer', async () => {
+    const num = '+1512111' + Math.floor(1000 + Math.random() * 8999);
+    await request(app).post('/api/agents').set('Authorization', `Bearer ${ADMIN}`)
+      .send({ name: 'XF', business_name: 'XF Co', phone_number: num, business_hours: closed, after_hours: 'transfer', transfer_number: '+15125550000' });
+    const res = await request(app).post('/twilio/inbound').type('form').send({ To: num, From: '+15125559999', CallSid: 'CAxf' });
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('<Dial>+15125550000</Dial>');
+  });
+});
+
+describe('agent templates + CSV export', () => {
+  it('lists industry templates and creates an agent from one', async () => {
+    const tpls = (await request(app).get('/api/agent-templates').set('Authorization', `Bearer ${ADMIN}`)).body;
+    expect(tpls.some((t: any) => t.id === 'moving')).toBe(true);
+    const agent = (await request(app).post('/api/agents').set('Authorization', `Bearer ${ADMIN}`)
+      .send({ name: 'FromTpl', template: 'salon' })).body;
+    expect(agent.enabled_tools).toContain('book_appointment');
+    expect(agent.persona).toMatch(/salon|spa/i);
+  });
+
+  it('exports leads as CSV', async () => {
+    const res = await request(app).get('/api/leads.csv').set('Authorization', `Bearer ${ADMIN}`);
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('text/csv');
+    expect(res.text.split('\n')[0]).toBe('name,phone,email,notes,created_at');
+  });
+});
+
 describe('health', () => {
   it('reports liveness and readiness', async () => {
     expect((await request(app).get('/healthz')).status).toBe(200);

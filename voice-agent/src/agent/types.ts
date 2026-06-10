@@ -37,6 +37,9 @@ export interface AgentConfig {
   /** Where to transfer to when the agent escalates to a human (E.164). */
   transfer_number: string;
 
+  /** Owner/staff number to text when a booking or lead comes in (E.164). Optional. */
+  notify_number: string;
+
   /** Outbound webhook hit on capture_lead / trigger_workflow (your CRM / n8n / GHL). */
   webhook_url: string;
 
@@ -92,6 +95,7 @@ export const DEFAULT_AGENT: Omit<AgentConfig, 'id' | 'name' | 'created_at' | 'up
     'end_call',
   ],
   transfer_number: '',
+  notify_number: '',
   webhook_url: '',
   business_hours: {
     0: null,

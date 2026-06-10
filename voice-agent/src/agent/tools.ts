@@ -165,6 +165,14 @@ export async function runTool(
             smsNote = sent ? ' A confirmation text has been sent.' : '';
           }
         }
+        // Notify the business owner/staff.
+        if (isE164(ctx.agent.notify_number)) {
+          await sendSms(
+            ctx.agent.notify_number,
+            `New booking for ${ctx.agent.business_name}: ${fmtTime(start)}${ctx.contact.name ? ` — ${ctx.contact.name}` : ''}.`,
+            ctx.agent.phone_number,
+          );
+        }
         return { result: `Booked for ${fmtTime(start)}. Confirm this with the caller.${smsNote}` };
       }
 
@@ -186,6 +194,13 @@ export async function runTool(
           contact: { ...ctx.contact, phone: ctx.contact.phone || ctx.callerNumber },
           notes: args.notes,
         });
+        if (isE164(ctx.agent.notify_number)) {
+          await sendSms(
+            ctx.agent.notify_number,
+            `New lead for ${ctx.agent.business_name}: ${ctx.contact.name || 'caller'} ${ctx.contact.phone || ctx.callerNumber || ''}`.trim(),
+            ctx.agent.phone_number,
+          );
+        }
         return { result: 'Lead saved.' };
       }
 

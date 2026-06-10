@@ -303,6 +303,34 @@ export interface CalendarConnection {
   expiry: string | null;
 }
 
+// ── Voicemails ──────────────────────────────────────────────────────────
+export async function insertVoicemail(v: {
+  agent_id: string;
+  tenant_id?: string;
+  call_id?: string;
+  from_number?: string;
+  recording_url?: string;
+  transcript?: string;
+}): Promise<string> {
+  const row = await one<{ id: string }>(
+    `INSERT INTO voicemails (agent_id, tenant_id, call_id, from_number, recording_url, transcript)
+     VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
+    [v.agent_id, v.tenant_id ?? null, v.call_id ?? null, v.from_number ?? null, v.recording_url ?? null, v.transcript ?? null],
+  );
+  return row!.id;
+}
+export const setVoicemailTranscript = (callId: string, transcript: string, recordingUrl?: string) =>
+  query(
+    `UPDATE voicemails SET transcript=$2, recording_url=COALESCE($3, recording_url) WHERE call_id=$1`,
+    [callId, transcript, recordingUrl ?? null],
+  );
+export function listVoicemails(opts: { agentId?: string; tenantId?: string } = {}) {
+  if (opts.tenantId) return query(`SELECT * FROM voicemails WHERE tenant_id=$1 ORDER BY created_at DESC LIMIT 200`, [opts.tenantId]);
+  if (opts.agentId) return query(`SELECT * FROM voicemails WHERE agent_id=$1 ORDER BY created_at DESC LIMIT 200`, [opts.agentId]);
+  return query(`SELECT * FROM voicemails ORDER BY created_at DESC LIMIT 200`);
+}
+
+// ── Calendar connections (per-tenant OAuth) ─────────────────────────────
 export const getCalendarConnection = (tenantId: string) =>
   one<CalendarConnection>(`SELECT * FROM calendar_connections WHERE tenant_id=$1`, [tenantId]);
 
