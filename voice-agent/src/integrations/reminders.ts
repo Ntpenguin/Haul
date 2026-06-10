@@ -1,5 +1,6 @@
 import { dueReminders, markReminderSent, getAgent } from '../db/index.js';
 import { sendSms } from '../server/twilioRest.js';
+import { manageUrl } from '../server/manage.js';
 import { logger } from '../logger.js';
 
 const log = logger('reminders');
@@ -21,9 +22,11 @@ export async function processDueReminders(): Promise<void> {
       hour: 'numeric',
       minute: '2-digit',
     });
+    const link = manageUrl(r.manage_token);
     const body =
       `Reminder: your appointment with ${agent.business_name} is ` +
-      `${r.kind === '1h' ? 'in about an hour' : 'tomorrow'} (${when}). Reply or call to reschedule.`;
+      `${r.kind === '1h' ? 'in about an hour' : 'tomorrow'} (${when}).` +
+      (link ? ` Reschedule or cancel: ${link}` : ' Reply or call to reschedule.');
     await sendSms(r.contact_phone!, body, agent.phone_number);
     await markReminderSent(r.id, r.kind);
     log.info(`sent ${r.kind} reminder for appointment ${r.id}`);

@@ -46,6 +46,12 @@ export interface AgentConfig {
   /** Send SMS appointment reminders (24h + 1h before) to the booked contact. */
   appointment_reminders: boolean;
 
+  /** Slack incoming-webhook URL for owner notifications + daily digest. Optional. */
+  slack_webhook_url: string;
+
+  /** Send a daily activity digest (calls, bookings, leads) to notify_email / Slack. */
+  daily_digest: boolean;
+
   /** Outbound webhook hit on capture_lead / trigger_workflow (your CRM / n8n / GHL). */
   webhook_url: string;
 
@@ -104,6 +110,8 @@ export const DEFAULT_AGENT: Omit<AgentConfig, 'id' | 'name' | 'created_at' | 'up
   notify_number: '',
   notify_email: '',
   appointment_reminders: true,
+  slack_webhook_url: '',
+  daily_digest: false,
   webhook_url: '',
   business_hours: {
     0: null,

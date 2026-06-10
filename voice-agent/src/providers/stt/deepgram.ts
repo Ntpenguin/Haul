@@ -11,9 +11,10 @@ const log = logger('stt:deepgram');
  * and rely on Deepgram endpointing + utterance_end for turn detection.
  */
 export class DeepgramStt implements SttProvider {
-  async open(events: SttEvents): Promise<SttStream> {
+  async open(events: SttEvents, opts?: { language?: string }): Promise<SttStream> {
     const params = new URLSearchParams({
       model: config.deepgram.sttModel,
+      language: opts?.language || 'en',
       encoding: 'mulaw',
       sample_rate: '8000',
       channels: '1',

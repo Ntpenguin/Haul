@@ -3,13 +3,14 @@ import { ToolSchema } from '../providers/types.js';
 import { findAvailability, book } from '../integrations/calendarProvider.js';
 import { postWebhook } from '../integrations/webhook.js';
 import { sendSms, isE164 } from '../server/twilioRest.js';
-import { insertLead, setOutcome } from '../db/index.js';
+import { insertLead, setOutcome, manageTokenFor } from '../db/index.js';
+import { manageUrl } from '../server/manage.js';
 import { logger } from '../logger.js';
 
 const log = logger('tools');
 
 /** The SMS a caller receives after the agent books their appointment. */
-export function confirmationSms(agent: AgentConfig, startIso: string): string {
+export function confirmationSms(agent: AgentConfig, startIso: string, manageLink?: string): string {
   const when = new Date(startIso).toLocaleString('en-US', {
     weekday: 'short',
     month: 'short',
@@ -17,7 +18,8 @@ export function confirmationSms(agent: AgentConfig, startIso: string): string {
     hour: 'numeric',
     minute: '2-digit',
   });
-  return `You're booked with ${agent.business_name} for ${when}. Reply here or call us with any questions.`;
+  const manage = manageLink ? ` Reschedule or cancel: ${manageLink}` : '';
+  return `You're booked with ${agent.business_name} for ${when}.${manage} Reply here or call us with any questions.`;
 }
 
 export type ControlAction = { type: 'transfer'; number: string } | { type: 'hangup' };
@@ -144,7 +146,8 @@ export async function runTool(
       case 'book_appointment': {
         const start = args.start as string;
         if (!start) return { result: 'Error: a start time is required.' };
-        const res = await book(ctx.agent, ctx.callId, start, ctx.contact, args.notes as string);
+        const contact = { ...ctx.contact, phone: ctx.contact.phone || ctx.callerNumber };
+        const res = await book(ctx.agent, ctx.callId, start, contact, args.notes as string);
         if (!res.ok) {
           if (res.reason === 'slot_taken') return { result: 'That slot was just taken. Offer another time.' };
           return { result: 'Could not book that time.' };
@@ -163,7 +166,8 @@ export async function runTool(
         if (ctx.agent.sms_confirmations) {
           const to = ctx.contact.phone || ctx.callerNumber;
           if (isE164(to)) {
-            const sent = await sendSms(to!, confirmationSms(ctx.agent, start), ctx.agent.phone_number);
+            const link = res.id ? manageUrl(await manageTokenFor(res.id)) : '';
+            const sent = await sendSms(to!, confirmationSms(ctx.agent, start, link || undefined), ctx.agent.phone_number);
             smsNote = sent ? ' A confirmation text has been sent.' : '';
           }
         }

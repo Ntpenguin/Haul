@@ -262,7 +262,39 @@ export async function insertAppointment(a: {
 }
 
 export const appointmentsBetween = (agentId: string, startIso: string, endIso: string) =>
-  query(`SELECT * FROM appointments WHERE agent_id=$1 AND start_at < $3 AND end_at > $2 ORDER BY start_at`, [agentId, startIso, endIso]);
+  query(`SELECT * FROM appointments WHERE agent_id=$1 AND start_at < $3 AND end_at > $2 AND status <> 'cancelled' ORDER BY start_at`, [agentId, startIso, endIso]);
+
+/** Manage-token lookup for self-serve cancel/reschedule links. */
+export const appointmentByToken = (token: string) =>
+  one<any>(`SELECT * FROM appointments WHERE manage_token=$1`, [token]);
+export const manageTokenFor = async (id: string): Promise<string | undefined> =>
+  (await one<{ manage_token: string }>(`SELECT manage_token FROM appointments WHERE id=$1`, [id]))?.manage_token;
+export const cancelAppointment = (id: string) => query(`UPDATE appointments SET status='cancelled' WHERE id=$1`, [id]);
+export const rescheduleAppointment = (id: string, startIso: string, endIso: string) =>
+  query(`UPDATE appointments SET start_at=$2, end_at=$3, status='booked', reminder_24_at=NULL, reminder_1_at=NULL WHERE id=$1`, [id, startIso, endIso]);
+
+/** Activity counts for the daily digest (since the given timestamp). */
+export async function digestStats(agentId: string, sinceIso: string) {
+  const [calls, appts, leads, vms] = await Promise.all([
+    one<any>(`SELECT count(*)::int AS n, coalesce(sum(duration_sec),0)::int AS secs FROM calls WHERE agent_id=$1 AND started_at >= $2`, [agentId, sinceIso]),
+    one<any>(`SELECT count(*)::int AS n FROM appointments WHERE agent_id=$1 AND created_at >= $2 AND status <> 'cancelled'`, [agentId, sinceIso]),
+    one<any>(`SELECT count(*)::int AS n FROM leads WHERE agent_id=$1 AND created_at >= $2`, [agentId, sinceIso]),
+    one<any>(`SELECT count(*)::int AS n FROM voicemails WHERE agent_id=$1 AND created_at >= $2`, [agentId, sinceIso]),
+  ]);
+  return { calls: calls?.n ?? 0, minutes: Math.round((calls?.secs ?? 0) / 60), booked: appts?.n ?? 0, leads: leads?.n ?? 0, voicemails: vms?.n ?? 0 };
+}
+
+/** Everything we know about a phone number (for the dashboard caller-history view). */
+export async function contactHistory(opts: { tenantId?: string }, phone: string) {
+  const where = opts.tenantId ? 'AND tenant_id=$2' : '';
+  const params = opts.tenantId ? [phone, opts.tenantId] : [phone];
+  const [calls, appts, leads] = await Promise.all([
+    query<any>(`SELECT id, started_at, duration_sec, outcome, direction FROM calls WHERE from_number=$1 ${where} ORDER BY started_at DESC LIMIT 20`, params),
+    query<any>(`SELECT id, start_at, status, contact_name FROM appointments WHERE contact_phone=$1 ${where} ORDER BY start_at DESC LIMIT 20`, params),
+    query<any>(`SELECT id, created_at, name, notes FROM leads WHERE phone=$1 ${where} ORDER BY created_at DESC LIMIT 20`, params),
+  ]);
+  return { calls, appointments: appts, leads };
+}
 
 export function listAppointments(opts: { agentId?: string; tenantId?: string } = {}) {
   if (opts.tenantId) return query(`SELECT * FROM appointments WHERE tenant_id=$1 ORDER BY start_at DESC LIMIT 200`, [opts.tenantId]);
@@ -319,17 +351,18 @@ export interface DueReminder {
   contact_name: string | null;
   start_at: string;
   kind: '24h' | '1h';
+  manage_token: string;
 }
 /** Appointments whose 24h or 1h reminder is due and not yet sent. */
 export async function dueReminders(): Promise<DueReminder[]> {
   const r24 = await query<any>(
-    `SELECT id, agent_id, tenant_id, contact_phone, contact_name, start_at, '24h' AS kind FROM appointments
-     WHERE contact_phone IS NOT NULL AND reminder_24_at IS NULL
+    `SELECT id, agent_id, tenant_id, contact_phone, contact_name, start_at, '24h' AS kind, manage_token FROM appointments
+     WHERE contact_phone IS NOT NULL AND reminder_24_at IS NULL AND status <> 'cancelled'
        AND start_at BETWEEN now() + interval '23 hours' AND now() + interval '24 hours'`,
   );
   const r1 = await query<any>(
-    `SELECT id, agent_id, tenant_id, contact_phone, contact_name, start_at, '1h' AS kind FROM appointments
-     WHERE contact_phone IS NOT NULL AND reminder_1_at IS NULL
+    `SELECT id, agent_id, tenant_id, contact_phone, contact_name, start_at, '1h' AS kind, manage_token FROM appointments
+     WHERE contact_phone IS NOT NULL AND reminder_1_at IS NULL AND status <> 'cancelled'
        AND start_at BETWEEN now() + interval '50 minutes' AND now() + interval '70 minutes'`,
   );
   return [...r24, ...r1];

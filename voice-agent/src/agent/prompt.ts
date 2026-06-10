@@ -1,5 +1,14 @@
 import { AgentConfig } from './types.js';
 
+/** "es" → "Spanish" (falls back to the raw tag). */
+export function languageName(tag: string): string {
+  try {
+    return new Intl.DisplayNames(['en'], { type: 'language' }).of(tag) || tag;
+  } catch {
+    return tag;
+  }
+}
+
 export interface ReturningContact {
   name?: string;
   lastNotes?: string;
@@ -29,9 +38,16 @@ export function buildSystemPrompt(agent: AgentConfig, returning?: ReturningConta
       ]
     : [];
 
+  const lang = (agent.language || 'en').trim();
+  const languageBlock =
+    lang && lang !== 'en'
+      ? [`Conduct the ENTIRE conversation in ${languageName(lang)}. Only switch if the caller clearly asks.`]
+      : [];
+
   return [
     `You are ${agent.name}, an AI voice agent answering the phone for ${agent.business_name}.`,
     `The current date and time is ${dateLine} (the caller's local time).`,
+    ...languageBlock,
     ...returningBlock,
     '',
     '# Persona',

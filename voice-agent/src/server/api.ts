@@ -26,6 +26,7 @@ import {
   analyticsFor,
   listVoicemails,
   listSmsThreads,
+  contactHistory,
 } from '../db/index.js';
 import { AGENT_TEMPLATES, getTemplate } from '../agent/templates.js';
 import { toCsv } from './csv.js';
@@ -212,6 +213,13 @@ apiRouter.get('/leads', async (req, res) => res.json(await listLeads({ tenantId:
 apiRouter.get('/appointments', async (req, res) => res.json(await listAppointments({ tenantId: scopedTenantId(req) })));
 apiRouter.get('/voicemails', async (req, res) => res.json(await listVoicemails({ tenantId: scopedTenantId(req) })));
 apiRouter.get('/sms-threads', async (req, res) => res.json(await listSmsThreads({ tenantId: scopedTenantId(req) })));
+
+// Caller history: everything we know about a phone number (calls, bookings, leads).
+apiRouter.get('/contact-history', async (req, res) => {
+  const phone = String(req.query.phone || '').trim();
+  if (!phone) return res.status(400).json({ error: 'phone required' });
+  res.json(await contactHistory({ tenantId: scopedTenantId(req) }, phone));
+});
 
 // ── Phone-number provisioning (Twilio) ──
 apiRouter.get('/numbers/available', async (req, res) => {

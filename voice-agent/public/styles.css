@@ -288,3 +288,8 @@ table.data tbody tr:hover, table.data tr:hover { background: var(--surface-2); }
   .cols { grid-template-columns: 1fr; }
   .grid2 { grid-template-columns: 1fr; }
 }
+
+/* ── Returning-caller history (calls tab) ─────────────────────────────── */
+.caller-history { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r); padding: 10px 14px; margin-bottom: 12px; }
+.caller-history .ch-head { font-weight: 600; font-size: 13px; color: var(--amber); }
+.caller-history .ch-row { font-size: 12px; margin-top: 3px; }

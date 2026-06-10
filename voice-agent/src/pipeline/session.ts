@@ -93,10 +93,13 @@ export class CallSession {
     }
     this.conv = new Conversation(makeLlm(), this.agent, ctx);
 
-    this.stt = await makeStt().open({
-      onFinal: (text, endOfTurn) => this.onSttFinal(text, endOfTurn),
-      onError: (e) => log.error('stt error', e),
-    });
+    this.stt = await makeStt().open(
+      {
+        onFinal: (text, endOfTurn) => this.onSttFinal(text, endOfTurn),
+        onError: (e) => log.error('stt error', e),
+      },
+      { language: this.agent.language || 'en' },
+    );
 
     // Optional call recording (off unless the agent enables it).
     if (this.agent.record_calls && this.callSid) startRecording(this.callSid).catch(() => {});

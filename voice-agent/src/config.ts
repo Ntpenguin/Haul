@@ -9,6 +9,7 @@ const Env = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().default(3000),
   PUBLIC_BASE_URL: z.string().url().or(z.literal('')).default(''),
+  DIGEST_UTC_HOUR: z.coerce.number().int().min(0).max(23).default(13),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace']).default('info'),
 
   DATABASE_URL: z.string().min(1).default('postgres://postgres:postgres@localhost:5432/openvoice'),
@@ -78,6 +79,7 @@ export const config = {
   isTest: env.NODE_ENV === 'test',
   port: env.PORT,
   publicBaseUrl: env.PUBLIC_BASE_URL.replace(/\/$/, ''),
+  digestUtcHour: env.DIGEST_UTC_HOUR,
   logLevel: env.LOG_LEVEL,
   databaseUrl: env.DATABASE_URL,
   adminToken: env.ADMIN_TOKEN,

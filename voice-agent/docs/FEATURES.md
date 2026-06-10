@@ -18,10 +18,19 @@ SaaS** — an open recreation of GoHighLevel's Voice AI that you run and resell.
   - **Trigger an automation** (outbound webhook to n8n/Zapier/Make/Mautic/GHL/etc.).
   - **End the call** politely.
 - **Returning-caller recognition**: matches the caller's number to a prior lead, greets
-  them by name, and skips re-asking for details it already has.
+  them by name, and skips re-asking for details it already has. The dashboard's call
+  view shows the caller's full history (prior calls, bookings, leads).
 - **Post-call SMS confirmation** to the caller after a booking (toggle per agent).
 - **Appointment reminders**: automatic SMS 24h + 1h before the appointment (no-show
   reduction), per-agent toggle.
+- **Self-serve reschedule/cancel links**: every confirmation + reminder text includes a
+  secure `/manage/<token>` link where the customer can cancel or pick a new open slot —
+  no app, no login. The owner is notified of changes.
+- **Daily digest**: a once-a-day activity summary (calls, minutes, bookings, leads,
+  voicemails) sent to the owner by **email and/or Slack** (incoming webhook), per-agent
+  opt-in. Quiet days are skipped.
+- **Multi-language**: set the agent's language (BCP-47) and it conducts the entire call
+  in that language — wired through the prompt and speech recognition.
 - **Owner/staff notifications** on new bookings and leads — by **SMS** and/or **email**.
 - **Post-call email summary** (transcript + outcome) to the owner.
 - **Call recording** (per-agent toggle) with in-dashboard playback.

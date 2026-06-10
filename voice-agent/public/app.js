@@ -22,7 +22,7 @@ const $ = (s) => document.querySelector(s);
 const el = (id) => document.getElementById(id);
 
 const TOOLS = ['check_availability', 'book_appointment', 'capture_lead', 'transfer_call', 'trigger_workflow', 'end_call'];
-const FIELDS = ['name', 'business_name', 'greeting', 'persona', 'goals', 'knowledge_base', 'voice_id', 'language', 'transfer_number', 'notify_number', 'notify_email', 'webhook_url', 'after_hours', 'max_call_seconds'];
+const FIELDS = ['name', 'business_name', 'greeting', 'persona', 'goals', 'knowledge_base', 'voice_id', 'language', 'transfer_number', 'notify_number', 'notify_email', 'webhook_url', 'slack_webhook_url', 'after_hours', 'max_call_seconds'];
 
 let agents = [];
 let current = null;       // selected agent
@@ -282,6 +282,7 @@ async function selectAgent(id) {
   el('f-sms_confirmations').checked = current.sms_confirmations !== false;
   el('f-appointment_reminders').checked = current.appointment_reminders !== false;
   el('f-record_calls').checked = current.record_calls === true;
+  el('f-daily_digest').checked = current.daily_digest === true;
   document.querySelectorAll('#tools input').forEach((cb) => { cb.checked = (current.enabled_tools || []).includes(cb.value); });
   loadAgents();
 }
@@ -328,6 +329,7 @@ el('save-agent').onclick = async () => {
   patch.sms_confirmations = el('f-sms_confirmations').checked;
   patch.appointment_reminders = el('f-appointment_reminders').checked;
   patch.record_calls = el('f-record_calls').checked;
+  patch.daily_digest = el('f-daily_digest').checked;
   patch.enabled_tools = [...document.querySelectorAll('#tools input:checked')].map((c) => c.value);
   el('save-status').textContent = 'Saving…';
   try {
@@ -547,6 +549,29 @@ async function loadTranscript(id, li) {
   // If this call has a recording, fetch it (with the bearer token) and show a player above the transcript.
   const call = callsCache.find((c) => c.id === id);
   if (call && call.recording_url) loadRecording(id, transcript);
+  if (call && call.from_number) loadCallerHistory(call, transcript);
+}
+
+// Returning-caller history: what else do we know about this number?
+async function loadCallerHistory(call, container) {
+  try {
+    const h = await api('/contact-history?phone=' + encodeURIComponent(call.from_number));
+    const priorCalls = (h.calls || []).filter((c) => c.id !== call.id);
+    if (!priorCalls.length && !(h.appointments || []).length && !(h.leads || []).length) return;
+    const div = document.createElement('div');
+    div.className = 'caller-history';
+    const name = (h.leads && h.leads[0] && h.leads[0].name) || (h.appointments && h.appointments[0] && h.appointments[0].contact_name) || '';
+    const bits = [];
+    if (priorCalls.length) bits.push(priorCalls.length + ' prior call' + (priorCalls.length === 1 ? '' : 's'));
+    if ((h.appointments || []).length) bits.push(h.appointments.length + ' booking' + (h.appointments.length === 1 ? '' : 's'));
+    if ((h.leads || []).length) bits.push(h.leads.length + ' lead' + (h.leads.length === 1 ? '' : 's'));
+    div.innerHTML =
+      `<div class="ch-head">↻ Returning caller${name ? ': ' + esc(name) : ''} <span class="muted">(${bits.join(' · ')})</span></div>` +
+      priorCalls.slice(0, 5).map((c) =>
+        `<div class="ch-row muted">${fmt(c.started_at)} · ${esc(c.direction)} · ${c.duration_sec || 0}s${c.outcome ? ' · ' + esc(c.outcome) : ''}</div>`
+      ).join('');
+    container.prepend(div);
+  } catch { /* history is best-effort */ }
 }
 
 // Recordings need the Authorization header, so an <audio src> can't fetch them

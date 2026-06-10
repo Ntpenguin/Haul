@@ -106,6 +106,16 @@ describe('returning-caller prompt', () => {
   });
 });
 
+describe('multi-language prompt', () => {
+  const agent = { ...DEFAULT_AGENT, id: 'a', name: 'Ava', business_name: 'Acme', language: 'es' } as AgentConfig;
+  it('instructs the agent to speak the configured language', () => {
+    expect(buildSystemPrompt(agent)).toContain('Conduct the ENTIRE conversation in Spanish');
+  });
+  it('adds nothing for English', () => {
+    expect(buildSystemPrompt({ ...agent, language: 'en' })).not.toContain('ENTIRE conversation');
+  });
+});
+
 describe('Twilio signature algorithm', () => {
   it('produces a stable HMAC-SHA1 base64 signature', () => {
     const sig = twilioSign('test_token', 'https://example.com/twilio/inbound', { From: '+15551112222', To: '+15553334444' });

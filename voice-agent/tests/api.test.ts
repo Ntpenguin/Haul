@@ -149,6 +149,42 @@ describe('number provisioning + file KB upload', () => {
   });
 });
 
+describe('manage links + caller history', () => {
+  it('books over SMS, then cancels via the public manage link', async () => {
+    const num = '+1512333' + Math.floor(1000 + Math.random() * 8999);
+    await request(app).post('/api/agents').set('Authorization', `Bearer ${ADMIN}`)
+      .send({ name: 'Mng', business_name: 'Manage Co', phone_number: num });
+    await request(app).post('/twilio/sms').type('form')
+      .send({ From: '+15125558888', To: num, Body: 'book me an appointment' });
+    await request(app).post('/twilio/sms').type('form')
+      .send({ From: '+15125558888', To: num, Body: 'yes the first one works' });
+
+    const appts = (await request(app).get('/api/appointments').set('Authorization', `Bearer ${ADMIN}`)).body;
+    const mine = appts.find((a: any) => a.contact_phone === '+15125558888');
+    expect(mine?.manage_token).toBeTruthy();
+
+    const pg = await request(app).get(`/manage/${mine.manage_token}`);
+    expect(pg.status).toBe(200);
+    expect(pg.text).toContain('Manage Co');
+    expect(pg.text).toContain('Cancel appointment');
+
+    const cancel = await request(app).post(`/manage/${mine.manage_token}/cancel`);
+    expect(cancel.text).toMatch(/cancelled/i);
+
+    const after = (await request(app).get('/api/appointments').set('Authorization', `Bearer ${ADMIN}`)).body
+      .find((a: any) => a.id === mine.id);
+    expect(after.status).toBe('cancelled');
+
+    expect((await request(app).get('/manage/not-a-token')).status).toBe(404);
+  });
+
+  it('returns caller history for a known phone number', async () => {
+    const res = await request(app).get('/api/contact-history?phone=%2B15125558888').set('Authorization', `Bearer ${ADMIN}`);
+    expect(res.status).toBe(200);
+    expect(res.body.calls.length + res.body.appointments.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe('health', () => {
   it('reports liveness and readiness', async () => {
     expect((await request(app).get('/healthz')).status).toBe(200);

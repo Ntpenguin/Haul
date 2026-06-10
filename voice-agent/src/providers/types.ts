@@ -18,7 +18,7 @@ export interface SttStream {
 }
 
 export interface SttProvider {
-  open(events: SttEvents): Promise<SttStream>;
+  open(events: SttEvents, opts?: { language?: string }): Promise<SttStream>;
 }
 
 // ── LLM (streaming, tool-calling) ──

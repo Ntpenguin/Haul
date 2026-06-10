@@ -14,6 +14,7 @@ import { authRouter } from './authRoutes.js';
 import jwt from 'jsonwebtoken';
 import { authMiddleware } from './auth.js';
 import { handleStripeWebhook } from './billing.js';
+import { manageRouter } from './manage.js';
 import { googleExchangeAndStore } from '../integrations/googleCalendar.js';
 
 const log = logger('app');
@@ -87,6 +88,10 @@ export function createApp(): Express {
 
   const apiLimiter = rateLimit({ windowMs: 60 * 1000, max: 240, standardHeaders: true, legacyHeaders: false, skip: () => config.isTest });
   app.use('/api', apiLimiter, authMiddleware, apiRouter);
+
+  // Public self-serve appointment links (token-authenticated, rate-limited).
+  const manageLimiter = rateLimit({ windowMs: 60 * 1000, max: 60, standardHeaders: true, legacyHeaders: false, skip: () => config.isTest });
+  app.use('/manage', manageLimiter, manageRouter);
 
   app.use('/', express.static(resolve(__dirname, '../../public')));
   return app;

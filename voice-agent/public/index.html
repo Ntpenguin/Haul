@@ -138,6 +138,7 @@
               <label>Owner notify email<input id="f-notify_email" placeholder="owner@business.com" /></label>
             </div>
             <label>CRM / automation webhook URL<input id="f-webhook_url" placeholder="https://your-crm/webhook" /></label>
+            <label>Slack webhook URL (notifications + daily digest)<input id="f-slack_webhook_url" placeholder="https://hooks.slack.com/services/..." /></label>
             <div class="grid2">
               <label>After-hours behavior
                 <select id="f-after_hours">
@@ -151,6 +152,7 @@
             <label class="checkrow"><input type="checkbox" id="f-sms_confirmations" /> Text the caller an SMS confirmation after booking</label>
             <label class="checkrow"><input type="checkbox" id="f-appointment_reminders" /> Send SMS appointment reminders (24h + 1h)</label>
             <label class="checkrow"><input type="checkbox" id="f-record_calls" /> Record calls (Twilio)</label>
+            <label class="checkrow"><input type="checkbox" id="f-daily_digest" /> Send a daily activity digest (email / Slack)</label>
             <fieldset>
               <legend>Enabled actions</legend>
               <div id="tools" class="tools"></div>
