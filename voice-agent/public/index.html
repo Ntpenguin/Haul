@@ -75,6 +75,7 @@
         </div>
         <div id="calendar-note" class="cal-note hidden"></div>
       </div>
+      <div id="onboarding" class="onboarding hidden"></div>
       <div class="cols">
         <div class="list-pane">
           <div class="pane-head">
@@ -102,6 +103,10 @@
               <button id="kb-import" type="button">Import from website</button>
               <span id="kb-status" class="muted"></span>
             </div>
+            <div class="kb-import-row">
+              <input type="file" id="kb-file" accept=".pdf,.txt,.md" />
+              <button id="kb-upload" type="button">Upload file</button>
+            </div>
             <div class="grid2">
               <label>Voice (TTS)
                 <div class="voice-row">
@@ -119,8 +124,18 @@
               <label>Routed phone number (E.164)<input id="f-phone_number" placeholder="+15125551234" /></label>
               <label>Transfer-to number<input id="f-transfer_number" placeholder="+15125550000" /></label>
             </div>
+            <details id="num-find" class="num-find">
+              <summary class="muted">Find a number</summary>
+              <div class="num-find-row">
+                <input id="num-area" placeholder="Area code, e.g. 512" />
+                <button id="num-search" type="button">Search numbers</button>
+                <span id="num-status" class="muted"></span>
+              </div>
+              <div id="num-results" class="num-results"></div>
+            </details>
             <div class="grid2">
               <label>Owner notify number (SMS)<input id="f-notify_number" placeholder="+1512..." /></label>
+              <label>Owner notify email<input id="f-notify_email" placeholder="owner@business.com" /></label>
             </div>
             <label>CRM / automation webhook URL<input id="f-webhook_url" placeholder="https://your-crm/webhook" /></label>
             <div class="grid2">
@@ -134,6 +149,7 @@
               <label>Max call seconds<input id="f-max_call_seconds" type="number" /></label>
             </div>
             <label class="checkrow"><input type="checkbox" id="f-sms_confirmations" /> Text the caller an SMS confirmation after booking</label>
+            <label class="checkrow"><input type="checkbox" id="f-appointment_reminders" /> Send SMS appointment reminders (24h + 1h)</label>
             <label class="checkrow"><input type="checkbox" id="f-record_calls" /> Record calls (Twilio)</label>
             <fieldset>
               <legend>Enabled actions</legend>
@@ -199,6 +215,8 @@
       <table id="appts-table" class="data"></table>
       <h2>Voicemails</h2>
       <table id="voicemails-table" class="data"></table>
+      <h2>SMS conversations</h2>
+      <table id="sms-table" class="data"></table>
     </section>
 
     <!-- ANALYTICS -->

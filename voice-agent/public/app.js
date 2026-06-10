@@ -22,7 +22,7 @@ const $ = (s) => document.querySelector(s);
 const el = (id) => document.getElementById(id);
 
 const TOOLS = ['check_availability', 'book_appointment', 'capture_lead', 'transfer_call', 'trigger_workflow', 'end_call'];
-const FIELDS = ['name', 'business_name', 'greeting', 'persona', 'goals', 'knowledge_base', 'voice_id', 'language', 'transfer_number', 'notify_number', 'webhook_url', 'after_hours', 'max_call_seconds'];
+const FIELDS = ['name', 'business_name', 'greeting', 'persona', 'goals', 'knowledge_base', 'voice_id', 'language', 'transfer_number', 'notify_number', 'notify_email', 'webhook_url', 'after_hours', 'max_call_seconds'];
 
 let agents = [];
 let current = null;       // selected agent
@@ -171,6 +171,99 @@ async function loadAgents() {
       el('tools').appendChild(lbl);
     });
   }
+  // First-run onboarding: only when there are no agents yet.
+  const onb = el('onboarding');
+  if (!agents.length) renderOnboarding(); else onb.classList.add('hidden');
+}
+
+// ── First-run onboarding ("Get started") ──
+// Single lightweight card: pick a template + business name → create first agent.
+function renderOnboarding() {
+  const onb = el('onboarding');
+  onb.textContent = '';
+  onb.classList.remove('hidden');
+
+  const h = document.createElement('h2');
+  h.textContent = 'Get started';
+  onb.appendChild(h);
+
+  const intro = document.createElement('p');
+  intro.className = 'muted';
+  intro.textContent = 'Create your first AI voice agent in three quick steps.';
+  onb.appendChild(intro);
+
+  const steps = document.createElement('ol');
+  steps.className = 'onboarding-steps';
+  ['Pick a starting template and name your business.',
+    'Create your agent.',
+    'Connect a number and test it in the simulator below.'].forEach((s) => {
+    const li = document.createElement('li');
+    li.textContent = s;
+    steps.appendChild(li);
+  });
+  onb.appendChild(steps);
+
+  // Step 1 — template select
+  const tplLabel = document.createElement('label');
+  tplLabel.textContent = 'Template';
+  const tplSel = document.createElement('select');
+  tplSel.id = 'onb-template';
+  const blank = document.createElement('option');
+  blank.value = '';
+  blank.textContent = 'Blank agent';
+  tplSel.appendChild(blank);
+  tplLabel.appendChild(tplSel);
+  onb.appendChild(tplLabel);
+
+  // Business name
+  const nameLabel = document.createElement('label');
+  nameLabel.textContent = 'Business name';
+  const nameInput = document.createElement('input');
+  nameInput.id = 'onb-name';
+  nameInput.placeholder = 'Acme Plumbing';
+  nameLabel.appendChild(nameInput);
+  onb.appendChild(nameLabel);
+
+  const row = document.createElement('div');
+  row.className = 'row';
+  const create = document.createElement('button');
+  create.type = 'button';
+  create.className = 'primary';
+  create.textContent = 'Create my agent';
+  const status = document.createElement('span');
+  status.className = 'muted';
+  row.appendChild(create);
+  row.appendChild(status);
+  onb.appendChild(row);
+
+  // Populate templates from the server.
+  api('/agent-templates').then((templates) => {
+    (Array.isArray(templates) ? templates : []).forEach((t) => {
+      const opt = document.createElement('option');
+      opt.value = t.id;
+      opt.textContent = t.label;
+      if (t.description) opt.title = t.description;
+      tplSel.appendChild(opt);
+    });
+  }).catch((e) => { if (e instanceof AuthError) return; });
+
+  create.addEventListener('click', async () => {
+    const businessName = nameInput.value.trim();
+    const body = { name: businessName || 'My Agent', business_name: businessName };
+    if (tplSel.value) body.template = tplSel.value;
+    create.disabled = true;
+    status.textContent = 'Creating…';
+    try {
+      const a = await api('/agents', { method: 'POST', body: JSON.stringify(body) });
+      onb.classList.add('hidden');
+      await loadAgents();
+      await selectAgent(a.id);
+    } catch (e) {
+      if (e instanceof AuthError) return;
+      create.disabled = false;
+      status.textContent = '✗ ' + e.message;
+    }
+  });
 }
 
 async function selectAgent(id) {
@@ -187,6 +280,7 @@ async function selectAgent(id) {
   setVoiceSelection(current.voice_id || '');
   el('f-phone_number').value = current.phone_number ?? '';
   el('f-sms_confirmations').checked = current.sms_confirmations !== false;
+  el('f-appointment_reminders').checked = current.appointment_reminders !== false;
   el('f-record_calls').checked = current.record_calls === true;
   document.querySelectorAll('#tools input').forEach((cb) => { cb.checked = (current.enabled_tools || []).includes(cb.value); });
   loadAgents();
@@ -232,6 +326,7 @@ el('save-agent').onclick = async () => {
   patch.max_call_seconds = Number(patch.max_call_seconds) || 600;
   patch.phone_number = el('f-phone_number').value;
   patch.sms_confirmations = el('f-sms_confirmations').checked;
+  patch.appointment_reminders = el('f-appointment_reminders').checked;
   patch.record_calls = el('f-record_calls').checked;
   patch.enabled_tools = [...document.querySelectorAll('#tools input:checked')].map((c) => c.value);
   el('save-status').textContent = 'Saving…';
@@ -273,6 +368,120 @@ el('kb-import').addEventListener('click', async () => {
     btn.disabled = false;
   }
 });
+
+// ── Knowledge base upload (file: PDF / TXT / MD) ──
+// Uses a raw fetch (not api()) because FormData must NOT be forced to JSON.
+el('kb-upload').addEventListener('click', async () => {
+  if (!current || !current.id) return;
+  const fileInput = el('kb-file');
+  const file = fileInput.files && fileInput.files[0];
+  if (!file) { el('kb-status').textContent = '✗ Choose a file first'; return; }
+  const btn = el('kb-upload');
+  const status = el('kb-status');
+  status.textContent = 'Uploading…';
+  btn.disabled = true;
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await fetch('/api/agents/' + current.id + '/upload-kb', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer ' + token },
+      body: fd,
+    });
+    if (res.status === 401) { signOut(); return; }
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || res.statusText);
+    el('f-knowledge_base').value = data.knowledge_base;
+    status.textContent = '✓ Uploaded';
+    fileInput.value = '';
+  } catch (e) {
+    status.textContent = '✗ ' + e.message;
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+// ── Number provisioning (search + buy/assign) ──
+el('num-search').addEventListener('click', async () => {
+  const area = el('num-area').value.trim();
+  const results = el('num-results');
+  const status = el('num-status');
+  results.textContent = '';
+  status.textContent = 'Searching…';
+  try {
+    const res = await fetch('/api/numbers/available?areaCode=' + encodeURIComponent(area), {
+      headers: { Authorization: 'Bearer ' + token },
+    });
+    if (res.status === 401) { signOut(); return; }
+    if (res.status === 400) {
+      status.textContent = '';
+      const m = document.createElement('span');
+      m.className = 'muted';
+      m.textContent = 'Connect Twilio to buy numbers.';
+      results.appendChild(m);
+      return;
+    }
+    const data = await res.json().catch(() => ([]));
+    if (!res.ok) throw new Error((data && data.error) || res.statusText);
+    const list = Array.isArray(data) ? data : (data.numbers || []);
+    status.textContent = '';
+    if (!list.length) {
+      const m = document.createElement('span');
+      m.className = 'muted';
+      m.textContent = 'No numbers found.';
+      results.appendChild(m);
+      return;
+    }
+    list.forEach((n) => results.appendChild(numberRow(n)));
+  } catch (e) {
+    status.textContent = '✗ ' + e.message;
+  }
+});
+
+// Build a single available-number row with a "Buy & assign" button.
+function numberRow(n) {
+  const row = document.createElement('div');
+  row.className = 'num-row';
+  const info = document.createElement('div');
+  info.className = 'num-info';
+  const num = document.createElement('div');
+  num.className = 'num-phone';
+  num.textContent = n.phoneNumber;
+  const loc = document.createElement('div');
+  loc.className = 'num-loc sub';
+  loc.textContent = [n.locality, n.region].filter(Boolean).join(', ');
+  info.appendChild(num);
+  info.appendChild(loc);
+  const buy = document.createElement('button');
+  buy.type = 'button';
+  buy.textContent = 'Buy & assign';
+  buy.addEventListener('click', () => buyNumber(n.phoneNumber, row, buy));
+  row.appendChild(info);
+  row.appendChild(buy);
+  return row;
+}
+
+async function buyNumber(phoneNumber, row, btn) {
+  if (!current || !current.id) return;
+  btn.disabled = true;
+  btn.textContent = 'Buying…';
+  const status = el('num-status');
+  try {
+    const r = await api('/numbers/buy', {
+      method: 'POST',
+      body: JSON.stringify({ phoneNumber, agentId: current.id }),
+    });
+    el('f-phone_number').value = (r && r.phoneNumber) || phoneNumber;
+    el('num-results').textContent = '';
+    status.textContent = '✓ ' + ((r && r.phoneNumber) || phoneNumber) + ' assigned';
+    loadAgents();
+  } catch (e) {
+    if (e instanceof AuthError) return;
+    btn.disabled = false;
+    btn.textContent = 'Buy & assign';
+    status.textContent = '✗ ' + e.message;
+  }
+}
 
 // ── Simulator ──
 function simAppend(cls, text) {
@@ -389,6 +598,13 @@ async function loadCrm() {
     ? '<tr><th>From</th><th>Transcript</th><th>When</th></tr>' +
       voicemails.map((v) => `<tr><td>${esc(v.from_number)}</td><td>${esc(v.transcript)}</td><td>${fmt(v.created_at)}</td></tr>`).join('')
     : '<tr><td class="muted">No voicemails</td></tr>';
+  let threads = [];
+  try { threads = await api('/sms-threads'); } catch (e) { if (e instanceof AuthError) return; threads = []; }
+  threads = Array.isArray(threads) ? threads : [];
+  el('sms-table').innerHTML = threads.length
+    ? '<tr><th>Contact</th><th>Updated</th></tr>' +
+      threads.map((t) => `<tr><td>${esc(t.contact_number)}</td><td>${fmt(t.updated_at)}</td></tr>`).join('')
+    : '<tr><td class="muted">No SMS conversations</td></tr>';
 }
 
 // ── Analytics ──

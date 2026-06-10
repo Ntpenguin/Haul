@@ -181,6 +181,28 @@ button:not(.primary):not(.danger):hover { border-color: var(--accent); }
 .voice-row #voice-preview { white-space: nowrap; padding: 10px 13px; font-size: 13px; }
 #voice-preview-note { display: block; margin-top: 5px; font-style: italic; font-size: 12px; }
 
+/* ── Number provisioning ───────────────────────────────────────────────── */
+.num-find { margin: -2px 0 16px; }
+.num-find > summary { cursor: pointer; list-style: none; }
+.num-find > summary:hover { color: var(--text-dim); }
+.num-find[open] > summary { margin-bottom: 12px; }
+.num-find-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
+.num-find-row input { flex: 1; min-width: 160px; margin-top: 0; }
+.num-find-row button { white-space: nowrap; }
+#num-status { font-size: 12px; }
+.num-results { display: flex; flex-direction: column; gap: 8px; }
+.num-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 10px 13px; }
+.num-info { min-width: 0; }
+.num-phone { font-weight: 600; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+.num-loc { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.num-row button { white-space: nowrap; padding: 8px 13px; font-size: 13px; }
+
+/* ── Onboarding ────────────────────────────────────────────────────────── */
+.onboarding { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r-lg); padding: 24px; margin-bottom: 22px; box-shadow: var(--shadow); max-width: 520px; }
+.onboarding h2 { margin-bottom: 4px; }
+.onboarding-steps { margin: 14px 0 18px; padding-left: 20px; color: var(--text-dim); font-size: 13px; }
+.onboarding-steps li { margin-bottom: 6px; }
+
 /* ── Simulator ─────────────────────────────────────────────────────────── */
 .sim-log { background: var(--bg); border: 1px solid var(--border); border-radius: var(--r); padding: 14px; height: 240px; overflow-y: auto; margin-bottom: 12px; display: flex; flex-direction: column; gap: 8px; }
 .sim-log .u, .sim-log .a, .sim-log .t { padding: 9px 13px; border-radius: 14px; max-width: 82%; font-size: 13.5px; line-height: 1.45; }
