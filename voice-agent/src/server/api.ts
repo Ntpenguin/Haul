@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { randomUUID } from 'node:crypto';
 import jwt from 'jsonwebtoken';
+import multer from 'multer';
 import { config } from '../config.js';
 import { getCalendarConnection, getCall } from '../db/index.js';
 import { googleAuthUrl } from '../integrations/googleCalendar.js';
@@ -24,13 +25,14 @@ import {
   tenantCanCall,
   analyticsFor,
   listVoicemails,
+  listSmsThreads,
 } from '../db/index.js';
 import { AGENT_TEMPLATES, getTemplate } from '../agent/templates.js';
 import { toCsv } from './csv.js';
 import { Conversation } from '../pipeline/conversation.js';
 import { makeLlm, makeTts } from '../providers/index.js';
 import { ToolContext } from '../agent/tools.js';
-import { placeOutboundCall, fetchRecording } from './twilioRest.js';
+import { placeOutboundCall, fetchRecording, searchAvailableNumbers, buyNumber } from './twilioRest.js';
 import { createCheckoutSession } from './billing.js';
 import { scrapeSite, buildKnowledgeBase } from '../integrations/scrape.js';
 import { scopedTenantId, isAdmin, requireAdmin } from './auth.js';
@@ -38,6 +40,7 @@ import { logger } from '../logger.js';
 
 const log = logger('api');
 export const apiRouter = Router();
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 // In-memory text-simulator sessions (no audio) — for testing the agent brain.
 const simSessions = new Map<string, { conv: Conversation }>();
@@ -144,6 +147,31 @@ apiRouter.delete('/agents/:id', async (req, res) => {
   res.sendStatus(204);
 });
 
+// Import a knowledge base from an uploaded file (PDF or text).
+apiRouter.post('/agents/:id/upload-kb', upload.single('file'), async (req, res) => {
+  const agent = await canAccessAgent(req, req.params.id);
+  if (!agent) return res.status(404).json({ error: 'not found' });
+  const file = (req as any).file;
+  if (!file) return res.status(400).json({ error: 'file required' });
+  try {
+    let text = '';
+    if (file.mimetype === 'application/pdf' || /\.pdf$/i.test(file.originalname || '')) {
+      const pdf = (await import('pdf-parse')).default;
+      text = (await pdf(file.buffer)).text;
+    } else {
+      text = file.buffer.toString('utf8');
+    }
+    if (!text.trim()) return res.status(422).json({ error: 'no readable text in file' });
+    const kb = await buildKnowledgeBase(text);
+    const knowledge_base = req.body?.replace === 'true' ? kb : [agent.knowledge_base, kb].filter(Boolean).join('\n\n');
+    await updateAgent(agent.id, { knowledge_base });
+    res.json({ knowledge_base });
+  } catch (e: any) {
+    log.error('upload-kb failed', e);
+    res.status(500).json({ error: e?.message || 'failed to read file' });
+  }
+});
+
 // Import a knowledge base by scraping the business's website.
 apiRouter.post('/agents/:id/scrape', async (req, res) => {
   const agent = await canAccessAgent(req, req.params.id);
@@ -183,6 +211,25 @@ apiRouter.get('/calls/:id/recording', async (req, res) => {
 apiRouter.get('/leads', async (req, res) => res.json(await listLeads({ tenantId: scopedTenantId(req) })));
 apiRouter.get('/appointments', async (req, res) => res.json(await listAppointments({ tenantId: scopedTenantId(req) })));
 apiRouter.get('/voicemails', async (req, res) => res.json(await listVoicemails({ tenantId: scopedTenantId(req) })));
+apiRouter.get('/sms-threads', async (req, res) => res.json(await listSmsThreads({ tenantId: scopedTenantId(req) })));
+
+// ── Phone-number provisioning (Twilio) ──
+apiRouter.get('/numbers/available', async (req, res) => {
+  if (!config.twilio.accountSid) return res.status(400).json({ error: 'Twilio not configured' });
+  res.json(await searchAvailableNumbers(req.query.areaCode as string));
+});
+apiRouter.post('/numbers/buy', async (req, res) => {
+  const { phoneNumber, agentId } = req.body || {};
+  const agent = await canAccessAgent(req, agentId);
+  if (!agent) return res.status(404).json({ error: 'agent not found' });
+  if (!phoneNumber) return res.status(400).json({ error: 'phoneNumber required' });
+  if (agent.tenant_id && !(await tenantCanCall(agent.tenant_id)))
+    return res.status(402).json({ error: 'tenant suspended or over limit' });
+  const result = await buyNumber(phoneNumber);
+  if (!result.ok) return res.status(502).json({ error: result.error || 'purchase failed' });
+  const updated = await updateAgent(agentId, { phone_number: phoneNumber });
+  res.json({ ok: true, sid: result.sid, agent: updated });
+});
 
 // ── CSV exports (tenant-scoped) ──
 function sendCsv(res: any, name: string, rows: any[], cols: string[]) {

@@ -28,6 +28,8 @@ export interface ToolContext {
   /** Running record of what we've learned about the caller. */
   contact: { name?: string; phone?: string; email?: string };
   callerNumber?: string;
+  /** Set when the caller's number matches a prior lead (returning-caller recognition). */
+  returningContact?: { name?: string; lastNotes?: string; lastSeen?: string };
 }
 
 export interface ToolResult {

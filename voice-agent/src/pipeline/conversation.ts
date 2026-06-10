@@ -24,7 +24,7 @@ export class Conversation {
     private agent: AgentConfig,
     private ctx: ToolContext,
   ) {
-    this.messages = [{ role: 'system', content: buildSystemPrompt(agent) }];
+    this.messages = [{ role: 'system', content: buildSystemPrompt(agent, ctx.returningContact) }];
   }
 
   /** Seed the opening greeting without an LLM round-trip. */

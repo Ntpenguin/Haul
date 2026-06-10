@@ -40,6 +40,12 @@ export interface AgentConfig {
   /** Owner/staff number to text when a booking or lead comes in (E.164). Optional. */
   notify_number: string;
 
+  /** Owner/staff email for post-call summaries + booking/lead notifications. Optional. */
+  notify_email: string;
+
+  /** Send SMS appointment reminders (24h + 1h before) to the booked contact. */
+  appointment_reminders: boolean;
+
   /** Outbound webhook hit on capture_lead / trigger_workflow (your CRM / n8n / GHL). */
   webhook_url: string;
 
@@ -96,6 +102,8 @@ export const DEFAULT_AGENT: Omit<AgentConfig, 'id' | 'name' | 'created_at' | 'up
   ],
   transfer_number: '',
   notify_number: '',
+  notify_email: '',
+  appointment_reminders: true,
   webhook_url: '',
   business_hours: {
     0: null,

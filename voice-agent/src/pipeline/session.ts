@@ -4,8 +4,9 @@ import { Conversation } from './conversation.js';
 import { ToolContext } from '../agent/tools.js';
 import { makeStt, makeLlm, makeTts } from '../providers/index.js';
 import { SttStream } from '../providers/types.js';
-import { attachCallSid, finishCall } from '../db/index.js';
-import { updateCallTwiml, transferTwiml, hangupTwiml, startRecording } from '../server/twilioRest.js';
+import { attachCallSid, finishCall, recentContactByPhone } from '../db/index.js';
+import { emailCallSummary } from '../integrations/email.js';
+import { updateCallTwiml, transferTwiml, hangupTwiml, startRecording, isE164 } from '../server/twilioRest.js';
 import { logger } from '../logger.js';
 
 const log = logger('session');
@@ -78,6 +79,18 @@ export class CallSession {
       contact: {},
       callerNumber: this.callerNumber,
     };
+    // Returning-caller recognition: greet known callers by name.
+    if (isE164(this.callerNumber)) {
+      const prior: any = await recentContactByPhone(
+        this.agent.tenant_id ? { tenantId: this.agent.tenant_id } : { agentId: this.agent.id },
+        this.callerNumber!,
+      ).catch(() => null);
+      if (prior?.name) {
+        ctx.returningContact = { name: prior.name, lastNotes: prior.notes, lastSeen: new Date(prior.created_at).toLocaleDateString() };
+        ctx.contact.name = prior.name;
+        if (prior.email) ctx.contact.email = prior.email;
+      }
+    }
     this.conv = new Conversation(makeLlm(), this.agent, ctx);
 
     this.stt = await makeStt().open({
@@ -230,7 +243,9 @@ export class CallSession {
     } catch {
       /* ignore */
     }
-    finishCall(this.callId, status).catch((e) => log.error('finishCall failed', e));
+    finishCall(this.callId, status)
+      .then(() => emailCallSummary(this.agent, this.callId))
+      .catch((e) => log.error('finishCall/summary failed', e));
     log.info(`call ${this.callId} ${status}`);
   }
 }

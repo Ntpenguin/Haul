@@ -6,6 +6,7 @@ import {
 } from '../db/index.js';
 import { isWithinBusinessHours } from '../agent/hours.js';
 import { postWebhook } from '../integrations/webhook.js';
+import { handleInboundSms } from '../integrations/smsAgent.js';
 import { sendSms, isE164 } from './twilioRest.js';
 import { logger } from '../logger.js';
 
@@ -130,6 +131,25 @@ twimlRouter.post('/voicemail-transcription', async (req, res) => {
   const text = req.body.TranscriptionText as string;
   if (callId && text) await setVoicemailTranscript(callId, text, req.body.RecordingUrl as string);
   res.sendStatus(204);
+});
+
+/** Inbound SMS: the same AI brain answers texts. */
+twimlRouter.post('/sms', async (req, res) => {
+  const from = req.body.From as string;
+  const to = req.body.To as string;
+  const body = ((req.body.Body as string) || '').trim();
+  const agent = await agentForNumber(to);
+  if (!agent || (agent.tenant_id && !(await tenantCanCall(agent.tenant_id)))) {
+    res.type('text/xml').send('<?xml version="1.0" encoding="UTF-8"?><Response/>');
+    return;
+  }
+  let reply = 'Thanks for your message!';
+  try {
+    reply = await handleInboundSms(agent, from, to, body);
+  } catch (e) {
+    log.error('sms handling failed', e);
+  }
+  res.type('text/xml').send(`<?xml version="1.0" encoding="UTF-8"?><Response><Message>${escapeXml(reply)}</Message></Response>`);
 });
 
 function escapeXml(s: string): string {

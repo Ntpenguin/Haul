@@ -142,7 +142,7 @@ export async function agentForNumber(toNumber: string): Promise<AgentConfig | nu
 export async function createCall(args: {
   agent_id: string;
   tenant_id?: string;
-  direction: 'inbound' | 'outbound';
+  direction: 'inbound' | 'outbound' | 'sms';
   from_number?: string;
   to_number?: string;
   call_sid?: string;
@@ -301,6 +301,71 @@ export interface CalendarConnection {
   refresh_token: string | null;
   calendar_id: string;
   expiry: string | null;
+}
+
+/** Most recent prior lead for a phone number (returning-caller recognition). */
+export function recentContactByPhone(opts: { tenantId?: string; agentId?: string }, phone: string) {
+  if (opts.tenantId)
+    return one<any>(`SELECT * FROM leads WHERE tenant_id=$1 AND phone=$2 ORDER BY created_at DESC LIMIT 1`, [opts.tenantId, phone]);
+  return one<any>(`SELECT * FROM leads WHERE agent_id=$1 AND phone=$2 ORDER BY created_at DESC LIMIT 1`, [opts.agentId, phone]);
+}
+
+// ── Appointment reminders ───────────────────────────────────────────────
+export interface DueReminder {
+  id: string;
+  agent_id: string;
+  tenant_id: string | null;
+  contact_phone: string | null;
+  contact_name: string | null;
+  start_at: string;
+  kind: '24h' | '1h';
+}
+/** Appointments whose 24h or 1h reminder is due and not yet sent. */
+export async function dueReminders(): Promise<DueReminder[]> {
+  const r24 = await query<any>(
+    `SELECT id, agent_id, tenant_id, contact_phone, contact_name, start_at, '24h' AS kind FROM appointments
+     WHERE contact_phone IS NOT NULL AND reminder_24_at IS NULL
+       AND start_at BETWEEN now() + interval '23 hours' AND now() + interval '24 hours'`,
+  );
+  const r1 = await query<any>(
+    `SELECT id, agent_id, tenant_id, contact_phone, contact_name, start_at, '1h' AS kind FROM appointments
+     WHERE contact_phone IS NOT NULL AND reminder_1_at IS NULL
+       AND start_at BETWEEN now() + interval '50 minutes' AND now() + interval '70 minutes'`,
+  );
+  return [...r24, ...r1];
+}
+export const markReminderSent = (id: string, kind: '24h' | '1h') =>
+  query(`UPDATE appointments SET ${kind === '24h' ? 'reminder_24_at' : 'reminder_1_at'}=now() WHERE id=$1`, [id]);
+
+// ── SMS threads (two-way AI texting) ────────────────────────────────────
+export interface SmsThread {
+  id: string;
+  agent_id: string;
+  tenant_id: string | null;
+  call_id: string | null;
+  contact_number: string;
+  history: any[];
+}
+export const getSmsThread = (agentId: string, contact: string) =>
+  one<SmsThread>(`SELECT * FROM sms_threads WHERE agent_id=$1 AND contact_number=$2`, [agentId, contact]);
+export async function upsertSmsThread(
+  agentId: string,
+  tenantId: string | undefined,
+  callId: string,
+  contact: string,
+  history: any[],
+): Promise<void> {
+  await query(
+    `INSERT INTO sms_threads (agent_id, tenant_id, call_id, contact_number, history, updated_at)
+     VALUES ($1,$2,$3,$4,$5,now())
+     ON CONFLICT (agent_id, contact_number) DO UPDATE SET history=$5, call_id=$3, updated_at=now()`,
+    [agentId, tenantId ?? null, callId, contact, JSON.stringify(history.slice(-20))],
+  );
+}
+export function listSmsThreads(opts: { tenantId?: string } = {}) {
+  if (opts.tenantId)
+    return query(`SELECT id, contact_number, updated_at FROM sms_threads WHERE tenant_id=$1 ORDER BY updated_at DESC LIMIT 200`, [opts.tenantId]);
+  return query(`SELECT id, contact_number, updated_at FROM sms_threads ORDER BY updated_at DESC LIMIT 200`);
 }
 
 // ── Voicemails ──────────────────────────────────────────────────────────

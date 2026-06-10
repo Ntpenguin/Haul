@@ -116,6 +116,39 @@ describe('agent templates + CSV export', () => {
   });
 });
 
+describe('two-way SMS agent', () => {
+  it('answers an inbound text with the brain and books an appointment', async () => {
+    const num = '+1512222' + Math.floor(1000 + Math.random() * 8999);
+    await request(app).post('/api/agents').set('Authorization', `Bearer ${ADMIN}`)
+      .send({ name: 'SMS', business_name: 'SMS Co', phone_number: num });
+    const res = await request(app).post('/twilio/sms').type('form')
+      .send({ From: '+15125557777', To: num, Body: 'I want to book a move' });
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('<Message>');
+    // Mock brain: "happy to help" → checks availability → books → confirms.
+    const res2 = await request(app).post('/twilio/sms').type('form')
+      .send({ From: '+15125557777', To: num, Body: 'yes that works' });
+    expect(res2.text).toMatch(/set|book|help/i);
+    const appts = (await request(app).get('/api/appointments').set('Authorization', `Bearer ${ADMIN}`)).body;
+    expect(appts.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
+describe('number provisioning + file KB upload', () => {
+  it('reports Twilio not configured for number search', async () => {
+    const res = await request(app).get('/api/numbers/available').set('Authorization', `Bearer ${ADMIN}`);
+    expect(res.status).toBe(400); // no TWILIO_ACCOUNT_SID in tests
+  });
+  it('imports a knowledge base from an uploaded text file', async () => {
+    const agent = (await request(app).post('/api/agents').set('Authorization', `Bearer ${ADMIN}`).send({ name: 'KBfile' })).body;
+    const res = await request(app).post(`/api/agents/${agent.id}/upload-kb`)
+      .set('Authorization', `Bearer ${ADMIN}`)
+      .attach('file', Buffer.from('Hours: 9 to 5. We do residential moves in Austin.'), 'info.txt');
+    expect(res.status).toBe(200);
+    expect(res.body.knowledge_base).toMatch(/Austin/);
+  });
+});
+
 describe('health', () => {
   it('reports liveness and readiness', async () => {
     expect((await request(app).get('/healthz')).status).toBe(200);

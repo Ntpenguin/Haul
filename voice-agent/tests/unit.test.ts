@@ -7,7 +7,8 @@ import { htmlToText } from '../src/integrations/scrape.js';
 import { isWithinBusinessHours } from '../src/agent/hours.js';
 import { AGENT_TEMPLATES, getTemplate } from '../src/agent/templates.js';
 import { toCsv } from '../src/server/csv.js';
-import { AgentConfig } from '../src/agent/types.js';
+import { buildSystemPrompt } from '../src/agent/prompt.js';
+import { DEFAULT_AGENT, AgentConfig } from '../src/agent/types.js';
 
 describe('takeSentence (TTS sentence chunking)', () => {
   it('returns null until a sentence completes', () => {
@@ -89,6 +90,19 @@ describe('CSV export', () => {
   it('renders rows with quoting for commas/quotes/newlines', () => {
     const csv = toCsv([{ name: 'Jane', notes: 'wants, a "quote"\nASAP' }], ['name', 'notes']);
     expect(csv).toBe('name,notes\nJane,"wants, a ""quote""\nASAP"\n');
+  });
+});
+
+describe('returning-caller prompt', () => {
+  const agent = { ...DEFAULT_AGENT, id: 'a', name: 'Ava', business_name: 'Acme' } as AgentConfig;
+  it('adds a returning-caller section when a known contact is provided', () => {
+    const p = buildSystemPrompt(agent, { name: 'Jane Doe', lastSeen: 'last week', lastNotes: 'wanted a 2BR move' });
+    expect(p).toMatch(/Returning caller/);
+    expect(p).toContain('Jane Doe');
+    expect(p).toMatch(/Greet them by name/);
+  });
+  it('omits it for unknown callers', () => {
+    expect(buildSystemPrompt(agent)).not.toMatch(/Returning caller/);
   });
 });
 

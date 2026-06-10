@@ -106,3 +106,48 @@ export async function sendSms(to: string, body: string, from?: string): Promise<
 export function isE164(s: string | undefined): boolean {
   return !!s && /^\+?[1-9]\d{7,14}$/.test(s.replace(/[\s()-]/g, ''));
 }
+
+/** Search Twilio for purchasable local numbers (optionally by area code). */
+export async function searchAvailableNumbers(areaCode?: string, country = 'US'): Promise<{ phoneNumber: string; locality?: string; region?: string }[]> {
+  if (!config.twilio.accountSid) return [];
+  const params = new URLSearchParams({ SmsEnabled: 'true', VoiceEnabled: 'true', PageSize: '10' });
+  if (areaCode) params.set('AreaCode', areaCode);
+  try {
+    const res = await fetch(`${base()}/AvailablePhoneNumbers/${country}/Local.json?${params}`, { headers: { Authorization: authHeader() } });
+    if (!res.ok) {
+      log.warn(`searchNumbers HTTP ${res.status}`);
+      return [];
+    }
+    const data = (await res.json()) as any;
+    return (data.available_phone_numbers ?? []).map((n: any) => ({ phoneNumber: n.phone_number, locality: n.locality, region: n.region }));
+  } catch (e) {
+    log.error('searchNumbers failed', e);
+    return [];
+  }
+}
+
+/** Buy a number and point its voice + SMS webhooks at this server. */
+export async function buyNumber(phoneNumber: string): Promise<{ ok: boolean; sid?: string; error?: string }> {
+  if (!config.twilio.accountSid) return { ok: false, error: 'Twilio not configured' };
+  if (!config.publicBaseUrl) return { ok: false, error: 'PUBLIC_BASE_URL not set' };
+  try {
+    const res = await fetch(`${base()}/IncomingPhoneNumbers.json`, {
+      method: 'POST',
+      headers: { Authorization: authHeader(), 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        PhoneNumber: phoneNumber,
+        VoiceUrl: `${config.publicBaseUrl}/twilio/inbound`,
+        VoiceMethod: 'POST',
+        SmsUrl: `${config.publicBaseUrl}/twilio/sms`,
+        SmsMethod: 'POST',
+        StatusCallback: `${config.publicBaseUrl}/twilio/status`,
+      }),
+    });
+    const data = (await res.json()) as any;
+    if (!res.ok) return { ok: false, error: data?.message || `HTTP ${res.status}` };
+    return { ok: true, sid: data.sid };
+  } catch (e: any) {
+    log.error('buyNumber failed', e);
+    return { ok: false, error: String(e?.message || e) };
+  }
+}

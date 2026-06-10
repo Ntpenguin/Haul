@@ -1,7 +1,13 @@
 import { AgentConfig } from './types.js';
 
+export interface ReturningContact {
+  name?: string;
+  lastNotes?: string;
+  lastSeen?: string;
+}
+
 /** Build the system prompt the LLM runs on, from the operator-configured agent. */
-export function buildSystemPrompt(agent: AgentConfig): string {
+export function buildSystemPrompt(agent: AgentConfig, returning?: ReturningContact): string {
   const now = new Date();
   const dateLine = now.toLocaleString('en-US', {
     weekday: 'long',
@@ -12,9 +18,21 @@ export function buildSystemPrompt(agent: AgentConfig): string {
     minute: '2-digit',
   });
 
+  const returningBlock = returning?.name
+    ? [
+        '',
+        '# Returning caller',
+        `This number belongs to a known contact: ${returning.name}.` +
+          (returning.lastSeen ? ` Last contact: ${returning.lastSeen}.` : '') +
+          (returning.lastNotes ? ` Previously: ${returning.lastNotes}.` : ''),
+        'Greet them by name and don\'t re-ask for details you already have.',
+      ]
+    : [];
+
   return [
     `You are ${agent.name}, an AI voice agent answering the phone for ${agent.business_name}.`,
     `The current date and time is ${dateLine} (the caller's local time).`,
+    ...returningBlock,
     '',
     '# Persona',
     agent.persona,

@@ -7,6 +7,7 @@ import { closePool } from './db/pool.js';
 import { getAgent } from './db/index.js';
 import { createApp } from './server/app.js';
 import { reportUsageToStripe } from './server/billing.js';
+import { processDueReminders } from './integrations/reminders.js';
 import { CallSession } from './pipeline/session.js';
 
 const log = logger('server');
@@ -55,6 +56,9 @@ async function main() {
     usageTimer = setInterval(() => reportUsageToStripe().catch((e) => log.error('usage report failed', e)), 5 * 60 * 1000);
   }
 
+  // Appointment reminders (24h + 1h before).
+  const reminderTimer = setInterval(() => processDueReminders().catch((e) => log.error('reminders failed', e)), 5 * 60 * 1000);
+
   server.listen(config.port, () => {
     log.info(`OpenVoice Agent v1 listening on :${config.port} (${config.env})`);
     log.info(`Dashboard: ${config.publicBaseUrl || `http://localhost:${config.port}`}/`);
@@ -67,6 +71,7 @@ async function main() {
   const shutdown = async (sig: string) => {
     log.info(`${sig} received — shutting down`);
     if (usageTimer) clearInterval(usageTimer);
+    clearInterval(reminderTimer);
     server.close();
     wss.close();
     await closePool().catch(() => {});

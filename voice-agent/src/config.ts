@@ -45,6 +45,9 @@ const Env = z.object({
   GOOGLE_CLIENT_ID: z.string().default(''),
   GOOGLE_CLIENT_SECRET: z.string().default(''),
 
+  RESEND_API_KEY: z.string().default(''),
+  EMAIL_FROM: z.string().default('OpenVoice Agent <noreply@example.com>'),
+
   SENTRY_DSN: z.string().default(''),
 });
 
@@ -101,6 +104,7 @@ export const config = {
     enabled: Boolean(env.STRIPE_SECRET_KEY),
   },
   google: { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET, enabled: Boolean(env.GOOGLE_CLIENT_ID) },
+  email: { resendKey: env.RESEND_API_KEY, from: env.EMAIL_FROM, enabled: Boolean(env.RESEND_API_KEY) },
   sentryDsn: env.SENTRY_DSN,
 };
 
