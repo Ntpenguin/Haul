@@ -309,7 +309,7 @@ function GigDetail({ gigId }: { gigId: string }) {
             <DetailRow label="Stairs (to)" value={`${gig.stairs_to} flights`} />
             {gig.distance_miles && <DetailRow label="Distance" value={`${gig.distance_miles} mi`} />}
             {gig.staging && <DetailRow label="Home staging" value="Yes (+30%)" />}
-            {gig.packing_service && <DetailRow label="Packing service" value="Yes (+25%)" />}
+            {gig.packing_service && <DetailRow label="Packing service" value="Yes (+35%)" />}
             {gig.customer_notes && <DetailRow label="Notes" value={gig.customer_notes} />}
           </Card>
 

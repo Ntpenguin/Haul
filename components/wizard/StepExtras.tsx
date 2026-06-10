@@ -128,7 +128,7 @@ export function StepExtras() {
           <AccessRow
             icon="cube-outline"
             label="Packing service"
-            sub="Crew brings boxes & materials and packs for you (+25%)"
+            sub="Crew brings boxes & materials and packs for you (+35%)"
             control={<Toggle value={draft.packing_service} onChange={(v) => updateDraft({ packing_service: v })} />}
             last
           />

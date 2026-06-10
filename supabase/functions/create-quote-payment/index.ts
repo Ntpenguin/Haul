@@ -46,8 +46,11 @@ const DISTANCE_PER_MILE = 125;
 const LONG_DISTANCE_MULTIPLIER = 1.5;
 const LONG_DISTANCE_THRESHOLD = 50;
 const STAGING_SURCHARGE_PCT = 0.30;
-const PACKING_SURCHARGE_PCT = 0.25;
+const PACKING_SURCHARGE_PCT = 0.35;
 const PREP_SURCHARGES: Record<string, number> = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 };
+// Partial-load tier — about half (or less) of a full Studio / 1 BR → 75% of base.
+const PARTIAL_LOAD_MULT = 0.75;
+const PARTIAL_LOAD_SIZES = new Set(['Studio', '1 BR']);
 
 function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 3959; // Earth radius in miles
@@ -61,8 +64,11 @@ function haversineMiles(lat1: number, lng1: number, lat2: number, lng2: number):
 // calcQuote() in landing/intake.html. Returns null when the move can't be
 // auto-quoted (e.g. custom / unknown size) — same as the intake form.
 function computeQuoteTotalCents(q: any): number | null {
-  const base = BASE_PRICES[q.items_size];
-  if (!base) return null;
+  const fullBase = BASE_PRICES[q.items_size];
+  if (!fullBase) return null;
+  // Partial load (Studio / 1 BR only) — 75% of base, before long-distance/%-add-ons.
+  const isPartial = !!q.partial_load && PARTIAL_LOAD_SIZES.has(q.items_size);
+  const base = isPartial ? Math.round(fullBase * PARTIAL_LOAD_MULT) : fullBase;
 
   const hasStairs = (lbl: string) => lbl === 'Stairs' || lbl === 'Both';
   const hasElevator = (lbl: string) => lbl === 'Elevator' || lbl === 'Both';
@@ -157,7 +163,7 @@ serve(async (req) => {
       .from('quote_requests')
       .select(
         'id, name, email, phone, lead_number, payment_status, estimated_price_cents, ' +
-        'items_size, service_type, stairs_pickup, stairs_dropoff, flights_pickup, ' +
+        'items_size, partial_load, service_type, stairs_pickup, stairs_dropoff, flights_pickup, ' +
         'flights_dropoff, parking, special_items, staging, packing_service, prep_needed, answers, ' +
         'referral_code, referral_credit_cents',
       )

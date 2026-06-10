@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://joiukvttuamaanrgzfrz.supabase.co; connect-src https://joiukvttuamaanrgzfrz.supabase.co;">
+<title>Become a mover — Fast Fix Work</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#FAF7F2;--card:#fff;--ink:#1A1714;--ink2:#534C44;--ink3:#8B8379;--ink4:#B8B0A4;
+    --amber:#C98B3F;--amber-deep:#8B5E2B;--amber-soft:#F5EDE0;--amber-mid:#E8C48A;--success:#4A8066;
+    --surface:#F2EEE7;--line:rgba(26,23,20,.08);--line2:rgba(26,23,20,.18)}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink2);font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.5}
+  .wrap{max-width:640px;margin:0 auto;padding:28px 18px 80px}
+  .brand{font-family:'Fraunces',Georgia,serif;color:var(--amber);font-weight:700;font-size:24px;text-align:center;margin-bottom:6px}
+  h1{font-family:'Fraunces',Georgia,serif;color:var(--ink);font-size:26px;letter-spacing:-.5px;margin:0 0 4px;text-align:center}
+  .sub{text-align:center;color:var(--ink3);font-size:14px;margin-bottom:22px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
+  .card h2{font-family:'Fraunces',Georgia,serif;font-size:17px;color:var(--ink);margin:0 0 12px}
+  label.fl{display:block;font-size:12px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.05em;margin:0 0 5px}
+  label.fl .opt{font-weight:400;text-transform:none;letter-spacing:0;color:var(--ink4)}
+  input,select,textarea{width:100%;padding:11px 12px;border:1.5px solid var(--line2);border-radius:10px;font-size:15px;color:var(--ink);font-family:inherit;background:#fff}
+  input:focus,select:focus,textarea:focus{outline:none;border-color:var(--amber)}
+  textarea{resize:vertical;min-height:96px}
+  .row{display:flex;gap:10px}.row>*{flex:1}
+  .mt{margin-top:12px}
+  .chips{display:flex;flex-wrap:wrap;gap:8px}
+  .chip{padding:9px 14px;border:1.5px solid var(--line2);border-radius:999px;background:#fff;font-size:14px;font-weight:600;color:var(--ink2);cursor:pointer}
+  .chip.on{background:var(--amber-soft);border-color:var(--amber);color:var(--amber-deep);box-shadow:2px 2px 0 var(--amber)}
+  .opt-card{display:flex;align-items:center;gap:12px;padding:14px;border:1.5px solid var(--line2);border-radius:12px;background:#fff;cursor:pointer;margin-bottom:8px}
+  .opt-card.on{background:var(--amber-soft);border-color:var(--amber);box-shadow:2px 2px 0 var(--amber)}
+  .opt-card .t{font-size:15px;font-weight:700;color:var(--ink)}
+  .opt-card .s{font-size:13px;color:var(--ink3)}
+  .selfie-zone{display:flex;flex-direction:column;align-items:center;gap:10px}
+  .selfie-ring{width:150px;height:150px;border-radius:50%;border:2px dashed var(--line2);background:var(--surface);display:flex;align-items:center;justify-content:center;overflow:hidden;cursor:pointer}
+  .selfie-ring img{width:100%;height:100%;object-fit:cover}
+  .selfie-ring .ph{font-size:13px;color:var(--ink3);text-align:center;padding:0 14px}
+  .reqs{margin-top:10px;display:flex;flex-direction:column;gap:5px}
+  .reqs .r{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--ink3)}
+  .reqs .r.ok{color:var(--success)}
+  .reqs .r .dot{width:16px;height:16px;border-radius:50%;border:1.5px solid var(--line2);display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#fff;flex-shrink:0}
+  .reqs .r.ok .dot{background:var(--success);border-color:var(--success)}
+  .terms{display:flex;align-items:flex-start;gap:11px;padding:14px;border:1.5px solid var(--line2);border-radius:12px;background:#fff;cursor:pointer}
+  .terms.on{background:var(--amber-soft);border-color:var(--amber)}
+  .terms input{width:20px;height:20px;flex-shrink:0;accent-color:var(--amber);margin-top:1px}
+  .terms span{font-size:13px;color:var(--ink2);line-height:1.5}
+  .terms a{color:var(--amber-deep);font-weight:600}
+  .submit{width:100%;padding:15px;background:var(--amber);color:#fff;border:none;border-radius:12px;font-size:16px;font-weight:700;cursor:pointer;margin-top:6px}
+  .submit:disabled{opacity:.5;cursor:not-allowed}
+  .note{font-size:12px;color:var(--ink3);margin-top:6px}
+  .err{color:#b3261e;font-size:13px;margin-top:8px}
+  .lock{background:var(--amber-soft);border:1.5px solid var(--amber-mid);border-radius:10px;padding:11px 13px;font-size:12.5px;color:var(--ink2);line-height:1.5;margin-top:10px}
+  .outcome{text-align:center;padding:30px 10px}
+  .outcome .ico{width:84px;height:84px;border-radius:50%;background:var(--success);color:#fff;font-size:42px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+  .outcome h1{margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="wrap" id="wrap">
+  <div class="brand">Fast Fix Work</div>
+  <h1>Become a mover</h1>
+  <div class="sub">Earn on your own schedule. Takes about 3 minutes.</div>
+
+  <div class="card">
+    <h2>Your name</h2>
+    <div class="row">
+      <div><label class="fl">First name</label><input id="f-first" placeholder="Marcus" autocomplete="given-name"></div>
+      <div><label class="fl">Last name</label><input id="f-last" placeholder="Johnson" autocomplete="family-name"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>How do you work?</h2>
+    <div class="opt-card" data-acct="independent"><div style="flex:1"><div class="t">Independent contractor</div><div class="s">I work on my own</div></div></div>
+    <div class="opt-card" data-acct="business"><div style="flex:1"><div class="t">Business / Company</div><div class="s">I represent a business with a team</div></div></div>
+    <div id="biz-name-wrap" style="display:none" class="mt"><label class="fl">Business name</label><input id="f-bizname" placeholder="Austin Moving Co."></div>
+  </div>
+
+  <div class="card">
+    <h2>Contact info</h2>
+    <div class="row">
+      <div><label class="fl">Phone</label><input id="f-phone" type="tel" placeholder="(512) 555-5555" autocomplete="tel"></div>
+      <div><label class="fl">Email</label><input id="f-email" type="email" placeholder="you@example.com" autocomplete="email"></div>
+    </div>
+    <div class="mt"><label class="fl">Home address <span class="opt">(optional)</span></label><input id="f-address" placeholder="123 Main St, Austin, TX 78701" autocomplete="street-address"></div>
+  </div>
+
+  <div class="card">
+    <h2>Your vehicle</h2>
+    <div id="f-vehicle"></div>
+    <div id="vmm-wrap" style="display:none" class="mt">
+      <label class="fl">Vehicle make &amp; model</label>
+      <input id="f-vmm" list="vmm-list" placeholder="e.g. Ford F-150, Ram ProMaster…">
+      <datalist id="vmm-list"></datalist>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Your skills <span style="font-weight:400;font-size:13px;color:var(--ink4);font-family:Inter">(optional)</span></h2>
+    <div class="chips" id="f-skills"></div>
+  </div>
+
+  <div class="card">
+    <h2>Service area</h2>
+    <label class="fl">ZIP codes you'll work in</label>
+    <input id="f-zips" inputmode="numeric" placeholder="78701, 78702, 78704">
+    <div class="note">Comma-separated. You can change these later.</div>
+  </div>
+
+  <div class="card">
+    <h2>Take a selfie <span style="font-weight:400;font-size:13px;color:var(--ink4);font-family:Inter">(optional)</span></h2>
+    <div class="note" style="margin:0 0 12px">A clear photo of your face helps verify your identity and shows on your profile. You can add it later if you'd rather.</div>
+    <div class="selfie-zone">
+      <label class="selfie-ring" id="selfie-ring" for="f-selfie">
+        <span class="ph" id="selfie-ph">Tap to add<br>your selfie</span>
+      </label>
+      <input type="file" id="f-selfie" accept="image/*" capture="user" style="display:none">
+      <span class="note" id="selfie-status">Optional</span>
+    </div>
+    <div class="lock">🔒 Your selfie is stored securely and used only to verify your identity.</div>
+  </div>
+
+  <div class="card">
+    <h2>Create your account</h2>
+    <div class="note" style="margin:0 0 12px">You'll use this email and password to sign in to the app once you're approved.</div>
+    <label class="fl">Password</label>
+    <input id="f-password" type="password" placeholder="Create a password" autocomplete="new-password">
+    <div class="reqs" id="pw-reqs"></div>
+  </div>
+
+  <div class="card">
+    <h2>About you</h2>
+    <label class="fl">Years of experience</label>
+    <input id="f-years" inputmode="numeric" placeholder="e.g. 3">
+    <div class="mt"><label class="fl">Bio <span class="opt">(optional)</span></label>
+      <textarea id="f-bio" maxlength="500" placeholder="5 years of moving experience, own a 16ft box truck. Licensed, insured, and always on time."></textarea>
+    </div>
+  </div>
+
+  <label class="terms" id="terms-row" style="margin-bottom:14px">
+    <input type="checkbox" id="f-terms">
+    <span>I have read and agree to the <a href="/terms.html" target="_blank">Terms &amp; Conditions</a> and <a href="/privacy.html" target="_blank">Privacy Policy</a>.</span>
+  </label>
+
+  <button class="submit" id="submit">Submit application</button>
+  <div class="err" id="err" style="display:none"></div>
+</div>
+
+<script>
+const SB_URL='https://joiukvttuamaanrgzfrz.supabase.co';
+const SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpvaXVrdnR0dWFtYWFucmd6ZnJ6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzkwNTY5ODksImV4cCI6MjA5NDYzMjk4OX0.TcpzGaMihyKUZNtuRncasXImyv6bb0De1lf_wQa61Ew';
+
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+// ── Mirrors of lib/validate.ts + lib/nameFormat.ts ────────────────────────────
+const filterName=s=>s.replace(/[^a-zA-Z\s\-']/g,'');
+const properCase=s=>s.split(/(\s+|-)/g).map(p=>(p===' '||p==='-'||!p)?p:p.charAt(0).toUpperCase()+p.slice(1).toLowerCase()).join('');
+const formatPhone=s=>{const d=s.replace(/\D/g,'').slice(0,10);if(d.length<=3)return d;if(d.length<=6)return `(${d.slice(0,3)}) ${d.slice(3)}`;return `(${d.slice(0,3)}) ${d.slice(3,6)}-${d.slice(6)}`;};
+const isValidName=n=>n.trim().length>=1&&/^[a-zA-Z\s\-']+$/.test(n.trim());
+const isValidEmail=e=>/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(e.trim());
+const isValidPhone=p=>p.replace(/\D/g,'').length===10;
+const isValidPassword=p=>p.length>=8&&/[A-Z]/.test(p)&&/[a-z]/.test(p)&&/[0-9]/.test(p)&&/[^A-Za-z0-9]/.test(p);
+const pwReqs=p=>({length:p.length>=8,uppercase:/[A-Z]/.test(p),lowercase:/[a-z]/.test(p),digit:/[0-9]/.test(p),symbol:/[^A-Za-z0-9]/.test(p)});
+
+// ── Form state ────────────────────────────────────────────────────────────────
+const S={accountType:'independent',vehicleType:null,skills:[],selfieUrl:null,selfieUploading:false};
+
+// Account type (matches StepAccountType)
+$('f-vehicle');
+document.querySelectorAll('[data-acct]').forEach(el=>el.addEventListener('click',()=>{
+  S.accountType=el.dataset.acct;
+  document.querySelectorAll('[data-acct]').forEach(c=>c.classList.toggle('on',c.dataset.acct===S.accountType));
+  $('biz-name-wrap').style.display=S.accountType==='business'?'':'none';
+}));
+document.querySelector('[data-acct="independent"]').classList.add('on');
+
+// Vehicle options (matches VEHICLE_OPTIONS in mover-signup.tsx)
+const VEHICLE_OPTIONS=[
+  {id:'own-truck',label:'I own a truck',sub:'Bring your own'},
+  {id:'own-van',label:'I own a van',sub:'Great for small moves'},
+  {id:'muscle',label:'Muscle-only (no vehicle)',sub:'No vehicle, no problem'},
+  {id:'rent',label:'I rent trucks as needed',sub:"We'll help find one"},
+];
+$('f-vehicle').innerHTML=VEHICLE_OPTIONS.map(o=>`<div class="opt-card" data-veh="${o.id}"><div style="flex:1"><div class="t">${esc(o.label)}</div><div class="s">${esc(o.sub)}</div></div></div>`).join('');
+$('f-vehicle').addEventListener('click',e=>{const el=e.target.closest('[data-veh]');if(!el)return;
+  S.vehicleType=el.dataset.veh;
+  document.querySelectorAll('[data-veh]').forEach(c=>c.classList.toggle('on',c.dataset.veh===S.vehicleType));
+  const needs=S.vehicleType&&S.vehicleType!=='muscle';
+  $('vmm-wrap').style.display=needs?'':'none';
+  if(!needs)$('f-vmm').value='';
+});
+
+// Vehicle make/model suggestions (mirrors VEHICLE_SUGGESTIONS)
+const VEHICLE_SUGGESTIONS=['Ford F-150','Ford F-250','Ford F-350','Chevrolet Silverado 1500','Chevrolet Silverado 2500','Chevrolet Silverado 3500','GMC Sierra 1500','GMC Sierra 2500','GMC Sierra 3500','Ram 1500','Ram 2500','Ram 3500','Toyota Tundra','Toyota Tacoma','Nissan Titan','Nissan Frontier','Ford Transit Cargo Van','Ford E-350','Ford E-450','Mercedes-Benz Sprinter','Ram ProMaster','Ram ProMaster City','Chevrolet Express Cargo','GMC Savana Cargo','Isuzu NPR','Isuzu NQR','Isuzu NPR-HD','10ft Box Truck','16ft Box Truck','20ft Box Truck','24ft Box Truck','26ft Box Truck','Freightliner Step Van','Ford Transit Passenger','Dodge Grand Caravan','Chrysler Pacifica','Toyota Sienna','Honda Odyssey','Nissan NV Cargo','Nissan NV Passenger'];
+$('vmm-list').innerHTML=VEHICLE_SUGGESTIONS.map(s=>`<option value="${esc(s)}">`).join('');
+
+// Skills (matches ALL_SKILLS)
+const ALL_SKILLS=[
+  {key:'packing',label:'Packing / Unpacking'},{key:'box-truck',label:'Box Truck / Trailer'},
+  {key:'furniture-assembly',label:'Furniture Assembly'},{key:'tv-mounting',label:'TV Mounting'},
+  {key:'junk-removal',label:'Junk Removal'},{key:'towing',label:'Towing'},
+  {key:'cleaning',label:'Cleaning'},{key:'landscaping',label:'Landscaping'},
+  {key:'upholstery',label:'Upholstery'},{key:'remodeling',label:'Remodeling'},
+  {key:'construction',label:'Construction'},{key:'hauling',label:'Hauling'},
+  {key:'painting',label:'Painting'},{key:'flooring',label:'Flooring'},
+];
+$('f-skills').innerHTML=ALL_SKILLS.map(s=>`<button class="chip" data-sk="${s.key}">${esc(s.label)}</button>`).join('');
+$('f-skills').addEventListener('click',e=>{const b=e.target.closest('[data-sk]');if(!b)return;
+  const k=b.dataset.sk,i=S.skills.indexOf(k);if(i>=0)S.skills.splice(i,1);else S.skills.push(k);
+  b.classList.toggle('on');});
+
+// Name + phone live formatting
+$('f-first').addEventListener('input',e=>{e.target.value=properCase(filterName(e.target.value));});
+$('f-last').addEventListener('input',e=>{e.target.value=properCase(filterName(e.target.value));});
+$('f-phone').addEventListener('input',e=>{e.target.value=formatPhone(e.target.value);});
+
+// Password requirement checklist
+const REQ_LABELS=[['length','At least 8 characters'],['uppercase','One uppercase letter (A–Z)'],['lowercase','One lowercase letter (a–z)'],['digit','One number (0–9)'],['symbol','One symbol (!@#$…)']];
+function renderPwReqs(){const r=pwReqs($('f-password').value);
+  $('pw-reqs').innerHTML=REQ_LABELS.map(([k,lbl])=>`<div class="r ${r[k]?'ok':''}"><span class="dot">${r[k]?'✓':''}</span>${esc(lbl)}</div>`).join('');}
+$('f-password').addEventListener('input',renderPwReqs);renderPwReqs();
+
+// Terms
+$('f-terms').addEventListener('change',()=>$('terms-row').classList.toggle('on',$('f-terms').checked));
+
+// Selfie → upload to quote-photos bucket (anon-writable, same path as intake/business)
+$('f-selfie').addEventListener('change',async e=>{
+  const file=e.target.files&&e.target.files[0];if(!file)return;
+  const url=URL.createObjectURL(file);
+  $('selfie-ph').style.display='none';
+  let img=$('selfie-ring').querySelector('img');
+  if(!img){img=document.createElement('img');$('selfie-ring').appendChild(img);}
+  img.src=url;
+  S.selfieUploading=true;S.selfieUrl=null;$('selfie-status').textContent='Uploading…';
+  const ext=(file.name.split('.').pop()||'jpg').toLowerCase();
+  const path=`mover-selfies/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  try{
+    const r=await fetch(`${SB_URL}/storage/v1/object/quote-photos/${path}`,{method:'POST',
+      headers:{'Authorization':`Bearer ${SB_KEY}`,'apikey':SB_KEY,'Content-Type':file.type||'image/jpeg'},body:file});
+    if(r.ok){S.selfieUrl=`${SB_URL}/storage/v1/object/public/quote-photos/${path}`;$('selfie-status').textContent='Selfie added ✓';}
+    else $('selfie-status').textContent='Upload failed — tap to retry';
+  }catch(_){$('selfie-status').textContent='Upload failed — tap to retry';}
+  S.selfieUploading=false;
+});
+
+// Submit
+function showErr(m){const e=$('err');e.textContent=m;e.style.display='block';e.scrollIntoView({behavior:'smooth',block:'center'});}
+$('submit').addEventListener('click',async()=>{
+  $('err').style.display='none';
+  const first=$('f-first').value.trim(),last=$('f-last').value.trim();
+  const phone=$('f-phone').value.trim(),email=$('f-email').value.trim();
+  const password=$('f-password').value;
+  const zips=$('f-zips').value.split(',').map(z=>z.trim()).filter(Boolean);
+  if(!isValidName(first))return showErr('Enter a valid first name.');
+  if(!isValidName(last))return showErr('Enter a valid last name.');
+  if(S.accountType==='business'&&!$('f-bizname').value.trim())return showErr('Enter your business name.');
+  if(!isValidPhone(phone))return showErr('Enter a valid 10-digit phone number.');
+  if(!isValidEmail(email))return showErr('Enter a valid email address.');
+  if(!S.vehicleType)return showErr('Select a vehicle option.');
+  if(S.vehicleType!=='muscle'&&!$('f-vmm').value.trim())return showErr('Enter your vehicle make and model.');
+  if(zips.length<1)return showErr('Enter at least one ZIP code.');
+  if(S.selfieUploading)return showErr('Hang on — your selfie is still uploading.');
+  if(!isValidPassword(password))return showErr('Your password does not meet all requirements.');
+  if(!$('f-terms').checked)return showErr('Please agree to the Terms & Conditions and Privacy Policy.');
+
+  const btn=$('submit');btn.disabled=true;btn.textContent='Submitting…';
+  const payload={
+    first_name:first,last_name:last,phone,email,password,
+    account_type:S.accountType,business_name:$('f-bizname').value.trim(),
+    address:$('f-address').value.trim(),
+    vehicle_type:S.vehicleType,vehicle_make_model:$('f-vmm').value.trim(),
+    skills:S.skills,service_zips:zips.join(','),
+    years_experience:$('f-years').value.trim(),bio:$('f-bio').value.trim(),
+    selfie_url:S.selfieUrl,
+  };
+  try{
+    const r=await fetch(`${SB_URL}/functions/v1/register-mover`,{method:'POST',
+      headers:{'Authorization':`Bearer ${SB_KEY}`,'apikey':SB_KEY,'Content-Type':'application/json'},
+      body:JSON.stringify(payload)});
+    const d=await r.json();
+    if(!r.ok)throw new Error(d.error||'Signup failed');
+    showDone();
+  }catch(e){
+    btn.disabled=false;btn.textContent='Submit application';
+    showErr(e.message||'Something went wrong. Please try again.');
+  }
+});
+
+function showDone(){
+  $('wrap').innerHTML=`
+    <div class="brand">Fast Fix Work</div>
+    <div class="outcome">
+      <div class="ico">✓</div>
+      <h1>Application submitted!</h1>
+      <p style="color:var(--ink2);font-size:15px;max-width:380px;margin:0 auto 8px">
+        Thanks for applying. We'll review your profile and approve you shortly.</p>
+      <p style="color:var(--ink3);font-size:14px;max-width:380px;margin:0 auto">
+        Once approved, sign in to the Fast Fix Work app with the email and password you just created to start picking up jobs.</p>
+      <div class="lock" style="max-width:380px;margin:22px auto 0">Questions? Call or text <a href="tel:5127771628" style="color:var(--amber-deep);font-weight:700;text-decoration:none">512-777-1628</a>.</div>
+    </div>`;
+  window.scrollTo(0,0);
+}
+</script>
+</body>
+</html>

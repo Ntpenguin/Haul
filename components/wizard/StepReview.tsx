@@ -99,7 +99,7 @@ export function StepReview() {
               {price.longCarryCents > 0 && <PriceRow label="Long carry" value={`+${formatCents(price.longCarryCents)}`} />}
               {price.heavyItemsCents > 0 && <PriceRow label="Heavy items" value={`+${formatCents(price.heavyItemsCents)}`} />}
               {price.stagingCents > 0 && <PriceRow label="Home staging (+30%)" value={`+${formatCents(price.stagingCents)}`} />}
-              {price.packingCents > 0 && <PriceRow label="Packing service (+25%)" value={`+${formatCents(price.packingCents)}`} />}
+              {price.packingCents > 0 && <PriceRow label="Packing service (+35%)" value={`+${formatCents(price.packingCents)}`} />}
             </>
           )}
           <PriceRow label="Taxes & fees" value={formatCents(price.taxesCents)} />

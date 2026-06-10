@@ -544,8 +544,8 @@ function renderPricing() {
           ['Stairs', '$50 / flight (per location)'], ['Elevator', '$40 / location'],
           ['Long carry (100+ ft)', '$50'], ['Distance', '$1.25/mi over 15 free'],
           ['Long distance (50+ mi)', '+50% of base'], ['Home staging', '+30% of base'],
-          ['Packing service', '+25% of base'], ['Bed frame disassembly', '$50'],
-          ['Shelving disassembly', '$25'],
+          ['Packing service', '+35% of base'], ['Partial load (Studio/1BR)', '−25% of base'],
+          ['Bed frame disassembly', '$50'], ['Shelving disassembly', '$25'],
         ])}
       </div>
       <div>
@@ -876,6 +876,11 @@ h1 .hl::before{content:"";position:absolute;left:2px;right:2px;top:13px;bottom:1
 // and mark it paid (cash/Venmo/Zelle). Separate from app movers (mover_profiles).
 function crewOwed(workerId){ return (cache.workerPayouts||[]).filter(p=>p.worker_id===workerId&&p.status==='owed').reduce((s,p)=>s+(p.amount_cents||0),0); }
 function crewPaid(workerId){ return (cache.workerPayouts||[]).filter(p=>p.worker_id===workerId&&p.status==='paid').reduce((s,p)=>s+(p.amount_cents||0),0); }
+// Crew & pay + gig crew assignment now use the SAME workers as the Workers tab:
+// the app movers (mover_profiles), keyed by their profiles(id). The loginless
+// `workers` table (054) is retired.
+function activeMovers(){ return (cache.moverProfiles||[]).filter(m=>!m.deleted_at); }
+function moverName(id){ const p=(cache.profiles||[]).find(x=>x.id===id); return (p&&(p.full_name||p.email))||'Worker'; }
 function gigById(gid){ return (cache.gigs||[]).find(g=>String(g.id)===String(gid)); }
 function gigLabel(g){
   if(!g) return 'Ad-hoc (no job)';
@@ -884,20 +889,20 @@ function gigLabel(g){
   return `${what}${when ? ' · ' + when : ''} · ${String(g.id).slice(0,8)}`;
 }
 function renderCrew(){
-  const workers = cache.workers || [];
+  const movers = activeMovers();
   const payouts = cache.workerPayouts || [];
   const totalOwed = payouts.filter(p=>p.status==='owed').reduce((s,p)=>s+(p.amount_cents||0),0);
   const fld = 'padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px';
   const accentBtn = 'padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer';
-  const copyBtn = val => val ? `<button class="copy-btn" data-copy="${escAttr(val)}" style="margin-left:6px;padding:1px 7px;background:var(--surface);border:1px solid var(--line2);border-radius:6px;font-size:11px;cursor:pointer">copy</button>` : '';
 
   const gigOpts = (cache.gigs||[]).filter(g=>g.status!=='draft')
     .map(g=>`<option value="${escAttr(g.id)}" data-payout="${g.mover_payout_cents||0}">${esc(gigLabel(g))}${g.mover_payout_cents?(' — '+fmtMoney(g.mover_payout_cents)):''}</option>`).join('');
-  const workerOpts = workers.filter(w=>w.active!==false).map(w=>`<option value="${escAttr(w.id)}">${esc(w.name)}</option>`).join('');
+  const workerOpts = movers.map(m=>`<option value="${escAttr(m.id)}">${esc(moverName(m.id))}</option>`).join('');
 
-  const cards = workers.length ? workers.map(w=>{
-    const owed = crewOwed(w.id), paid = crewPaid(w.id);
-    const rows = payouts.filter(p=>p.worker_id===w.id)
+  const cards = movers.length ? movers.map(m=>{
+    const owed = crewOwed(m.id), paid = crewPaid(m.id);
+    const profile = (cache.profiles||[]).find(p=>p.id===m.id) || {};
+    const rows = payouts.filter(p=>p.worker_id===m.id)
       .sort((a,b)=> (a.status===b.status ? 0 : a.status==='owed' ? -1 : 1))
       .map(p=>{
         const g = gigById(p.gig_id);
@@ -914,11 +919,11 @@ function renderCrew(){
           </td>
         </tr>`;
       }).join('') || `<tr><td colspan="4" class="empty">No payouts logged yet.</td></tr>`;
-    return `<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px;${w.active===false?'opacity:.6':''}">
+    return `<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px">
       <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
         <div style="min-width:0">
-          <div style="font-size:16px;font-weight:800;color:var(--ink)">${esc(w.name)}${w.active===false?' <span style="font-size:11px;font-weight:600;color:var(--ink3)">INACTIVE</span>':''}</div>
-          <div style="font-size:12px;color:var(--ink3);margin-top:2px">${[w.phone,w.email].filter(Boolean).map(esc).join(' · ')||'—'}${w.payout_handle?` · <span style="color:var(--success);font-weight:700">Pay: ${esc(w.payout_handle)}</span>${copyBtn(w.payout_handle)}`:''}</div>
+          <div style="font-size:16px;font-weight:800;color:var(--ink);cursor:pointer" onclick="showWorkerModal('${m.id}')">${esc(moverName(m.id))} <span style="font-size:11px;font-weight:600;color:var(--ink3)">${badge(m.status)}</span></div>
+          <div style="font-size:12px;color:var(--ink3);margin-top:2px">${[profile.phone,profile.email].filter(Boolean).map(esc).join(' · ')||'—'}</div>
         </div>
         <div style="text-align:right;white-space:nowrap">
           <div style="font-size:18px;font-weight:800;color:${owed?'#8B6914':'var(--ink3)'}">${fmtMoney(owed)} <span style="font-size:11px;font-weight:600;color:var(--ink3)">owed</span></div>
@@ -929,51 +934,27 @@ function renderCrew(){
         <thead><tr><th>Job</th><th>Amount</th><th>Status</th><th></th></tr></thead>
         <tbody>${rows}</tbody>
       </table></div>
-      <div style="margin-top:10px;display:flex;gap:8px">
-        <button onclick="toggleWorkerActive('${w.id}', ${w.active===false?'true':'false'})" style="padding:5px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:7px;font-size:12px;font-weight:600;cursor:pointer">${w.active===false?'Reactivate':'Deactivate'}</button>
-        <button onclick="deleteWorker('${w.id}')" style="padding:5px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:7px;font-size:12px;font-weight:600;color:#b4452e;cursor:pointer">Delete worker</button>
-      </div>
     </div>`;
-  }).join('') : `<p class="empty">No crew yet — add your first worker above.</p>`;
+  }).join('') : `<p class="empty">No workers yet — they appear here once approved in the <b>Workers</b> tab (web signup or “+ Add worker”).</p>`;
 
   return `
     <h2 class="page-title">Crew &amp; pay</h2>
-    <p class="page-sub">${workers.length} worker${workers.length===1?'':'s'} · <b style="color:#8B6914">${fmtMoney(totalOwed)} owed</b>. Loginless roster — log a payout per job, pay by cash/Venmo/Zelle, then mark paid.</p>
+    <p class="page-sub">${movers.length} worker${movers.length===1?'':'s'} · <b style="color:#8B6914">${fmtMoney(totalOwed)} owed</b>. Same workers as the Workers tab — log a manual payout per job (cash/Venmo/Zelle), then mark paid.</p>
 
-    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(330px,1fr));gap:14px;margin-bottom:18px">
-      <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px">
-        <div style="font-size:12px;font-weight:700;color:var(--accent-deep);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Add a worker</div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-          <input id="wk-name" placeholder="Name" style="${fld};flex:1;min-width:130px">
-          <input id="wk-phone" placeholder="Phone" style="${fld};width:120px">
-          <input id="wk-email" placeholder="Email (optional)" style="${fld};flex:1;min-width:140px">
-          <input id="wk-handle" placeholder="Venmo / Zelle" style="${fld};flex:1;min-width:130px">
-          <button onclick="addWorker()" style="${accentBtn}">Add worker</button>
-        </div>
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:18px;max-width:560px">
+      <div style="font-size:12px;font-weight:700;color:var(--accent-deep);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Log a payout</div>
+      ${movers.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
+        <select id="wp-worker" style="${fld};flex:1;min-width:120px">${workerOpts}</select>
+        <select id="wp-gig" onchange="wpFillAmount()" style="${fld};flex:2;min-width:190px"><option value="">Ad-hoc (no job)</option>${gigOpts}</select>
+        <input id="wp-amount" type="number" min="0" step="0.01" placeholder="$ amount" style="${fld};width:110px">
+        <button onclick="logWorkerPayout()" style="${accentBtn}">Add</button>
       </div>
-      <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px">
-        <div style="font-size:12px;font-weight:700;color:var(--accent-deep);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Log a payout</div>
-        ${workers.length ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end">
-          <select id="wp-worker" style="${fld};flex:1;min-width:120px">${workerOpts}</select>
-          <select id="wp-gig" onchange="wpFillAmount()" style="${fld};flex:2;min-width:190px"><option value="">Ad-hoc (no job)</option>${gigOpts}</select>
-          <input id="wp-amount" type="number" min="0" step="0.01" placeholder="$ amount" style="${fld};width:110px">
-          <button onclick="logWorkerPayout()" style="${accentBtn}">Add</button>
-        </div>
-        <div style="font-size:11px;color:var(--ink3);margin-top:6px">Pick a job to auto-fill its mover payout, or type a custom amount.</div>`
-        : `<p style="font-size:13px;color:var(--ink3);margin:0">Add a worker first, then you can log payouts.</p>`}
-      </div>
+      <div style="font-size:11px;color:var(--ink3);margin-top:6px">Pick a job to auto-fill its mover payout, or type a custom amount.</div>`
+      : `<p style="font-size:13px;color:var(--ink3);margin:0">No workers yet — approve one in the Workers tab first.</p>`}
     </div>
 
     <div>${cards}</div>
   `;
-}
-async function addWorker(){
-  const v = id => ((document.getElementById(id)||{}).value||'').trim();
-  const name = v('wk-name');
-  if(!name){ alert('Enter a worker name.'); return; }
-  const { error } = await sb.from('workers').insert({ name, phone:v('wk-phone')||null, email:v('wk-email')||null, payout_handle:v('wk-handle')||null });
-  if(error){ alert('Could not add worker: ' + error.message); return; }
-  await loadAll(); showPage('crew');
 }
 function wpFillAmount(){
   const sel = document.getElementById('wp-gig'), amt = document.getElementById('wp-amount');
@@ -1001,17 +982,6 @@ async function markWorkerPayoutPaid(id){
 async function deleteWorkerPayout(id){
   if(!confirm('Delete this payout entry?')) return;
   const { error } = await sb.from('worker_payouts').delete().eq('id', id);
-  if(error){ alert('Could not delete: ' + error.message); return; }
-  await loadAll(); showPage('crew');
-}
-async function toggleWorkerActive(id, active){
-  const { error } = await sb.from('workers').update({ active }).eq('id', id);
-  if(error){ alert('Could not update: ' + error.message); return; }
-  await loadAll(); showPage('crew');
-}
-async function deleteWorker(id){
-  if(!confirm('Delete this worker and ALL their payout entries? This cannot be undone.')) return;
-  const { error } = await sb.from('workers').delete().eq('id', id);
   if(error){ alert('Could not delete: ' + error.message); return; }
   await loadAll(); showPage('crew');
 }
@@ -1087,14 +1057,14 @@ function workerConflict(workerId, gig){
 }
 function gigCrewSection(g){
   const assigned=(cache.jobCrew||[]).filter(c=>c.gig_id===g.id);
-  const roster=(cache.workers||[]).filter(w=>w.active!==false);
+  const roster=activeMovers();
   const assignedIds=new Set(assigned.map(c=>c.worker_id));
-  const opts=roster.filter(w=>!assignedIds.has(w.id)).map(w=>`<option value="${escAttr(w.id)}">${esc(w.name)}</option>`).join('');
+  const opts=roster.filter(w=>!assignedIds.has(w.id)).map(w=>`<option value="${escAttr(w.id)}">${esc(moverName(w.id))}</option>`).join('');
   const need=g.crew_size||0;
   const chips=assigned.length?assigned.map(c=>{
-    const w=(cache.workers||[]).find(x=>x.id===c.worker_id);
+    const w=(cache.profiles||[]).find(x=>x.id===c.worker_id);
     const con=workerConflict(c.worker_id,g);
-    return `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 11px;background:${con?'#FBE4DF':'var(--surface)'};border:1px solid ${con?'#E0A99A':'var(--line2)'};border-radius:999px;font-size:13px;margin:0 6px 6px 0">${esc(w?w.name:'(removed)')}${con?' <span title="Double-booked at this time" style="color:#b4452e;font-weight:700">&#9888;</span>':''}<button onclick="removeCrew('${c.id}')" title="Remove" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">&times;</button></span>`;
+    return `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 11px;background:${con?'#FBE4DF':'var(--surface)'};border:1px solid ${con?'#E0A99A':'var(--line2)'};border-radius:999px;font-size:13px;margin:0 6px 6px 0">${esc(w?(w.full_name||w.email):'(removed)')}${con?' <span title="Double-booked at this time" style="color:#b4452e;font-weight:700">&#9888;</span>':''}<button onclick="removeCrew('${c.id}')" title="Remove" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">&times;</button></span>`;
   }).join(''):'<span style="color:var(--ink3);font-size:13px">No crew assigned yet.</span>';
   const countTxt=need?`<span style="font-size:12px;font-weight:600;color:${assigned.length>=need?'var(--success)':'#8B6914'}">${assigned.length}/${need} assigned</span>`:`<span style="font-size:12px;color:var(--ink3)">${assigned.length} assigned</span>`;
   return `<div style="margin-top:16px;border-top:2px solid var(--accent);padding-top:12px">
@@ -1105,7 +1075,7 @@ function gigCrewSection(g){
     ${roster.length?`<div style="display:flex;gap:8px">
       <select id="crew-pick-${g.id}" style="flex:1;padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px"${opts?'':' disabled'}>${opts||'<option value="">All crew already assigned</option>'}</select>
       <button onclick="assignCrew('${g.id}')" style="padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Assign</button>
-    </div>`:`<div style="font-size:12px;color:var(--ink3)">Add workers in the <b>Crew &amp; pay</b> tab first.</div>`}
+    </div>`:`<div style="font-size:12px;color:var(--ink3)">Approve a worker in the <b>Workers</b> tab first.</div>`}
   </div>`;
 }
 async function assignCrew(gigId){
@@ -1132,7 +1102,7 @@ function renderSchedule(){
     .sort((a,b)=>new Date(a.scheduled_for)-new Date(b.scheduled_for));
   const byDay={};
   gigs.forEach(g=>{const key=new Date(g.scheduled_for).toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});(byDay[key]=byDay[key]||[]).push(g);});
-  const roster=(cache.workers||[]).filter(w=>w.active!==false);
+  const roster=activeMovers();
   const days=Object.entries(byDay).map(([day,gs])=>{
     const rows=gs.map(g=>{
       const t=new Date(g.scheduled_for).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
@@ -1141,15 +1111,15 @@ function renderSchedule(){
       const need=g.crew_size||0;
       const short=need&&assigned.length<need;
       const chips=assigned.length?assigned.map(c=>{
-        const w=(cache.workers||[]).find(x=>x.id===c.worker_id);
+        const w=(cache.profiles||[]).find(x=>x.id===c.worker_id);
         const con=workerConflict(c.worker_id,g);
-        return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 5px 2px 9px;border-radius:999px;font-size:12px;margin:0 4px 4px 0;background:${con?'#FBE4DF':'var(--surface)'};border:1px solid ${con?'#E0A99A':'var(--line2)'}">${esc(w?w.name:'?')}${con?' <span style="color:#b4452e;font-weight:700" title="Double-booked">&#9888;</span>':''}<button onclick="removeCrew('${c.id}')" title="Remove" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:13px;line-height:1;padding:0 1px">&times;</button></span>`;
+        return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 5px 2px 9px;border-radius:999px;font-size:12px;margin:0 4px 4px 0;background:${con?'#FBE4DF':'var(--surface)'};border:1px solid ${con?'#E0A99A':'var(--line2)'}">${esc(w?(w.full_name||w.email):'?')}${con?' <span style="color:#b4452e;font-weight:700" title="Double-booked">&#9888;</span>':''}<button onclick="removeCrew('${c.id}')" title="Remove" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:13px;line-height:1;padding:0 1px">&times;</button></span>`;
       }).join(''):'<span style="color:#b4452e;font-size:12px;font-weight:600">&#9888; no crew</span>';
-      const availOpts=roster.filter(w=>!assignedIds.has(w.id)).map(w=>`<option value="${escAttr(w.id)}">${esc(w.name)}</option>`).join('');
+      const availOpts=roster.filter(w=>!assignedIds.has(w.id)).map(w=>`<option value="${escAttr(w.id)}">${esc(moverName(w.id))}</option>`).join('');
       const assignCtrl=availOpts?`<div style="display:flex;gap:6px;margin-top:2px">
           <select id="sched-pick-${g.id}" style="flex:1;min-width:100px;padding:5px 7px;border:1.5px solid var(--line2);border-radius:7px;font-size:12px">${availOpts}</select>
           <button onclick="assignCrew('${g.id}')" style="padding:5px 11px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">+ Add</button>
-        </div>`:(roster.length?'':'<div style="font-size:11px;color:var(--ink3);margin-top:2px">add crew in Crew &amp; pay</div>');
+        </div>`:(roster.length?'':'<div style="font-size:11px;color:var(--ink3);margin-top:2px">approve crew in Workers tab</div>');
       return `<tr onclick="showGigModal('${g.id}')" style="cursor:pointer">
         <td style="white-space:nowrap;font-weight:700;vertical-align:top">${t}</td>
         <td style="vertical-align:top">${esc(g.home_size||g.gig_title||'job')}<div style="font-size:12px;color:var(--ink3)">${g.difficulty?('Diff '+g.difficulty+'/5 · '):''}${g.estimated_duration_hours?('~'+g.estimated_duration_hours+'h · '):''}${need?(need+' crew needed'):'crew n/a'}${short?` <span style="color:#8B6914;font-weight:700">(short ${need-assigned.length})</span>`:''}</div></td>
@@ -1300,15 +1270,25 @@ function workerCard(m) {
   `;
 }
 
+let moverTab = 'active';
 function renderMovers() {
-  const workers = cache.moverProfiles;
-  const pending = workers.filter(m => m.status === 'pending').length;
+  const all = cache.moverProfiles || [];
+  const active = all.filter(m => !m.deleted_at);
+  const deleted = all.filter(m => m.deleted_at);
+  const pending = active.filter(m => m.status === 'pending').length;
+  const list = moverTab === 'deleted' ? deleted : active;
+  const tabStyle = t => `padding:5px 12px;border-radius:7px;border:1px solid var(--line2);font-size:13px;font-weight:600;cursor:pointer;${moverTab===t?'background:var(--accent);color:#fff;border-color:var(--accent)':'background:var(--surface);color:var(--ink2)'}`;
   return `
     <h2 class="page-title">Workers</h2>
-    <p class="page-sub">${workers.length} workers · ${pending} pending approval</p>
-    <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('movers'))">Refresh</button>
-    ${workers.length ? `<div class="worker-grid">${workers.map(workerCard).join('')}</div>`
-      : '<div class="empty">No independent worker profiles yet</div>'}
+    <p class="page-sub">${active.length} workers · ${pending} pending approval</p>
+    <div style="display:flex;gap:8px;align-items:center;margin-bottom:14px;flex-wrap:wrap">
+      <button style="${tabStyle('active')}" onclick="moverTab='active';showPage('movers')">Active (${active.length})</button>
+      <button style="${tabStyle('deleted')}" onclick="moverTab='deleted';showPage('movers')">Deleted (${deleted.length})</button>
+      <button class="btn-sm" onclick="showAddMoverModal()">+ Add worker</button>
+      <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('movers'))">Refresh</button>
+    </div>
+    ${list.length ? `<div class="worker-grid">${list.map(workerCard).join('')}</div>`
+      : `<div class="empty">${moverTab==='deleted' ? 'No deleted workers' : 'No workers yet'}</div>`}
   `;
 }
 
@@ -1578,6 +1558,9 @@ function showWorkerModal(id) {
         <div style="margin-top:20px;display:flex;gap:10px;flex-wrap:wrap">
           <button class="btn-sm" onclick="approveWorker('${id}')" style="background:var(--success-soft);color:var(--success);border-color:var(--success)">✓ Approve</button>
           <button class="btn-sm" onclick="suspendWorker('${id}')" style="background:var(--error-soft);color:var(--error);border-color:var(--error)">✕ Suspend</button>
+          ${m.deleted_at
+            ? `<button class="btn-sm" onclick="restoreMover('${id}')" style="margin-left:auto">↩ Restore</button>`
+            : `<button class="btn-sm" onclick="deleteMover('${id}')" style="margin-left:auto;color:#b4452e">🗑 Delete worker</button>`}
         </div>
       </div>
     </div>
@@ -1589,6 +1572,26 @@ async function approveWorker(id) {
   if (error) { alert('Error: ' + error.message); return; }
   await loadAll();
   closeModal();
+  showPage('movers');
+}
+
+// Soft-delete a worker: hide them from the Workers + Crew lists but keep all
+// gig/review history (gigs.mover_id is a RESTRICT FK). Reversible via Restore.
+// Uses UPDATE — the "Admin can update mover profiles" policy already allows it.
+async function deleteMover(id) {
+  if (!confirm('Delete this worker? They will be hidden from the Workers and Crew lists. You can restore them from the Deleted tab.')) return;
+  const { error } = await sb.from('mover_profiles').update({ deleted_at: new Date().toISOString() }).eq('id', id);
+  if (error) { alert('Could not delete: ' + error.message); return; }
+  closeModal();
+  await loadAll();
+  showPage('movers');
+}
+
+async function restoreMover(id) {
+  const { error } = await sb.from('mover_profiles').update({ deleted_at: null }).eq('id', id);
+  if (error) { alert('Could not restore: ' + error.message); return; }
+  closeModal();
+  await loadAll();
   showPage('movers');
 }
 
@@ -2193,6 +2196,133 @@ async function createCustomGig() {
   showPage('gigs');
 }
 
+// ─── Manually add a worker (same fields as the public web signup) ─────────────
+// Both this and landing/worker-signup.html POST to the register-mover edge fn,
+// which creates the auth user + profiles + mover_profiles (status pending) so the
+// worker shows up in this Workers tab. Selfie is optional here (the public form
+// requires it). Password is set by the admin — use Generate to mint a strong one.
+const ADD_MOVER_SKILLS = [
+  ['packing','Packing / Unpacking'],['box-truck','Box Truck / Trailer'],['furniture-assembly','Furniture Assembly'],
+  ['tv-mounting','TV Mounting'],['junk-removal','Junk Removal'],['towing','Towing'],['cleaning','Cleaning'],
+  ['landscaping','Landscaping'],['upholstery','Upholstery'],['remodeling','Remodeling'],['construction','Construction'],
+  ['hauling','Hauling'],['painting','Painting'],['flooring','Flooring'],
+];
+let addMoverSelfieUrl = null;
+
+function showAddMoverModal() {
+  addMoverSelfieUrl = null;
+  const fld = 'width:100%;padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px;box-sizing:border-box';
+  const lbl = 'font-size:11px;font-weight:700;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em;display:block;margin:0 0 3px';
+  document.getElementById('modal-container').innerHTML = `
+    <div class="modal-overlay" onclick="closeModal(event)">
+      <div class="modal" onclick="event.stopPropagation()" style="position:relative;max-width:640px">
+        <button class="modal-close" onclick="closeModal()">&times;</button>
+        <h2>Add worker</h2>
+        <p style="color:var(--ink3);font-size:13px;margin:-6px 0 14px">Creates a mover account (status <b>pending</b>). They can sign in to the app with this email + password once approved.</p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div><label style="${lbl}">First name</label><input id="am-first" style="${fld}"></div>
+          <div><label style="${lbl}">Last name</label><input id="am-last" style="${fld}"></div>
+          <div><label style="${lbl}">Works as</label><select id="am-acct" style="${fld}" onchange="document.getElementById('am-bizwrap').style.display=this.value==='business'?'':'none'"><option value="independent">Independent contractor</option><option value="business">Business / Company</option></select></div>
+          <div id="am-bizwrap" style="display:none"><label style="${lbl}">Business name</label><input id="am-bizname" style="${fld}"></div>
+          <div><label style="${lbl}">Phone</label><input id="am-phone" style="${fld}" placeholder="(512) 555-5555"></div>
+          <div><label style="${lbl}">Email</label><input id="am-email" type="email" style="${fld}" placeholder="worker@example.com"></div>
+          <div style="grid-column:1/3"><label style="${lbl}">Password</label><div style="display:flex;gap:8px"><input id="am-password" style="${fld}" placeholder="8+ chars, upper/lower/number/symbol"><button type="button" onclick="genMoverPassword()" style="padding:8px 12px;background:var(--surface);border:1px solid var(--line2);border-radius:8px;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer">Generate</button></div></div>
+          <div style="grid-column:1/3"><label style="${lbl}">Home address <span style="font-weight:400;text-transform:none">(optional)</span></label><input id="am-address" style="${fld}"></div>
+          <div><label style="${lbl}">Vehicle</label><select id="am-veh" style="${fld}"><option value="own-truck">Owns a truck</option><option value="own-van">Owns a van</option><option value="muscle">Muscle-only (no vehicle)</option><option value="rent">Rents as needed</option></select></div>
+          <div><label style="${lbl}">Vehicle make &amp; model</label><input id="am-vmm" style="${fld}" placeholder="e.g. Ford F-150"></div>
+          <div><label style="${lbl}">Service ZIPs (comma-separated)</label><input id="am-zips" style="${fld}" placeholder="78701, 78702"></div>
+          <div><label style="${lbl}">Years experience</label><input id="am-years" type="number" min="0" style="${fld}"></div>
+          <div style="grid-column:1/3"><label style="${lbl}">Skills</label><div style="display:flex;flex-wrap:wrap;gap:6px">${ADD_MOVER_SKILLS.map(([k,l])=>`<label style="display:inline-flex;align-items:center;gap:5px;font-size:13px;padding:4px 9px;border:1px solid var(--line2);border-radius:999px;cursor:pointer"><input type="checkbox" class="am-skill" value="${k}" style="margin:0">${esc(l)}</label>`).join('')}</div></div>
+          <div style="grid-column:1/3"><label style="${lbl}">Bio</label><textarea id="am-bio" maxlength="500" style="${fld};min-height:54px"></textarea></div>
+          <div style="grid-column:1/3"><label style="${lbl}">Selfie <span style="font-weight:400;text-transform:none">(optional)</span></label><input type="file" id="am-selfie" accept="image/*" style="${fld}" onchange="uploadMoverSelfie(this)"><span id="am-selfie-status" style="font-size:12px;color:var(--ink3)"></span></div>
+        </div>
+        <div id="am-err" style="color:var(--error);font-size:13px;margin-top:10px;display:none"></div>
+        <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:16px">
+          <button onclick="closeModal()" style="padding:9px 16px;background:var(--surface);color:var(--ink2);border:1px solid var(--line2);border-radius:8px;font-size:13px;font-weight:600;cursor:pointer">Cancel</button>
+          <button id="am-save" onclick="createMover()" style="padding:9px 18px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Create worker</button>
+        </div>
+      </div>
+    </div>`;
+}
+
+function genMoverPassword() {
+  // CSPRNG-backed: this becomes the worker's real app login password, so don't
+  // use Math.random(). Rejection-sample to avoid modulo bias.
+  const sets = ['ABCDEFGHJKLMNPQRSTUVWXYZ','abcdefghijkmnpqrstuvwxyz','23456789','!@#$%&*?'];
+  const buf = new Uint32Array(1);
+  const pick = s => { const max = Math.floor(0xFFFFFFFF / s.length) * s.length;
+    do { crypto.getRandomValues(buf); } while (buf[0] >= max); return s[buf[0] % s.length]; };
+  const chars = sets.map(pick);                 // guarantee one of each class
+  const all = sets.join('');
+  while (chars.length < 16) chars.push(pick(all));
+  for (let i = chars.length - 1; i > 0; i--) {  // Fisher–Yates shuffle so the
+    const max = Math.floor(0xFFFFFFFF / (i + 1)) * (i + 1);   // class chars aren't
+    do { crypto.getRandomValues(buf); } while (buf[0] >= max); // pinned to the front
+    const j = buf[0] % (i + 1); [chars[i], chars[j]] = [chars[j], chars[i]];
+  }
+  const input = document.getElementById('am-password');
+  if (input) { input.value = chars.join(''); input.type = 'text'; }
+}
+
+async function uploadMoverSelfie(inputEl) {
+  const file = inputEl.files && inputEl.files[0];
+  const status = document.getElementById('am-selfie-status');
+  if (!file) return;
+  addMoverSelfieUrl = null;
+  if (status) status.textContent = 'Uploading…';
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const path = `mover-selfies/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+  try {
+    const r = await fetch(`${SUPABASE_URL}/storage/v1/object/quote-photos/${path}`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${SUPABASE_ANON_KEY}`, 'apikey': SUPABASE_ANON_KEY, 'Content-Type': file.type || 'image/jpeg' },
+      body: file,
+    });
+    if (r.ok) { addMoverSelfieUrl = `${SUPABASE_URL}/storage/v1/object/public/quote-photos/${path}`; if (status) status.textContent = 'Selfie uploaded ✓'; }
+    else if (status) status.textContent = 'Upload failed';
+  } catch (_) { if (status) status.textContent = 'Upload failed'; }
+}
+
+async function createMover() {
+  const v = id => ((document.getElementById(id) || {}).value || '').trim();
+  const errEl = document.getElementById('am-err');
+  const showErr = m => { if (errEl) { errEl.textContent = m; errEl.style.display = 'block'; } };
+  const isValidPassword = p => p.length >= 8 && /[A-Z]/.test(p) && /[a-z]/.test(p) && /[0-9]/.test(p) && /[^A-Za-z0-9]/.test(p);
+
+  const first = v('am-first'), last = v('am-last'), acct = v('am-acct');
+  const phone = v('am-phone'), email = v('am-email'), password = (document.getElementById('am-password') || {}).value || '';
+  if (!first || !/^[a-zA-Z\s\-']+$/.test(first)) return showErr('Enter a valid first name.');
+  if (!last || !/^[a-zA-Z\s\-']+$/.test(last)) return showErr('Enter a valid last name.');
+  if (acct === 'business' && !v('am-bizname')) return showErr('Enter the business name.');
+  if (phone.replace(/\D/g,'').length !== 10) return showErr('Enter a valid 10-digit phone number.');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) return showErr('Enter a valid email address.');
+  if (!isValidPassword(password)) return showErr('Password must be 8+ chars with upper, lower, number, and symbol.');
+  const veh = v('am-veh');
+  if (veh !== 'muscle' && !v('am-vmm')) return showErr('Enter the vehicle make and model (or pick Muscle-only).');
+  const zips = v('am-zips').split(',').map(z => z.trim()).filter(Boolean);
+  if (zips.length < 1) return showErr('Enter at least one service ZIP.');
+  const skills = [...document.querySelectorAll('.am-skill:checked')].map(c => c.value);
+
+  const btn = document.getElementById('am-save');
+  if (btn) { btn.disabled = true; btn.textContent = 'Creating…'; }
+  const { data, error } = await sb.functions.invoke('register-mover', { body: {
+    first_name: first, last_name: last, phone, email, password,
+    account_type: acct, business_name: v('am-bizname'),
+    address: v('am-address'), vehicle_type: veh, vehicle_make_model: v('am-vmm'),
+    skills, service_zips: zips.join(','), years_experience: v('am-years'),
+    bio: v('am-bio'), selfie_url: addMoverSelfieUrl,
+  } });
+  // Edge-fn errors (409/400/500) come back as a non-2xx → error.context holds the body.
+  let errMsg = error ? (error.message || 'Could not create worker') : (data && data.error);
+  if (error && error.context && typeof error.context.json === 'function') {
+    try { const b = await error.context.json(); if (b && b.error) errMsg = b.error; } catch (_) {}
+  }
+  if (errMsg) { if (btn) { btn.disabled = false; btn.textContent = 'Create worker'; } return showErr(errMsg); }
+  closeModal();
+  await loadAll();
+  showPage('movers');
+}
+
 function closeModal(e) {
   if (!e || e.target.classList.contains('modal-overlay')) {
     document.getElementById('modal-container').innerHTML = '';
@@ -2331,8 +2461,11 @@ function estimateLeadHours(l) {
 }
 function fmtDuration(hrs) { const h = Math.floor(hrs); const m = (hrs - h) * 60; return m ? `${h}h ${m}m` : `${h}h`; }
 function calcLeadQuote(l) {
-  const base = LEAD_BASE[l.items_size];
-  if (!base) return null;
+  const fullBase = LEAD_BASE[l.items_size];
+  if (!fullBase) return null;
+  // Partial load (Studio / 1 BR only) — 75% of base. Matches intake + create-quote-payment.
+  const isPartial = !!l.partial_load && (l.items_size === 'Studio' || l.items_size === '1 BR');
+  const base = isPartial ? Math.round(fullBase * 0.75) : fullBase;
   const special = Array.isArray(l.special_items) ? l.special_items.filter(x => x !== 'Nope — just regular stuff') : [];
   const sp = l.stairs_pickup || '', sd = l.stairs_dropoff || '';
   const hasStairs = lbl => lbl === 'Stairs' || lbl === 'Both';
@@ -2350,7 +2483,7 @@ function calcLeadQuote(l) {
   const adjustedBase = Math.round(base * ldMult);
   const stagingCents = l.staging ? Math.round(adjustedBase * 0.30) : 0;
   const wantsPacking = l.packing_service != null ? l.packing_service : (l.items_boxed === 'Not yet');
-  const packingCents = wantsPacking ? Math.round(adjustedBase * 0.25) : 0;
+  const packingCents = wantsPacking ? Math.round(adjustedBase * 0.35) : 0;
   const PREP_SURCHARGES = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 }; // matches intake + create-quote-payment
   const prepItems = (Array.isArray(l.prep_needed) ? l.prep_needed : []).filter(p => PREP_SURCHARGES[p]).map(p => [p, PREP_SURCHARGES[p]]);
   const prepCents = prepItems.reduce((s,[,c]) => s + c, 0);
@@ -2358,7 +2491,7 @@ function calcLeadQuote(l) {
   const tax = Math.round(subtotal * 0.0825);
   const total = subtotal + tax;
   const deposit = total; // 100% upfront
-  return { base, stairsCents, elevatorCents, elevators, carryCents, heavyCents, stagingCents, packingCents, prepItems, isLongDistance, subtotal, tax, total, deposit, flights, heavyCount: special.length };
+  return { base, isPartial, stairsCents, elevatorCents, elevators, carryCents, heavyCents, stagingCents, packingCents, prepItems, isLongDistance, subtotal, tax, total, deposit, flights, heavyCount: special.length };
 }
 function fmtMoney(c) { return '$' + (c/100).toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0}); }
 function renderLeadPrice(l) {
@@ -2375,13 +2508,13 @@ function renderLeadPrice(l) {
     q.carryCents  ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Long carry</span><span>+${fmtMoney(q.carryCents)}</span></div>` : '',
     q.heavyCents  ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Special items (${q.heavyCount})</span><span>+${fmtMoney(q.heavyCents)}</span></div>` : '',
     q.stagingCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Home staging (+30%)</span><span>+${fmtMoney(q.stagingCents)}</span></div>` : '',
-    q.packingCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Packing service (+25%)</span><span>+${fmtMoney(q.packingCents)}</span></div>` : '',
+    q.packingCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Packing service (+35%)</span><span>+${fmtMoney(q.packingCents)}</span></div>` : '',
     ...(q.prepItems||[]).map(([label,cents]) => `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>${esc(label)}</span><span>+${fmtMoney(cents)}</span></div>`),
     `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Tax (8.25%)</span><span>+${fmtMoney(q.tax)}</span></div>`,
   ].filter(Boolean).join('');
   return `<div style="background:var(--accent-soft);border:2px solid var(--accent);border-radius:12px;padding:14px 16px;margin:10px 0">
     <div style="font-size:11px;font-weight:700;color:var(--accent-deep);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Price estimate</div>
-    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Base (${l.items_size})</span><span>${fmtMoney(q.base)}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Base (${l.items_size}${q.isPartial?' · partial −25%':''})</span><span>${fmtMoney(q.base)}</span></div>
     ${rows}
     <div style="border-top:1.5px solid var(--accent);margin:8px 0 6px"></div>
     <div style="display:flex;justify-content:space-between;align-items:baseline">
@@ -2480,7 +2613,8 @@ function leadCustomerRows(l, includeFlow) {
     ['Common items',    esc(common)],
     ['Special items',   esc(special)],
     ['Boxed up',    (esc(l.items_boxed) || '—') + (l.box_count ? ` · ${l.box_count} boxes` : '')],
-    ['Packing service', (l.packing_service != null ? l.packing_service : (l.items_boxed === 'Not yet')) ? '<span style="color:#27ae60;font-weight:700">Yes (+25%)</span>' : (l.items_boxed === 'Not yet' ? '<span style="color:var(--ink3)">Declined</span>' : '—')],
+    ['Packing service', (l.packing_service != null ? l.packing_service : (l.items_boxed === 'Not yet')) ? '<span style="color:#27ae60;font-weight:700">Yes (+35%)</span>' : (l.items_boxed === 'Not yet' ? '<span style="color:var(--ink3)">Declined</span>' : '—')],
+    ['Partial load', (l.partial_load && (l.items_size === 'Studio' || l.items_size === '1 BR')) ? '<span style="color:#27ae60;font-weight:700">Yes (−25%)</span>' : '—'],
     ['Prep needed', Array.isArray(l.prep_needed) && l.prep_needed.length ? esc(l.prep_needed.join(', ')) : '—'],
     ['Home staging', l.staging ? '<span style="color:#27ae60;font-weight:700">Yes (+30%)</span>' : '—'],
     ['Items list',  esc(l.items_list) || '—'],

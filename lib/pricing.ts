@@ -114,7 +114,7 @@ export const STAGING_SURCHARGE_PERCENT = 30;
 
 // Packing service — crew brings boxes, materials & labor and packs everything.
 // Applied as a percentage of the move base (after crew/truck multipliers) so it scales with home size.
-export const PACKING_SURCHARGE_PERCENT = 25;
+export const PACKING_SURCHARGE_PERCENT = 35;
 
 // Distance surcharge — Austin movers charge ~$1.00-$1.50/mile beyond 15 miles
 export const DISTANCE_FREE_MILES = 15;

@@ -1223,9 +1223,15 @@ function renderBody(q){
       const checked = qty > 0 ? ' checked' : '';
       return `<div class="chip spec-row${checked}"><span style="font-size:17px;margin-right:4px">${o.icon}</span><span class="spec-name">${esc(o.label)}</span><span class="qty-stepper"><button data-bind="spec-qty-dec" data-val="${esc(key)}"${qty===0?' disabled':''}>−</button><span class="qty-val">${qty}</span><button data-bind="spec-qty-inc" data-val="${esc(key)}">+</button></span></div>`;
     }).join('');
+    const partialUI = PARTIAL_LOAD_SIZES.has(st.size) ? `
+      <div class="chips" style="margin-top:8px">
+        <button class="chip${st.partial?' checked':''}" data-bind="size-partial" data-val="1"><span class="box"></span>📦 It's a partial load — about half or less of a ${esc(st.size)} (−25%)</button>
+      </div>
+      ${st.partial ? `<div style="margin-top:6px;padding:10px 12px;background:var(--amber-soft);border:1.5px solid var(--amber);border-radius:10px;font-size:12px;color:var(--ink2);line-height:1.45">Small load — we'll price this ${esc(st.size)} at <b>25% off</b> the base.</div>` : ''}` : '';
     return `
       <div class="section-label">Move size</div>
       <div class="chips">${sizeChips}</div>
+      ${partialUI}
       <div class="section-label">Heavy / special items</div>
       <div class="chips col">${specChips}</div>
       <textarea class="field-textarea" style="margin-top:8px"
@@ -1324,10 +1330,10 @@ function renderBody(q){
     const packingChecked = ex.packing !== false; // default on when "Not yet"
     const packingUI = ex.boxed === 'Not yet' ? `
       <div class="chips" style="margin-top:8px">
-        <button class="chip${packingChecked?' checked':''}" data-bind="ex-packing" data-val="1"><span class="box"></span>📦 Add full packing service (+25%)</button>
+        <button class="chip${packingChecked?' checked':''}" data-bind="ex-packing" data-val="1"><span class="box"></span>📦 Add full packing service (+35%)</button>
       </div>
       ${packingChecked
-        ? `<div style="margin-top:6px;padding:10px 12px;background:var(--amber-soft);border:1.5px solid var(--amber);border-radius:10px;font-size:12px;color:var(--ink2);line-height:1.45">We'll bring boxes, materials &amp; labor and pack everything for you — added at <b>+25%</b> of the move base.</div>`
+        ? `<div style="margin-top:6px;padding:10px 12px;background:var(--amber-soft);border:1.5px solid var(--amber);border-radius:10px;font-size:12px;color:var(--ink2);line-height:1.45">We'll bring boxes, materials &amp; labor and pack everything for you — added at <b>+35%</b> of the move base.</div>`
         : `<div style="margin-top:6px;font-size:12px;color:var(--ink3);line-height:1.45">No problem — please have everything boxed and ready before the crew arrives.</div>`}` : '';
     return `
       <div class="section-label">Items boxed up?</div>
@@ -1749,8 +1755,13 @@ function handleBind(q, bind, el){
   }
   // ── Stuff fields ──
   else if(bind === 'size'){
-    S.answers[q.id] = {...(S.answers[q.id]||{}), size: val};
+    const next = {...(S.answers[q.id]||{}), size: val};
+    if(!PARTIAL_LOAD_SIZES.has(val)) next.partial = false; // partial only applies to Studio / 1 BR
+    S.answers[q.id] = next;
     S.notSure[q.id] = false; renderCard(false);
+  }
+  else if(bind === 'size-partial'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), partial: !(S.answers[q.id]||{}).partial}; renderCard(false);
   }
   else if(bind === 'spec-multi'){
     // Only "Nope — just regular stuff" uses this toggle — clears all item quantities
@@ -2062,7 +2073,12 @@ const DISTANCE_FREE_MILES = 15;
 const DISTANCE_PER_MILE = 125; // $1.25/mile over 15 free miles
 const LONG_DISTANCE_MULTIPLIER = 1.5; // 50% surcharge for long distance moves
 const STAGING_SURCHARGE_PCT = 0.30;   // +30% of base for home staging (crew arranges/styles furniture)
-const PACKING_SURCHARGE_PCT = 0.25;   // +25% of base for full packing service (items not yet boxed)
+const PACKING_SURCHARGE_PCT = 0.35;   // +35% of base for full packing service (items not yet boxed)
+// Partial-load tier — about half (or less) of a full Studio / 1 BR. Charges 75%
+// of the base (a 25% discount). Only offered for these sizes. MUST stay in sync
+// with create-quote-payment + admin calcLeadQuote + pricing-parity.test.mjs.
+const PARTIAL_LOAD_MULT = 0.75;
+const PARTIAL_LOAD_SIZES = new Set(['Studio','1 BR']);
 const PREP_SURCHARGES = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 }; // flat disassembly add-ons; other prep options are free
 
 function haversineDistance(lat1, lng1, lat2, lng2) {
@@ -2082,8 +2098,12 @@ function calcDistance() {
 
 function calcQuote(){
   const size   = S.answers['stuff']?.size;
-  const base   = BASE_PRICES[size];
-  if(!base) return null; // can't quote without size
+  const fullBase = BASE_PRICES[size];
+  if(!fullBase) return null; // can't quote without size
+  // Partial load (Studio / 1 BR only) — charge 75% of the base. Applied before
+  // long-distance + percentage add-ons so everything scales off the smaller base.
+  const isPartial = !!(S.answers['stuff']?.partial) && PARTIAL_LOAD_SIZES.has(size);
+  const base   = isPartial ? Math.round(fullBase * PARTIAL_LOAD_MULT) : fullBase;
 
   const service  = S.answers['service'] || '';
   const special  = S.answers['stuff']?.special || {};
@@ -2120,7 +2140,7 @@ function calcQuote(){
   const adjustedBase = base * ldMultiplier;
   const stagingCents = staging ? Math.round(adjustedBase * STAGING_SURCHARGE_PCT) : 0;
 
-  // Packing service — items not yet boxed AND customer opted in (+25% of the move base)
+  // Packing service — items not yet boxed AND customer opted in (+35% of the move base)
   const needsPacking = S.answers['extras']?.boxed === 'Not yet' && S.answers['extras']?.packing !== false;
   const packingCents = needsPacking ? Math.round(adjustedBase * PACKING_SURCHARGE_PCT) : 0;
 
@@ -2140,7 +2160,7 @@ function calcQuote(){
   const deposit  = finalTotal; // 100% upfront (after credit)
 
   const heavyCount = specialEntries.reduce((s,[,qty]) => s + qty, 0);
-  return { base, stairsCents, elevatorCents, elevators, carryCents, heavyCents, distanceCents, stagingCents, packingCents, prepCents, prepItems, miles, isLongDistance, subtotal, tax, total, referralCredit, finalTotal, deposit, flights, longCarry, heavyCount };
+  return { base, isPartial, stairsCents, elevatorCents, elevators, carryCents, heavyCents, distanceCents, stagingCents, packingCents, prepCents, prepItems, miles, isLongDistance, subtotal, tax, total, referralCredit, finalTotal, deposit, flights, longCarry, heavyCount };
 }
 
 function fmtMoney(cents){ return '$' + (cents/100).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}); }
@@ -2158,7 +2178,7 @@ function renderQuoteBlock(){
     q.elevatorCents ? `<div class="q-row"><span>Elevator (${q.elevators} location${q.elevators>1?'s':''})</span><span>+${fmtMoney(q.elevatorCents)}</span></div>` : '',
     q.carryCents   ? `<div class="q-row"><span>Long carry</span><span>+${fmtMoney(q.carryCents)}</span></div>` : '',
     q.stagingCents ? `<div class="q-row"><span>Home staging (+30%)</span><span>+${fmtMoney(q.stagingCents)}</span></div>` : '',
-    q.packingCents ? `<div class="q-row"><span>Packing service (+25%)</span><span>+${fmtMoney(q.packingCents)}</span></div>` : '',
+    q.packingCents ? `<div class="q-row"><span>Packing service (+35%)</span><span>+${fmtMoney(q.packingCents)}</span></div>` : '',
     (q.prepItems||[]).map(([label,cents]) => `<div class="q-row"><span>${esc(label)}</span><span>+${fmtMoney(cents)}</span></div>`).join(''),
     q.heavyCents   ? `<div class="q-row"><span>Special items (${q.heavyCount})</span><span>+${fmtMoney(q.heavyCents)}</span></div>${Object.entries(S.answers['stuff']?.special||{}).filter(([k])=>k!=='Nope — just regular stuff').filter(([,v])=>v>1).map(([k,v])=>`<div class="q-row" style="font-size:12px;color:var(--ink3);padding-left:10px"><span>${esc(k)} ×${v}</span><span>${fmtMoney((HEAVY_PRICES[k]||7500)*v)}</span></div>`).join('')}` : '',
     `<div class="q-row"><span>Tax (8.25%)</span><span>+${fmtMoney(q.tax)}</span></div>`,
@@ -2167,7 +2187,7 @@ function renderQuoteBlock(){
 
   return `<div style="background:var(--amber-soft);border:2px solid var(--amber);border-radius:14px;padding:16px;margin-bottom:14px;">
     <div style="font-size:11px;font-weight:700;color:var(--amber-deep);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">Your estimate</div>
-    <div class="q-row" style="margin-bottom:6px"><span style="font-size:14px;color:var(--ink2)">Base (${S.answers['stuff']?.size})</span><span style="font-size:14px">${fmtMoney(q.base)}</span></div>
+    <div class="q-row" style="margin-bottom:6px"><span style="font-size:14px;color:var(--ink2)">Base (${S.answers['stuff']?.size}${q.isPartial?' · partial −25%':''})</span><span style="font-size:14px">${fmtMoney(q.base)}</span></div>
     ${rows}
     <div style="border-top:1.5px solid var(--amber);margin:10px 0 8px"></div>
     <div style="display:flex;justify-content:space-between;align-items:baseline">
@@ -2440,6 +2460,7 @@ function buildPayload(){
     dropoff_address:    clamp(stripHtml(addresses.dropoff?.addr), 300) || null,
     dropoff_place_type: clamp(stripHtml(addresses.dropoff?.place), 60) || null,
     items_size:         sanitizeEnum(stuff.size, VALID_SIZES),
+    partial_load:       !!stuff.partial && (stuff.size === 'Studio' || stuff.size === '1 BR'),
     items_list:         clamp(stripHtml(stuff.list), 1000) || null,
     stairs_pickup:      sanitizeEnum(access.stairs_pickup, VALID_STAIRS),
     stairs_dropoff:     sanitizeEnum(access.stairs_dropoff, VALID_STAIRS),

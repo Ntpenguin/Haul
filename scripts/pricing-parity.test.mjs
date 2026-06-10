@@ -15,7 +15,9 @@ const STAIRS_SURCHARGE = 5000, ELEVATOR_SURCHARGE = 4000, LONG_CARRY = 5000, TAX
 const HEAVY_PRICES = { 'Piano': 25000, 'Safe / gun safe': 15000, 'Pool table': 30000, 'Treadmill / Peloton': 7500, 'Big TV (65"+)': 7500, 'Aquarium': 7500, 'Artwork / mirror': 7500 };
 const PREP_SURCHARGES = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 };
 const DISTANCE_FREE_MILES = 15, DISTANCE_PER_MILE = 125, LONG_DISTANCE_MULTIPLIER = 1.5, LONG_DISTANCE_THRESHOLD = 50;
-const STAGING_PCT = 0.30, PACKING_PCT = 0.25;
+const STAGING_PCT = 0.30, PACKING_PCT = 0.35;
+const PARTIAL_LOAD_MULT = 0.75, PARTIAL_LOAD_SIZES = new Set(['Studio', '1 BR']);
+const partialBase = (size, partial) => (partial && PARTIAL_LOAD_SIZES.has(size)) ? Math.round(BASE_PRICES[size] * PARTIAL_LOAD_MULT) : BASE_PRICES[size];
 const hasStairs = (lbl) => lbl === 'Stairs' || lbl === 'Both';
 const hasElevator = (lbl) => lbl === 'Elevator' || lbl === 'Both';
 
@@ -28,8 +30,8 @@ function haversine(lat1, lng1, lat2, lng2) {
 
 // ── ORACLE: intake calcQuote() ported verbatim from landing/intake.html ──────
 function intakeCalc(s) {
-  const base = BASE_PRICES[s.size];
-  if (!base) return null;
+  if (!BASE_PRICES[s.size]) return null;
+  const base = partialBase(s.size, s.partial);
   const flightsFrom = hasStairs(s.stairs_p) ? Math.max(1, s.flights_p || 1) : 0;
   const flightsTo = hasStairs(s.stairs_d) ? Math.max(1, s.flights_d || 1) : 0;
   const longCarry = (s.parking || '').includes('100+');
@@ -56,6 +58,7 @@ function toRow(s) {
   for (const [k, q] of Object.entries(s.special || {})) if (k !== 'Nope — just regular stuff') for (let i = 0; i < q; i++) special_items.push(k);
   return {
     items_size: s.size,
+    partial_load: !!s.partial && (s.size === 'Studio' || s.size === '1 BR'),
     service_type: s.service || null,
     stairs_pickup: s.stairs_p || null,
     stairs_dropoff: s.stairs_d || null,
@@ -72,8 +75,8 @@ function toRow(s) {
 
 // ── SUBJECT: computeQuoteTotalCents() ported verbatim from the edge function ──
 function serverCalc(q) {
-  const base = BASE_PRICES[q.items_size];
-  if (!base) return null;
+  if (!BASE_PRICES[q.items_size]) return null;
+  const base = partialBase(q.items_size, q.partial_load);
   const flightsFrom = hasStairs(q.stairs_pickup) ? Math.max(1, q.flights_pickup || 1) : 0;
   const flightsTo = hasStairs(q.stairs_dropoff) ? Math.max(1, q.flights_dropoff || 1) : 0;
   const stairsCents = (flightsFrom + flightsTo) * STAIRS_SURCHARGE;
@@ -119,6 +122,10 @@ const scenarios = [
   { name: '1 BR, disassemble bed frame (+$50)', size: '1 BR', prep: ['Disassemble bed frame(s)'] },
   { name: '2 BR, bed frame + shelving disassembly (+$75)', size: '2 BR', prep: ['Disassemble bed frame(s)', 'Take apart shelving'] },
   { name: '1 BR, prep but only free options', size: '1 BR', prep: ['Wrap / pad furniture', 'Unmount TV'] },
+  { name: 'Studio, partial load (−25% → $262.50 base)', size: 'Studio', partial: true },
+  { name: '1 BR, partial load (−25% → $375 base)', size: '1 BR', partial: true },
+  { name: '1 BR, partial + stairs(2) + packing (% off reduced base)', size: '1 BR', partial: true, stairs_p: 'Stairs', flights_p: 2, boxed: 'Not yet' },
+  { name: '2 BR, partial flag IGNORED (not an eligible size)', size: '2 BR', partial: true },
   { name: 'other / custom size (un-quotable)', size: 'other' },
 ];
 
