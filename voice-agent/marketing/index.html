@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OpenVoice Agent — The AI receptionist your business owns</title>
+  <meta name="description" content="A self-hosted, open AI phone receptionist for small businesses. Answers calls 24/7, books appointments, captures leads, and texts back — with no per-minute SaaS markup. Multi-tenant and white-label ready." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <!-- ===== NAV ===== -->
+  <header class="nav" id="top">
+    <div class="container nav-inner">
+      <a class="brand" href="#top" aria-label="OpenVoice Agent home">
+        <span class="brand-emoji" aria-hidden="true">📞</span>
+        <span class="brand-name">OpenVoice Agent</span>
+      </a>
+
+      <nav class="nav-links" id="nav-links" aria-label="Primary">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+        <a class="btn btn-primary nav-cta" href="/">Get started</a>
+      </nav>
+
+      <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation menu" aria-expanded="false" aria-controls="nav-links">
+        <span></span><span></span><span></span>
+      </button>
+    </div>
+  </header>
+
+  <main>
+    <!-- ===== HERO ===== -->
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <span class="eyebrow">Self-hosted AI voice receptionist</span>
+          <h1>The AI receptionist your business <span class="grad">owns</span>.</h1>
+          <p class="lede">
+            OpenVoice Agent answers and places real phone calls 24/7 with a natural, interruptible voice —
+            booking appointments, capturing leads, and texting callers back. Run it on your own
+            infrastructure and pay providers at cost, not a per-minute SaaS markup.
+          </p>
+          <div class="hero-cta">
+            <a class="btn btn-primary btn-lg" href="/">Get started</a>
+            <a class="btn btn-ghost btn-lg" href="#how">See how it works</a>
+          </div>
+          <p class="trust">Answers every call 24/7 · Books appointments · No per-minute markup</p>
+        </div>
+
+        <!-- Phone call mockup -->
+        <div class="hero-visual" aria-hidden="true">
+          <div class="call-card">
+            <div class="call-head">
+              <div class="call-avatar">
+                <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              </div>
+              <div class="call-meta">
+                <strong>Incoming call</strong>
+                <span>Live · 00:18</span>
+              </div>
+              <span class="call-dot"></span>
+            </div>
+            <div class="transcript">
+              <div class="bubble agent">Thanks for calling Bright Move Co — this is Ava. How can I help?</div>
+              <div class="bubble caller">Hi, I need movers for a 2-bedroom next Saturday.</div>
+              <div class="bubble agent">Happy to help! I have 9 AM or 1 PM open Saturday — which works better?</div>
+              <div class="bubble caller">Let's do 9.</div>
+              <div class="bubble agent">Booked you for 9 AM. I'll text a confirmation now. Anything else?</div>
+            </div>
+            <div class="call-foot">
+              <span class="tag tag-green">Appointment booked</span>
+              <span class="tag tag-indigo">SMS sent</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== STAT STRIP ===== -->
+    <section class="stats" aria-label="Key facts">
+      <div class="container stats-grid">
+        <div class="stat"><span class="stat-num">24/7</span><span class="stat-label">Always answering</span></div>
+        <div class="stat"><span class="stat-num">~$0.05<span class="stat-unit">/min</span></span><span class="stat-label">At provider cost</span></div>
+        <div class="stat"><span class="stat-num">&lt;2s</span><span class="stat-label">To book an appointment</span></div>
+        <div class="stat"><span class="stat-num">100%</span><span class="stat-label">Self-hosted &amp; yours</span></div>
+      </div>
+    </section>
+
+    <!-- ===== FEATURES ===== -->
+    <section class="section" id="features">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">Features</span>
+          <h2>Everything a great receptionist does — automated.</h2>
+          <p class="section-sub">One real-time voice brain that also works over text. Set it up per business with no code.</p>
+        </div>
+
+        <div class="grid features-grid">
+          <article class="card">
+            <div class="ico ico-indigo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+            </div>
+            <h3>24/7 call answering</h3>
+            <p>Natural, low-latency voice with barge-in — callers can interrupt and it responds instantly. Never miss a ringing phone again.</p>
+          </article>
+
+          <article class="card">
+            <div class="ico ico-green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></svg>
+            </div>
+            <h3>Appointment booking &amp; reminders</h3>
+            <p>Books straight into the built-in calendar or Google Calendar, then sends no-show-reducing reminders automatically.</p>
+          </article>
+
+          <article class="card">
+            <div class="ico ico-indigo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            </div>
+            <h3>Lead capture &amp; CRM</h3>
+            <p>Every caller becomes a structured lead — name, number, intent, and notes — ready to export to CSV or follow up.</p>
+          </article>
+
+          <article class="card">
+            <div class="ico ico-green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2M12 19v4M8 23h8"/></svg>
+            </div>
+            <h3>After-hours voicemail</h3>
+            <p>Takes messages outside business hours, transcribes them, and notifies the owner by SMS or email instantly.</p>
+          </article>
+
+          <article class="card">
+            <div class="ico ico-indigo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+            </div>
+            <h3>Two-way SMS agent</h3>
+            <p>The same brain over text. Answers questions, books, and confirms — fully conversational, in both directions.</p>
+          </article>
+
+          <article class="card">
+            <div class="ico ico-green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+            </div>
+            <h3>Knowledge base import</h3>
+            <p>Point it at your website or upload a PDF and it learns your services, pricing, and FAQs in minutes — no scripting.</p>
+          </article>
+
+          <article class="card">
+            <div class="ico ico-indigo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+            </div>
+            <h3>Transcripts &amp; recordings</h3>
+            <p>Every call is recorded and transcribed, searchable in the dashboard — perfect for QA, training, and disputes.</p>
+          </article>
+
+          <article class="card">
+            <div class="ico ico-green">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"/><path d="m19 9-5 5-4-4-3 3"/></svg>
+            </div>
+            <h3>Analytics that matter</h3>
+            <p>Track booked-rate, minutes used, and conversion over time — with owner notifications when it counts.</p>
+          </article>
+
+          <article class="card">
+            <div class="ico ico-indigo">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"/><line x1="7" y1="7" x2="7.01" y2="7"/></svg>
+            </div>
+            <h3>White-label &amp; resell</h3>
+            <p>Multi-tenant by design: self-serve signup, per-tenant isolation, Stripe metered billing, and your own branding.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== HOW IT WORKS ===== -->
+    <section class="section section-alt" id="how">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">How it works</span>
+          <h2>Live in minutes, not months.</h2>
+          <p class="section-sub">No code. Pick a template, plug in a number, and let it run.</p>
+        </div>
+
+        <div class="grid steps-grid">
+          <article class="step">
+            <span class="step-num">1</span>
+            <h3>Pick a template &amp; describe your business</h3>
+            <p>Start from a Moving, Home Services, Salon, Dental, or Restaurant template. Set the persona, goals, voice, and business hours, then import your knowledge base.</p>
+          </article>
+          <article class="step">
+            <span class="step-num">2</span>
+            <h3>Connect a phone number</h3>
+            <p>Buy a number right in the dashboard or bring your own. Provider-agnostic across Twilio, Deepgram, OpenAI/Anthropic, and ElevenLabs — or try keyless demo mode.</p>
+          </article>
+          <article class="step">
+            <span class="step-num">3</span>
+            <h3>Your AI answers, books &amp; follows up</h3>
+            <p>It picks up every call, books appointments, transfers to a human when needed, takes after-hours voicemail, and texts callers confirmations — automatically.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== PRICING ===== -->
+    <section class="section" id="pricing">
+      <div class="container">
+        <div class="section-head">
+          <span class="eyebrow">Pricing</span>
+          <h2>Own the platform. Pay providers at cost.</h2>
+          <p class="section-sub">Self-host and pay Twilio / Deepgram / OpenAI / ElevenLabs directly (~$0.04–0.10/min) — no per-minute SaaS markup.</p>
+        </div>
+
+        <div class="grid pricing-grid">
+          <article class="price-card">
+            <h3 class="price-name">Starter</h3>
+            <p class="price-desc">For a single business getting its phone answered.</p>
+            <div class="price"><span class="price-amt">$0</span><span class="price-per">/mo · self-host</span></div>
+            <ul class="price-list">
+              <li>1 business · 1 phone number</li>
+              <li>24/7 voice + SMS agent</li>
+              <li>Booking &amp; lead capture</li>
+              <li>Transcripts &amp; recordings</li>
+              <li>Pay providers at cost</li>
+            </ul>
+            <a class="btn btn-ghost btn-block" href="/">Get started</a>
+          </article>
+
+          <article class="price-card price-pop">
+            <span class="badge">Most popular</span>
+            <h3 class="price-name">Pro</h3>
+            <p class="price-desc">For growing shops that want analytics and reminders.</p>
+            <div class="price"><span class="price-amt">$49</span><span class="price-per">/mo</span></div>
+            <ul class="price-list">
+              <li>Everything in Starter</li>
+              <li>Up to 5 businesses</li>
+              <li>Google Calendar sync</li>
+              <li>Appointment reminders</li>
+              <li>Analytics &amp; CSV export</li>
+              <li>Owner SMS / email alerts</li>
+            </ul>
+            <a class="btn btn-primary btn-block" href="/">Start Pro</a>
+          </article>
+
+          <article class="price-card">
+            <h3 class="price-name">Agency</h3>
+            <p class="price-desc">For resellers running it as white-label SaaS.</p>
+            <div class="price"><span class="price-amt">$199</span><span class="price-per">/mo</span></div>
+            <ul class="price-list">
+              <li>Everything in Pro</li>
+              <li>Unlimited tenants</li>
+              <li>Self-serve tenant signup</li>
+              <li>Stripe metered per-minute billing</li>
+              <li>Full white-label branding</li>
+              <li>Buy numbers in-dashboard</li>
+            </ul>
+            <a class="btn btn-ghost btn-block" href="/">Talk to us</a>
+          </article>
+        </div>
+        <p class="price-foot">Prices are illustrative. Because you self-host, your only hard cost is the providers you choose.</p>
+      </div>
+    </section>
+
+    <!-- ===== FAQ ===== -->
+    <section class="section section-alt" id="faq">
+      <div class="container container-narrow">
+        <div class="section-head">
+          <span class="eyebrow">FAQ</span>
+          <h2>Questions, answered.</h2>
+        </div>
+
+        <div class="faq">
+          <details>
+            <summary>Do I need to code anything?<span class="chev" aria-hidden="true"></span></summary>
+            <p>No. Setup is entirely no-code: pick an industry template, describe your business, choose a voice, set business hours, and import a knowledge base from a website URL or PDF. The agent is configured from the dashboard.</p>
+          </details>
+          <details>
+            <summary>What does it actually cost?<span class="chev" aria-hidden="true"></span></summary>
+            <p>Because you run it on your own infrastructure (Docker + Postgres), you pay the underlying providers at cost — roughly $0.04–0.10 per minute across telephony, speech-to-text, the LLM, and voice — instead of a marked-up per-minute SaaS rate. No surprise platform fees.</p>
+          </details>
+          <details>
+            <summary>Which phone provider does it use?<span class="chev" aria-hidden="true"></span></summary>
+            <p>It's provider-agnostic. Out of the box it works with Twilio for telephony, Deepgram for transcription, OpenAI or Anthropic for the brain, and ElevenLabs for voice. You can buy numbers in the dashboard or bring your own — and there's a keyless demo mode to try it first.</p>
+          </details>
+          <details>
+            <summary>Can I resell it to my own clients?<span class="chev" aria-hidden="true"></span></summary>
+            <p>Yes — it's multi-tenant SaaS by design. You get self-serve tenant signup, per-tenant isolation, Stripe subscriptions with metered per-minute billing, full white-label branding, and in-dashboard number purchasing.</p>
+          </details>
+          <details>
+            <summary>Is it really self-hosted?<span class="chev" aria-hidden="true"></span></summary>
+            <p>Completely. It runs on your infrastructure via Docker and Postgres, so your call data, recordings, and customer records stay under your control. Nothing is locked to a vendor.</p>
+          </details>
+          <details>
+            <summary>What about call recording consent?<span class="chev" aria-hidden="true"></span></summary>
+            <p>Recording and transcription are configurable per business, including a customizable consent announcement at the start of calls. You're responsible for complying with the recording-consent laws in your jurisdiction, and the platform gives you the controls to do so.</p>
+          </details>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===== CTA ===== -->
+    <section class="cta-band">
+      <div class="container cta-inner">
+        <h2>Stop missing calls. Start booking them.</h2>
+        <p>Spin up your own AI receptionist today — or resell it as your own product.</p>
+        <div class="hero-cta">
+          <a class="btn btn-primary btn-lg" href="/">Get started</a>
+          <a class="btn btn-ghost btn-lg" href="#how">See how it works</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ===== FOOTER ===== -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <a class="brand" href="#top">
+        <span class="brand-emoji" aria-hidden="true">📞</span>
+        <span class="brand-name">OpenVoice Agent</span>
+      </a>
+      <nav class="footer-nav" aria-label="Footer">
+        <a href="#features">Features</a>
+        <a href="#how">How it works</a>
+        <a href="#pricing">Pricing</a>
+        <a href="#faq">FAQ</a>
+        <a href="/">Dashboard</a>
+      </nav>
+      <p class="footer-fine">Self-hosted · MIT-licensed · Not affiliated with GoHighLevel.</p>
+    </div>
+  </footer>
+
+  <script>
+    (function () {
+      var toggle = document.getElementById('nav-toggle');
+      var links = document.getElementById('nav-links');
+      if (toggle && links) {
+        toggle.addEventListener('click', function () {
+          var open = links.classList.toggle('open');
+          toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+        links.addEventListener('click', function (e) {
+          if (e.target.tagName === 'A') {
+            links.classList.remove('open');
+            toggle.setAttribute('aria-expanded', 'false');
+          }
+        });
+      }
+    })();
+  </script>
+</body>
+</html>
