@@ -17,12 +17,21 @@ SaaS** — an open recreation of GoHighLevel's Voice AI that you run and resell.
   - **Transfer to a human** (warm handoff via Twilio Dial).
   - **Trigger an automation** (outbound webhook to n8n/Zapier/Make/Mautic/GHL/etc.).
   - **End the call** politely.
+- **Returning-caller recognition**: matches the caller's number to a prior lead, greets
+  them by name, and skips re-asking for details it already has.
 - **Post-call SMS confirmation** to the caller after a booking (toggle per agent).
-- **Owner/staff SMS notifications** on new bookings and leads.
+- **Appointment reminders**: automatic SMS 24h + 1h before the appointment (no-show
+  reduction), per-agent toggle.
+- **Owner/staff notifications** on new bookings and leads — by **SMS** and/or **email**.
+- **Post-call email summary** (transcript + outcome) to the owner.
 - **Call recording** (per-agent toggle) with in-dashboard playback.
 - **Full transcript** of every call, saved and viewable.
 - **Guardrails**: max-call-length cap; per-tenant monthly minute limit; calls declined for
   suspended/over-limit tenants.
+
+## 💬 Two-way SMS agent
+- The **same brain answers inbound texts**, not just calls — stateful per contact, can
+  answer questions, capture leads, and book appointments over SMS.
 
 ## 🕗 Call handling & routing
 - **Business hours** per agent (per-day open/close).
@@ -40,8 +49,12 @@ SaaS** — an open recreation of GoHighLevel's Voice AI that you run and resell.
   webhook URL**.
 - **Industry templates** — one-click presets for Moving/Labor, Home Services, Salon/Spa,
   Dental/Medical, and Restaurant.
-- **Import knowledge base from a website**: scrape the business's site (main page +
-  about/services/pricing/FAQ/contact) and auto-summarize it into the knowledge base.
+- **Import knowledge base from a website** (scrape + summarize) **or from an uploaded
+  file** (PDF / text).
+- **Buy a phone number in-dashboard**: search available Twilio numbers by area code,
+  purchase, and auto-wire the voice + SMS webhooks to the agent.
+- **Onboarding wizard** for new accounts: pick a template → name the business → create the
+  agent → connect a number → test it.
 - **Text simulator**: talk to the agent's brain in the dashboard with no phone.
 
 ## 📅 Calendar
