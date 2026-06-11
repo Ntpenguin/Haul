@@ -406,21 +406,18 @@ function renderBusinessJobs() {
       <td>${esc(j.customer_name || '—')}<div style="font-size:11px;color:var(--ink3)">${esc(j.customer_phone || '')}</div></td>
       <td>${esc(j.job_size || '—')}</td>
       <td>${stops.length} stop${stops.length === 1 ? '' : 's'}<div style="font-size:11px;color:var(--ink3)">${j.distance_miles != null ? j.distance_miles + ' mi' : ''}${j.estimated_duration_hours != null ? ' · ~' + j.estimated_duration_hours + 'h' : ''}</div></td>
-      <td>${dollars(j.offered_price_cents)}</td>
-      <td>${dollars(j.recommended_price_cents)}</td>
       <td>${j.counter_price_cents ? dollars(j.counter_price_cents) : '—'}</td>
-      <td>${bizBadge(j.decision)}<div style="font-size:11px;color:var(--ink3);max-width:180px">${esc(j.decision_reason || '')}</div></td>
       <td>${j.requested_date ? esc(j.requested_date) + (j.requested_time ? ' ' + esc(j.requested_time) : '') : 'ASAP'}</td>
       <td>${badge(j.status)}</td>
       <td style="color:var(--ink3);font-size:12px">${j.gig_id ? '→ gig' : 'view →'}</td>
     </tr>`;
-  }).join('') : `<tr><td colspan="11" class="empty">No business jobs yet.</td></tr>`;
+  }).join('') : `<tr><td colspan="8" class="empty">No business jobs yet.</td></tr>`;
   return `
     <h2 class="page-title">Business Jobs</h2>
     <p class="page-sub">${jobs.length} total · ${open.length} open · submitted from fastfixwork.com/business.html
       <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('bizjobs'))" style="margin-left:8px">Refresh</button></p>
     <div class="table-wrap"><table>
-      <thead><tr><th>Job</th><th>Contact</th><th>Size</th><th>Route</th><th>Offer</th><th>Rec.</th><th>Counter</th><th>Decision</th><th>When</th><th>Status</th><th></th></tr></thead>
+      <thead><tr><th>Job</th><th>Contact</th><th>Size</th><th>Route</th><th>Price</th><th>When</th><th>Status</th><th></th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>`;
 }
@@ -443,19 +440,19 @@ function showBusinessJobModal(id) {
         ` : ''}
         ${canComplete ? `<button onclick="completeBizGig('${j.id}')" style="position:absolute;top:16px;right:56px;padding:7px 14px;background:var(--success);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer">Complete gig</button>` : ''}
         <h2>Business Job #${j.job_number || ''}</h2>
-        <div class="modal-row"><div class="modal-label">Decision</div><div class="modal-value">${bizBadge(j.decision)} ${esc(j.decision_reason || '')}</div></div>
+        ${j.decision ? `<div class="modal-row"><div class="modal-label">Decision</div><div class="modal-value">${bizBadge(j.decision)} ${esc(j.decision_reason || '')}</div></div>` : ''}
         <div class="modal-row"><div class="modal-label">Status</div><div class="modal-value">${badge(j.status)}</div></div>
         <div class="modal-row"><div class="modal-label">Contact</div><div class="modal-value">${esc(j.customer_name || '—')}${j.customer_phone ? ' · ' + esc(j.customer_phone) : ''}${j.customer_email ? ' · ' + esc(j.customer_email) : ''}</div></div>
         <div class="modal-row"><div class="modal-label">Job size</div><div class="modal-value">${esc(j.job_size) || '—'}</div></div>
-        <div class="modal-row"><div class="modal-label">Route (${stops.length})</div><div class="modal-value">${stops.length ? stops.map((s, i) => `${i + 1}. ${esc(s.addr || '—')}`).join('<br>') : '—'}</div></div>
-        <div class="modal-row"><div class="modal-label">Distance</div><div class="modal-value">${j.distance_miles != null ? j.distance_miles + ' mi' : '—'}</div></div>
-        <div class="modal-row"><div class="modal-label">Est. duration</div><div class="modal-value">${j.estimated_duration_hours != null ? '~' + j.estimated_duration_hours + ' hrs' : '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Route (${stops.length})</div><div class="modal-value">${stops.length ? stops.map((s, i) => `${i + 1}. ${esc(s.addr || '—')}${s.apt ? ' (Apt ' + esc(s.apt) + ')' : ''}`).join('<br>') : '—'}</div></div>
+        ${j.distance_miles != null ? `<div class="modal-row"><div class="modal-label">Distance</div><div class="modal-value">${j.distance_miles} mi</div></div>` : ''}
+        ${j.estimated_duration_hours != null ? `<div class="modal-row"><div class="modal-label">Est. duration</div><div class="modal-value">~${j.estimated_duration_hours} hrs</div></div>` : ''}
         <div class="modal-row"><div class="modal-label">Access</div><div class="modal-value">Stairs: ${yn(j.stairs)} · Elevator: ${yn(j.elevator)} · Long walk: ${yn(j.long_walk)}</div></div>
         ${(Array.isArray(j.special_items) && j.special_items.length) ? `<div class="modal-row"><div class="modal-label">Special items</div><div class="modal-value">${j.special_items.map(esc).join(', ')}</div></div>` : ''}
         ${j.access_notes ? `<div class="modal-row"><div class="modal-label">Access notes</div><div class="modal-value">${esc(j.access_notes)}</div></div>` : ''}
-        <div class="modal-row"><div class="modal-label">Offered</div><div class="modal-value">${dollars(j.offered_price_cents)}</div></div>
-        <div class="modal-row"><div class="modal-label">Recommended</div><div class="modal-value">${dollars(j.recommended_price_cents)}</div></div>
-        ${j.counter_price_cents ? `<div class="modal-row"><div class="modal-label">Counter</div><div class="modal-value">${dollars(j.counter_price_cents)}</div></div>` : ''}
+        ${j.offered_price_cents ? `<div class="modal-row"><div class="modal-label">Offered</div><div class="modal-value">${dollars(j.offered_price_cents)}</div></div>` : ''}
+        ${j.recommended_price_cents ? `<div class="modal-row"><div class="modal-label">Recommended</div><div class="modal-value">${dollars(j.recommended_price_cents)}</div></div>` : ''}
+        ${j.counter_price_cents ? `<div class="modal-row"><div class="modal-label">Price</div><div class="modal-value">${dollars(j.counter_price_cents)}</div></div>` : ''}
         <div class="modal-row"><div class="modal-label">Requested</div><div class="modal-value">${j.requested_date ? esc(j.requested_date) + (j.requested_time ? ' ' + esc(j.requested_time) : '') : 'ASAP'}</div></div>
         ${j.scheduled_for ? `<div class="modal-row"><div class="modal-label">Scheduled</div><div class="modal-value">${fmt(j.scheduled_for)}</div></div>` : ''}
         ${j.notes ? `<div class="modal-row"><div class="modal-label">Notes</div><div class="modal-value">${esc(j.notes)}</div></div>` : ''}
@@ -463,14 +460,14 @@ function showBusinessJobModal(id) {
         <div class="modal-row"><div class="modal-label">Created</div><div class="modal-value">${fmt(j.created_at)}</div></div>
         ${canAct ? `
           <div style="margin-top:14px;padding:12px 14px;background:var(--accent-soft);border:1px solid var(--accent);border-radius:10px">
-            <div class="modal-label" style="margin-bottom:6px">Send a counter offer</div>
+            <div class="modal-label" style="margin-bottom:6px">Set the price</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
               <span style="font-weight:700;color:var(--ink)">$</span>
-              <input id="biz-counter-amt" type="number" min="1" step="1" value="${Math.round((j.counter_price_cents || j.recommended_price_cents || 0) / 100)}" style="width:100px;padding:7px 9px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px">
-              <input id="biz-counter-note" placeholder="optional note (e.g. open slot 2 PM)" style="flex:1;min-width:160px;padding:7px 9px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px">
-              <button onclick="counterBizJob('${j.id}')" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Send counter</button>
+              <input id="biz-counter-amt" type="number" min="1" step="1" value="${Math.round((j.counter_price_cents || 0) / 100) || ''}" placeholder="0" style="width:100px;padding:7px 9px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px">
+              <input id="biz-counter-note" placeholder="optional note (e.g. quoted by phone)" style="flex:1;min-width:160px;padding:7px 9px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px">
+              <button onclick="counterBizJob('${j.id}')" style="padding:8px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Save price</button>
             </div>
-            <div style="font-size:11px;color:var(--ink3);margin-top:6px">Records the counter — relay it to the customer at ${esc(j.customer_phone || 'their phone')}. When they agree, click <b>Book</b> (books at the counter price).</div>
+            <div style="font-size:11px;color:var(--ink3);margin-top:6px">Set the agreed price for this request, then click <b>Book</b> to create the gig and send the pay link.</div>
           </div>
         ` : ''}
         ${photos.length ? `<div style="margin-top:16px"><div class="modal-label" style="margin-bottom:8px">Photos (${photos.length})</div><div class="modal-photos">${photos.map(u => `<img src="${escAttr(u)}" onclick="window.open(this.src,'_blank')" alt="photo">`).join('')}</div></div>` : ''}
@@ -484,6 +481,7 @@ async function bookBizJob(id) {
   const j = (cache.businessJobs || []).find(x => x.id === id);
   if (!j) return;
   const price = j.counter_price_cents || j.offered_price_cents || j.recommended_price_cents || 0;
+  if (price < 50) { alert('Set a price first — use “Set the price” in the job, then Book.'); return; }
   if (!j.customer_email) { if (!confirm('No email on file for this business — the pay-link can\'t be emailed (you\'ll get a link to send manually). Continue?')) return; }
   if (!confirm(`Accept & bill this job at ${dollars(price)}? A Stripe pay-link will be emailed to the business.`)) return;
   const { data, error } = await sb.functions.invoke('bill-business-job', { body: { business_job_id: id } });
@@ -508,18 +506,17 @@ async function completeBizGig(id) {
   await sb.from('business_jobs').update({ status: 'completed' }).eq('id', id);
   await loadAll(); showBusinessJobModal(id);
 }
-// Admin counter-offer: record a counter price (+ optional note) on a business job.
-// Relay it to the customer; on agreement, Book (which uses counter_price_cents).
+// Admin: set the agreed price (+ optional note) on a business job, then Book to bill.
 async function counterBizJob(id) {
   const amt = parseFloat((document.getElementById('biz-counter-amt') || {}).value);
-  if (!(amt > 0)) { alert('Enter a counter price greater than 0.'); return; }
+  if (!(amt > 0)) { alert('Enter a price greater than 0.'); return; }
   const note = ((document.getElementById('biz-counter-note') || {}).value || '').trim();
   const { error } = await sb.from('business_jobs').update({
-    decision: 'countered', counter_price_cents: Math.round(amt * 100),
-    decision_reason: note || `Countered at $${amt.toFixed(0)} by admin.`,
+    counter_price_cents: Math.round(amt * 100),
+    decision_reason: note || null,
     status: 'new', decided_at: new Date().toISOString(),
   }).eq('id', id);
-  if (error) { alert('Could not save counter: ' + error.message); return; }
+  if (error) { alert('Could not save price: ' + error.message); return; }
   await loadAll(); showBusinessJobModal(id);
 }
 
