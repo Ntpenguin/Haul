@@ -163,7 +163,7 @@ serve(async (req) => {
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${resendKey}` },
         body: JSON.stringify({
           from: 'Fast Fix Work <noreply@fastfixwork.com>',
-          to: [email, 'fastfixworkservices@gmail.com'],
+          to: [email, 'fastfixworkservices@gmail.com', 'fastfixappsupport@gmail.com'],
           subject: `Additional charge for your move — Fast Fix Work`,
           html: `
             <div style="font-family:'Inter',sans-serif;max-width:520px;margin:0 auto;padding:32px 20px;">

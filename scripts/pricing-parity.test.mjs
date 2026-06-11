@@ -10,7 +10,7 @@
 // No credentials, no network, no Stripe. Run: node scripts/pricing-parity.test.mjs
 
 // ── Constants (identical in both implementations) ────────────────────────────
-const BASE_PRICES = { 'Single item': 9375, 'Just a few items': 17500, 'Studio': 35000, '1 BR': 50000, '2 BR': 80000, '3 BR': 135000, '4+ BR / full house': 160000 };
+const BASE_PRICES = { 'Single item': 9375, 'Just a few items': 17500, 'Small move': 25000, 'Studio': 35000, '1 BR': 50000, '2 BR': 80000, '3 BR': 135000, '4+ BR / full house': 160000 };
 const STAIRS_SURCHARGE = 5000, ELEVATOR_SURCHARGE = 4000, LONG_CARRY = 5000, TAX = 0.0825;
 const HEAVY_PRICES = { 'Piano': 25000, 'Safe / gun safe': 15000, 'Pool table': 30000, 'Treadmill / Peloton': 7500, 'Big TV (65"+)': 7500, 'Aquarium': 7500, 'Artwork / mirror': 7500 };
 const PREP_SURCHARGES = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 };
@@ -101,6 +101,8 @@ function serverCalc(q) {
 const AUS = [30.2649, -97.7470], HOU = [29.7604, -95.3698], RRK = [30.5083, -97.6789], NEAR = [30.2700, -97.7500];
 const scenarios = [
   { name: 'Single item, nothing', size: 'Single item' },
+  { name: 'Small move, nothing', size: 'Small move' },
+  { name: 'Small move, stairs(1) + packing', size: 'Small move', stairs_p: 'Stairs', flights_p: 1, boxed: 'Not yet' },
   { name: 'Single item, stairs both + elevator', size: 'Single item', stairs_p: 'Stairs', flights_p: 1, stairs_d: 'Elevator' },
   { name: 'Studio, nothing', size: 'Studio' },
   { name: 'Just a few items', size: 'Just a few items' },

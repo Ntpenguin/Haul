@@ -61,7 +61,7 @@ export async function billBusinessJob(svc: any, stripe: any, resendKey: string |
   }).eq('id', job.id);
 
   if (resendKey && session.url) {
-    const recipients = ['fastfixworkservices@gmail.com'];
+    const recipients = ['fastfixworkservices@gmail.com', 'fastfixappsupport@gmail.com'];
     if (email) recipients.unshift(email);
     const amountStr = `$${(price / 100).toFixed(2)}`;
     await fetch('https://api.resend.com/emails', {

@@ -29,7 +29,7 @@ const ALLOWED_ORIGINS = [
 
 // ── Pricing constants — MUST stay in sync with landing/intake.html calcQuote() ──
 const BASE_PRICES: Record<string, number> = {
-  'Single item': 9375, 'Just a few items': 17500, 'Studio': 35000, '1 BR': 50000,
+  'Single item': 9375, 'Just a few items': 17500, 'Small move': 25000, 'Studio': 35000, '1 BR': 50000,
   '2 BR': 80000, '3 BR': 135000, '4+ BR / full house': 160000,
 };
 const STAIRS_SURCHARGE = 5000;

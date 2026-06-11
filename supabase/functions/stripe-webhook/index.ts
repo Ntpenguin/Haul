@@ -222,7 +222,7 @@ serve(async (req) => {
             },
             body: JSON.stringify({
               from: 'Fast Fix Work <noreply@fastfixwork.com>',
-              to: [quote.email, 'fastfixworkservices@gmail.com'],
+              to: [quote.email, 'fastfixworkservices@gmail.com', 'fastfixappsupport@gmail.com'],
               subject: `Booking confirmed ${refNum} — Fast Fix Work`,
               html: `
                 <div style="font-family:'Inter',sans-serif;max-width:520px;margin:0 auto;padding:32px 20px;">

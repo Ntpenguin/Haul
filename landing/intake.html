@@ -818,7 +818,7 @@ function stripHtml(s) { return String(s || '').replace(/<[^>]*>/g, '').trim(); }
 function clamp(s, max) { return String(s || '').slice(0, max); }
 
 // ── Booked-slot detection ────────────────────────────────────────────────────
-const LEAD_HOURS = { 'Single item':1, 'Just a few items':1.5, 'Studio':2, '1 BR':3, '2 BR':4, '3 BR':5, '4+ BR / full house':7 };
+const LEAD_HOURS = { 'Single item':1, 'Just a few items':1.5, 'Small move':1.5, 'Studio':2, '1 BR':3, '2 BR':4, '3 BR':5, '4+ BR / full house':7 };
 function estimateLeadHours(lead) {
   let hrs = LEAD_HOURS[lead.items_size] || 2;
   const sp = lead.stairs_pickup || '', sd = lead.stairs_dropoff || '';
@@ -1201,7 +1201,7 @@ function renderBody(q){
   // ── Stuff (size + special items + item list) ──
   if(q.type === 'stuff'){
     const st = a || {};
-    const sizes = ['Single item','Just a few items','Studio','1 BR','2 BR','3 BR','4+ BR / full house'];
+    const sizes = ['Single item','Just a few items','Small move','Studio','1 BR','2 BR','3 BR','4+ BR / full house'];
     const sizeChips = sizes.map(s =>
       `<button class="chip${st.size===s?' checked':''}" data-bind="size" data-val="${esc(s)}">${esc(s)}</button>`
     ).join('');
@@ -1228,10 +1228,12 @@ function renderBody(q){
         <button class="chip${st.partial?' checked':''}" data-bind="size-partial" data-val="1"><span class="box"></span>📦 It's a partial load — about half or less of a ${esc(st.size)} (−25%)</button>
       </div>
       ${st.partial ? `<div style="margin-top:6px;padding:10px 12px;background:var(--amber-soft);border:1.5px solid var(--amber);border-radius:10px;font-size:12px;color:var(--ink2);line-height:1.45">Small load — we'll price this ${esc(st.size)} at <b>25% off</b> the base.</div>` : ''}` : '';
+    const smallMoveUI = st.size === 'Small move' ? `
+      <div style="margin-top:6px;padding:10px 12px;background:var(--amber-soft);border:1.5px solid var(--amber);border-radius:10px;font-size:12px;color:var(--ink2);line-height:1.45">A small move is about <b>6–15 items</b> — includes large items plus boxes.</div>` : '';
     return `
       <div class="section-label">Move size</div>
       <div class="chips">${sizeChips}</div>
-      ${partialUI}
+      ${partialUI}${smallMoveUI}
       <div class="section-label">Heavy / special items</div>
       <div class="chips col">${specChips}</div>
       <textarea class="field-textarea" style="margin-top:8px"
@@ -1403,10 +1405,13 @@ function renderBody(q){
       {icon:'🪑', label:'Dining set'},    {icon:'🗄️', label:'Dresser'},
       {icon:'🧊', label:'Refrigerator'},  {icon:'🧺', label:'Washer / dryer'},
       {icon:'🪞', label:'Wardrobe / armoire'}, {icon:'📚', label:'Bookshelf'},
+      {icon:'📺', label:'TV stand'}, {icon:'🛏️', label:'Nightstand'}, {icon:'🖥️', label:'Desk'},
     ];
     const cSel = (a || {}).common || {};
     const cAttrs = (a || {}).commonAttrs || {};
     const commonNone = (a || {}).commonNone === true;
+    const stuffSize = S.answers['stuff']?.size || '';
+    const showCommon = !!stuffSize && stuffSize !== 'Single item' && stuffSize !== 'Just a few items';
     const commonAttrOpts = ['Heavy (250lb+)','Needs disassembly','Needs wrapping','Upstairs'];
     const commonChips = commonOpts.map(o => {
       const qty = cSel[o.label] || 0;
@@ -1421,10 +1426,10 @@ function renderBody(q){
       return `${row}<div class="common-attrs">${attrRows}</div>`;
     }).join('');
     return `
-      <div class="section-label">Common items <span style="font-weight:400;color:var(--ink3)">(helps us size the crew)</span></div>
+      ${showCommon ? `<div class="section-label">Common items <span style="font-weight:400;color:var(--ink3)">(helps us size the crew)</span></div>
       <div class="chips col">${commonChips}
         <button class="chip${commonNone ? ' checked' : ''}" data-bind="common-none" style="justify-content:center">None of the above</button>
-      </div>
+      </div>` : ''}
       <div class="section-label">Photos / walkthrough video <span style="font-weight:400;color:var(--ink3)">(optional)</span></div>
       <div class="upload-zone" id="upload-zone-${q.id}">
         <input type="file" id="file-input-${q.id}" accept="image/*,video/*" multiple />
@@ -2063,7 +2068,7 @@ function formatAnswer(q){
 }
 
 // ── Instant quote engine (mirrors lib/pricing.ts) ────────────────────────────
-const BASE_PRICES = { 'Single item':9375, 'Just a few items':17500, 'Studio':35000, '1 BR':50000, '2 BR':80000, '3 BR':135000, '4+ BR / full house':160000 };
+const BASE_PRICES = { 'Single item':9375, 'Just a few items':17500, 'Small move':25000, 'Studio':35000, '1 BR':50000, '2 BR':80000, '3 BR':135000, '4+ BR / full house':160000 };
 const STAIRS_SURCHARGE = 5000;
 const ELEVATOR_SURCHARGE = 4000; // $40 per location that has an elevator
 const LONG_CARRY = 5000;
@@ -2403,11 +2408,11 @@ function showReview(){
 function buildPayload(){
   const getA = id => S.answers[id];
   const VALID_SERVICES = new Set(['Local move (same city)','Long distance','Just a few items','Loading / unloading help only','Moving in or out of storage','Rearranging within same address']);
-  const VALID_SIZES    = new Set(['Single item','Just a few items','Studio','1 BR','2 BR','3 BR','4+ BR / full house']);
+  const VALID_SIZES    = new Set(['Single item','Just a few items','Small move','Studio','1 BR','2 BR','3 BR','4+ BR / full house']);
   const VALID_STAIRS   = new Set(['Ground floor','Stairs','Elevator','Both','Ground floor — easy in/out','Stairs only','Both stairs and elevator']);
   const VALID_PARKING  = new Set(['Driveway / right at the door','Street parking — short walk','Long walk (100+ ft)','Loading dock / bay','Permit might be needed','Not sure — call me']);
   const VALID_SPECIAL  = new Set(['Piano','Safe / gun safe','Pool table','Treadmill / Peloton','Big TV (65"+)','Artwork / mirror','Aquarium','Nope — just regular stuff','Not sure']);
-  const VALID_COMMON   = new Set(['Couch / sofa','Bed','Dining set','Dresser','Refrigerator','Washer / dryer','Wardrobe / armoire','Bookshelf']);
+  const VALID_COMMON   = new Set(['Couch / sofa','Bed','Dining set','Dresser','Refrigerator','Washer / dryer','Wardrobe / armoire','Bookshelf','TV stand','Nightstand','Desk']);
   const VALID_COMMON_ATTRS = new Set(['Heavy (250lb+)','Needs disassembly','Needs wrapping','Upstairs']);
   const VALID_BOXED    = new Set(['Yes — all boxed','Yes — all boxed and labeled',"Some are, some aren't",'Not yet']);
   const VALID_PREP     = new Set(['Wrap / pad furniture','Disassemble bed frame(s)','Take apart shelving','Unmount TV','Pack the kitchen','None — ready to go']);
