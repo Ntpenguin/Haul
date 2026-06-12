@@ -1083,8 +1083,20 @@ async function assignCrew(gigId){
   if(!worker_id){alert('Pick a worker.');return;}
   const {error}=await sb.from('job_crew').insert({gig_id:gigId, worker_id});
   if(error){alert(/duplicate|unique/i.test(error.message)?'That worker is already on this job.':'Could not assign: '+error.message);return;}
+  notifyWorkerAssigned(gigId, worker_id);
   await loadAll();
   if(currentPage==='schedule') showPage('schedule'); else showGigModal(gigId);
+}
+
+// Email the worker their assignment (notify-worker-assigned edge fn, admin-gated).
+// Fire-and-forget: a failed email never blocks or rolls back the assignment.
+async function notifyWorkerAssigned(gigId, workerId){
+  try{
+    const {error}=await sb.functions.invoke('notify-worker-assigned',{body:{gig_id:gigId, worker_id:workerId}});
+    if(error) alert('Worker assigned, but the notification email failed: '+(error.message||'unknown error'));
+  }catch(e){
+    alert('Worker assigned, but the notification email failed: '+e.message);
+  }
 }
 async function removeCrew(id){
   const c=(cache.jobCrew||[]).find(x=>x.id===id); const gigId=c?c.gig_id:null;
@@ -2415,6 +2427,8 @@ async function assignMover(gigId, appId) {
   if (!confirm('Assign this mover to the gig?')) return;
   const { error } = await sb.rpc('assign_mover_to_gig', { p_gig_id: gigId, p_application_id: appId });
   if (error) { alert('Could not assign mover: ' + error.message); return; }
+  const app = cache.applications.find(a => a.id === appId);
+  if (app && app.mover_id) notifyWorkerAssigned(gigId, app.mover_id);
   closeModal();
   await loadAll();
   showPage(currentPage);
