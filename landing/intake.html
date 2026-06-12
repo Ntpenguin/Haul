@@ -1219,17 +1219,12 @@ function renderBody(q){
       const checked = qty > 0 ? ' checked' : '';
       return `<div class="chip spec-row${checked}"><span style="font-size:17px;margin-right:4px">${o.icon}</span><span class="spec-name">${esc(o.label)}</span><span class="qty-stepper"><button data-bind="spec-qty-dec" data-val="${esc(key)}"${qty===0?' disabled':''}>−</button><span class="qty-val">${qty}</span><button data-bind="spec-qty-inc" data-val="${esc(key)}">+</button></span></div>`;
     }).join('');
-    const partialUI = PARTIAL_LOAD_SIZES.has(st.size) ? `
-      <div class="chips" style="margin-top:8px">
-        <button class="chip${st.partial?' checked':''}" data-bind="size-partial" data-val="1"><span class="box"></span>📦 It's a partial load — about half or less of a ${esc(st.size)} (−25%)</button>
-      </div>
-      ${st.partial ? `<div style="margin-top:6px;padding:10px 12px;background:var(--amber-soft);border:1.5px solid var(--amber);border-radius:10px;font-size:12px;color:var(--ink2);line-height:1.45">Small load — we'll price this ${esc(st.size)} at <b>25% off</b> the base.</div>` : ''}` : '';
     const smallMoveUI = st.size === 'Small move' ? `
       <div style="margin-top:6px;padding:10px 12px;background:var(--amber-soft);border:1.5px solid var(--amber);border-radius:10px;font-size:12px;color:var(--ink2);line-height:1.45">A small move is about <b>6–15 items</b> — includes large items plus boxes.</div>` : '';
     return `
       <div class="section-label">Move size</div>
       <div class="chips">${sizeChips}</div>
-      ${partialUI}${smallMoveUI}
+      ${smallMoveUI}
       <div class="section-label">Heavy / special items</div>
       <div class="chips col">${specChips}</div>
       <textarea class="field-textarea" style="margin-top:8px"
@@ -1417,7 +1412,8 @@ function renderBody(q){
       const sel = cAttrs[o.label] || {};
       const attrRows = commonAttrOpts.map(at => {
         const ac = sel[at] || 0;
-        return `<div class="chip attr-chip${ac>0?' checked':''}"><span class="spec-name">${esc(at)}</span><span class="qty-stepper"><button data-bind="common-attr-dec" data-item="${esc(o.label)}" data-val="${esc(at)}"${ac===0?' disabled':''}>−</button><span class="qty-val">${ac}</span><button data-bind="common-attr-inc" data-item="${esc(o.label)}" data-val="${esc(at)}"${ac>=qty?' disabled':''}>+</button></span></div>`;
+        const priceTag = at === 'Heavy (250lb+)' ? ' <span style="color:var(--amber-deep);font-weight:700">+$75 ea</span>' : '';
+        return `<div class="chip attr-chip${ac>0?' checked':''}"><span class="spec-name">${esc(at)}${priceTag}</span><span class="qty-stepper"><button data-bind="common-attr-dec" data-item="${esc(o.label)}" data-val="${esc(at)}"${ac===0?' disabled':''}>−</button><span class="qty-val">${ac}</span><button data-bind="common-attr-inc" data-item="${esc(o.label)}" data-val="${esc(at)}"${ac>=qty?' disabled':''}>+</button></span></div>`;
       }).join('');
       return `${row}<div class="common-attrs">${attrRows}</div>`;
     }).join('');
@@ -1756,13 +1752,8 @@ function handleBind(q, bind, el){
   }
   // ── Stuff fields ──
   else if(bind === 'size'){
-    const next = {...(S.answers[q.id]||{}), size: val};
-    if(!PARTIAL_LOAD_SIZES.has(val)) next.partial = false; // partial only applies to Studio / 1 BR
-    S.answers[q.id] = next;
+    S.answers[q.id] = {...(S.answers[q.id]||{}), size: val};
     S.notSure[q.id] = false; renderCard(false);
-  }
-  else if(bind === 'size-partial'){
-    S.answers[q.id] = {...(S.answers[q.id]||{}), partial: !(S.answers[q.id]||{}).partial}; renderCard(false);
   }
   else if(bind === 'spec-multi'){
     // Only "Nope — just regular stuff" uses this toggle — clears all item quantities
@@ -2075,12 +2066,11 @@ const DISTANCE_PER_MILE = 125; // $1.25/mile over 15 free miles
 const LONG_DISTANCE_MULTIPLIER = 1.5; // 50% surcharge for long distance moves
 const STAGING_SURCHARGE_PCT = 0.30;   // +30% of base for home staging (crew arranges/styles furniture)
 const PACKING_SURCHARGE_PCT = 0.35;   // +35% of base for full packing service (items not yet boxed)
-// Partial-load tier — about half (or less) of a full Studio / 1 BR. Charges 75%
-// of the base (a 25% discount). Only offered for these sizes. MUST stay in sync
-// with create-quote-payment + admin calcLeadQuote + pricing-parity.test.mjs.
-const PARTIAL_LOAD_MULT = 0.75;
-const PARTIAL_LOAD_SIZES = new Set(['Studio','1 BR']);
 const PREP_SURCHARGES = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 }; // flat disassembly add-ons; other prep options are free
+// Common items flagged "Heavy (250lb+)" — flat fee per flagged item. MUST stay in
+// sync with create-quote-payment + admin calcLeadQuote + pricing-parity.test.mjs.
+const HEAVY_COMMON_FEE = 7500;
+const HEAVY_COMMON_ATTR = 'Heavy (250lb+)';
 
 function haversineDistance(lat1, lng1, lat2, lng2) {
   const R = 3959; // Earth radius in miles
@@ -2099,12 +2089,8 @@ function calcDistance() {
 
 function calcQuote(){
   const size   = S.answers['stuff']?.size;
-  const fullBase = BASE_PRICES[size];
-  if(!fullBase) return null; // can't quote without size
-  // Partial load (Studio / 1 BR only) — charge 75% of the base. Applied before
-  // long-distance + percentage add-ons so everything scales off the smaller base.
-  const isPartial = !!(S.answers['stuff']?.partial) && PARTIAL_LOAD_SIZES.has(size);
-  const base   = isPartial ? Math.round(fullBase * PARTIAL_LOAD_MULT) : fullBase;
+  const base   = BASE_PRICES[size];
+  if(!base) return null; // can't quote without size
 
   const service  = S.answers['service'] || '';
   const special  = S.answers['stuff']?.special || {};
@@ -2150,7 +2136,12 @@ function calcQuote(){
   const prepItems = prepSel.filter(p => PREP_SURCHARGES[p]).map(p => [p, PREP_SURCHARGES[p]]);
   const prepCents = prepItems.reduce((s,[,c]) => s + c, 0);
 
-  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents + prepCents);
+  // Common items flagged Heavy (250lb+) — $75 per flagged item
+  const cAttrs = (S.answers['photos']?.commonAttrs) || {};
+  const heavyCommonCount = Object.values(cAttrs).reduce((s, attrs) => s + (Number(attrs?.[HEAVY_COMMON_ATTR]) || 0), 0);
+  const heavyCommonCents = heavyCommonCount * HEAVY_COMMON_FEE;
+
+  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents + prepCents + heavyCommonCents);
   const tax      = Math.round(subtotal * TAX);
   const total    = subtotal + tax;  // gross move price (before any referral credit)
 
@@ -2161,7 +2152,7 @@ function calcQuote(){
   const deposit  = finalTotal; // 100% upfront (after credit)
 
   const heavyCount = specialEntries.reduce((s,[,qty]) => s + qty, 0);
-  return { base, isPartial, stairsCents, elevatorCents, elevators, carryCents, heavyCents, distanceCents, stagingCents, packingCents, prepCents, prepItems, miles, isLongDistance, subtotal, tax, total, referralCredit, finalTotal, deposit, flights, longCarry, heavyCount };
+  return { base, stairsCents, elevatorCents, elevators, carryCents, heavyCents, distanceCents, stagingCents, packingCents, prepCents, prepItems, heavyCommonCount, heavyCommonCents, miles, isLongDistance, subtotal, tax, total, referralCredit, finalTotal, deposit, flights, longCarry, heavyCount };
 }
 
 function fmtMoney(cents){ return '$' + (cents/100).toLocaleString('en-US', {minimumFractionDigits:0, maximumFractionDigits:0}); }
@@ -2181,6 +2172,7 @@ function renderQuoteBlock(){
     q.stagingCents ? `<div class="q-row"><span>Home staging (+30%)</span><span>+${fmtMoney(q.stagingCents)}</span></div>` : '',
     q.packingCents ? `<div class="q-row"><span>Packing service (+35%)</span><span>+${fmtMoney(q.packingCents)}</span></div>` : '',
     (q.prepItems||[]).map(([label,cents]) => `<div class="q-row"><span>${esc(label)}</span><span>+${fmtMoney(cents)}</span></div>`).join(''),
+    q.heavyCommonCents ? `<div class="q-row"><span>Heavy items 250lb+ (${q.heavyCommonCount} × $75)</span><span>+${fmtMoney(q.heavyCommonCents)}</span></div>` : '',
     q.heavyCents   ? `<div class="q-row"><span>Special items (${q.heavyCount})</span><span>+${fmtMoney(q.heavyCents)}</span></div>${Object.entries(S.answers['stuff']?.special||{}).filter(([k])=>k!=='Nope — just regular stuff').filter(([,v])=>v>1).map(([k,v])=>`<div class="q-row" style="font-size:12px;color:var(--ink3);padding-left:10px"><span>${esc(k)} ×${v}</span><span>${fmtMoney((HEAVY_PRICES[k]||7500)*v)}</span></div>`).join('')}` : '',
     `<div class="q-row"><span>Tax (8.25%)</span><span>+${fmtMoney(q.tax)}</span></div>`,
     q.referralCredit ? `<div class="q-row" style="color:var(--success);font-weight:700"><span>Referral from ${esc(S.referrerName || 'a friend')}</span><span>-${fmtMoney(q.referralCredit)}</span></div>` : '',
@@ -2188,7 +2180,7 @@ function renderQuoteBlock(){
 
   return `<div style="background:var(--amber-soft);border:2px solid var(--amber);border-radius:14px;padding:16px;margin-bottom:14px;">
     <div style="font-size:11px;font-weight:700;color:var(--amber-deep);letter-spacing:.5px;text-transform:uppercase;margin-bottom:10px;">Your estimate</div>
-    <div class="q-row" style="margin-bottom:6px"><span style="font-size:14px;color:var(--ink2)">Base (${S.answers['stuff']?.size}${q.isPartial?' · partial −25%':''})</span><span style="font-size:14px">${fmtMoney(q.base)}</span></div>
+    <div class="q-row" style="margin-bottom:6px"><span style="font-size:14px;color:var(--ink2)">Base (${S.answers['stuff']?.size})</span><span style="font-size:14px">${fmtMoney(q.base)}</span></div>
     ${rows}
     <div style="border-top:1.5px solid var(--amber);margin:10px 0 8px"></div>
     <div style="display:flex;justify-content:space-between;align-items:baseline">
@@ -2461,7 +2453,6 @@ function buildPayload(){
     dropoff_address:    clamp(stripHtml(addresses.dropoff?.addr), 300) || null,
     dropoff_place_type: clamp(stripHtml(addresses.dropoff?.place), 60) || null,
     items_size:         sanitizeEnum(stuff.size, VALID_SIZES),
-    partial_load:       !!stuff.partial && (stuff.size === 'Studio' || stuff.size === '1 BR'),
     items_list:         clamp(stripHtml(stuff.list), 1000) || null,
     stairs_pickup:      sanitizeEnum(access.stairs_pickup, VALID_STAIRS),
     stairs_dropoff:     sanitizeEnum(access.stairs_dropoff, VALID_STAIRS),

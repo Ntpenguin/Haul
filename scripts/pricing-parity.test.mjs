@@ -16,8 +16,8 @@ const HEAVY_PRICES = { 'Piano': 25000, 'Safe / gun safe': 15000, 'Pool table': 3
 const PREP_SURCHARGES = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 };
 const DISTANCE_FREE_MILES = 15, DISTANCE_PER_MILE = 125, LONG_DISTANCE_MULTIPLIER = 1.5, LONG_DISTANCE_THRESHOLD = 50;
 const STAGING_PCT = 0.30, PACKING_PCT = 0.35;
-const PARTIAL_LOAD_MULT = 0.75, PARTIAL_LOAD_SIZES = new Set(['Studio', '1 BR']);
-const partialBase = (size, partial) => (partial && PARTIAL_LOAD_SIZES.has(size)) ? Math.round(BASE_PRICES[size] * PARTIAL_LOAD_MULT) : BASE_PRICES[size];
+const HEAVY_COMMON_FEE = 7500, HEAVY_COMMON_ATTR = 'Heavy (250lb+)';
+const heavyCommonFrom = (cAttrs) => Object.values(cAttrs || {}).reduce((s, a) => s + (Number(a?.[HEAVY_COMMON_ATTR]) || 0), 0) * HEAVY_COMMON_FEE;
 const hasStairs = (lbl) => lbl === 'Stairs' || lbl === 'Both';
 const hasElevator = (lbl) => lbl === 'Elevator' || lbl === 'Both';
 
@@ -31,7 +31,7 @@ function haversine(lat1, lng1, lat2, lng2) {
 // ── ORACLE: intake calcQuote() ported verbatim from landing/intake.html ──────
 function intakeCalc(s) {
   if (!BASE_PRICES[s.size]) return null;
-  const base = partialBase(s.size, s.partial);
+  const base = BASE_PRICES[s.size];
   const flightsFrom = hasStairs(s.stairs_p) ? Math.max(1, s.flights_p || 1) : 0;
   const flightsTo = hasStairs(s.stairs_d) ? Math.max(1, s.flights_d || 1) : 0;
   const longCarry = (s.parking || '').includes('100+');
@@ -48,7 +48,8 @@ function intakeCalc(s) {
   const needsPacking = s.boxed === 'Not yet' && s.packing !== false;
   const packingCents = needsPacking ? Math.round(adjustedBase * PACKING_PCT) : 0;
   const prepCents = (Array.isArray(s.prep) ? s.prep : []).reduce((a, p) => a + (PREP_SURCHARGES[p] || 0), 0);
-  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents + prepCents);
+  const heavyCommonCents = heavyCommonFrom(s.commonAttrs);
+  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents + prepCents + heavyCommonCents);
   return subtotal + Math.round(subtotal * TAX);
 }
 
@@ -58,7 +59,6 @@ function toRow(s) {
   for (const [k, q] of Object.entries(s.special || {})) if (k !== 'Nope — just regular stuff') for (let i = 0; i < q; i++) special_items.push(k);
   return {
     items_size: s.size,
-    partial_load: !!s.partial && (s.size === 'Studio' || s.size === '1 BR'),
     service_type: s.service || null,
     stairs_pickup: s.stairs_p || null,
     stairs_dropoff: s.stairs_d || null,
@@ -69,6 +69,7 @@ function toRow(s) {
     staging: !!s.staging,
     packing_service: s.boxed === 'Not yet' ? (s.packing !== false) : false,
     prep_needed: Array.isArray(s.prep) ? s.prep : [],
+    common_item_details: s.commonAttrs || {},
     answers: s.coords ? { addresses: { pickup: { lat: s.coords[0], lng: s.coords[1] }, dropoff: { lat: s.coords[2], lng: s.coords[3] } } } : {},
   };
 }
@@ -76,7 +77,7 @@ function toRow(s) {
 // ── SUBJECT: computeQuoteTotalCents() ported verbatim from the edge function ──
 function serverCalc(q) {
   if (!BASE_PRICES[q.items_size]) return null;
-  const base = partialBase(q.items_size, q.partial_load);
+  const base = BASE_PRICES[q.items_size];
   const flightsFrom = hasStairs(q.stairs_pickup) ? Math.max(1, q.flights_pickup || 1) : 0;
   const flightsTo = hasStairs(q.stairs_dropoff) ? Math.max(1, q.flights_dropoff || 1) : 0;
   const stairsCents = (flightsFrom + flightsTo) * STAIRS_SURCHARGE;
@@ -94,7 +95,8 @@ function serverCalc(q) {
   const stagingCents = q.staging ? Math.round(adjustedBase * STAGING_PCT) : 0;
   const packingCents = q.packing_service ? Math.round(adjustedBase * PACKING_PCT) : 0;
   const prepCents = (Array.isArray(q.prep_needed) ? q.prep_needed : []).reduce((a, p) => a + (PREP_SURCHARGES[p] || 0), 0);
-  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents + prepCents);
+  const heavyCommonCents = heavyCommonFrom(q.common_item_details);
+  const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents + prepCents + heavyCommonCents);
   return subtotal + Math.round(subtotal * TAX);
 }
 
@@ -124,10 +126,10 @@ const scenarios = [
   { name: '1 BR, disassemble bed frame (+$50)', size: '1 BR', prep: ['Disassemble bed frame(s)'] },
   { name: '2 BR, bed frame + shelving disassembly (+$75)', size: '2 BR', prep: ['Disassemble bed frame(s)', 'Take apart shelving'] },
   { name: '1 BR, prep but only free options', size: '1 BR', prep: ['Wrap / pad furniture', 'Unmount TV'] },
-  { name: 'Studio, partial load (−25% → $262.50 base)', size: 'Studio', partial: true },
-  { name: '1 BR, partial load (−25% → $375 base)', size: '1 BR', partial: true },
-  { name: '1 BR, partial + stairs(2) + packing (% off reduced base)', size: '1 BR', partial: true, stairs_p: 'Stairs', flights_p: 2, boxed: 'Not yet' },
-  { name: '2 BR, partial flag IGNORED (not an eligible size)', size: '2 BR', partial: true },
+  { name: '1 BR, 1 heavy common item (+$75)', size: '1 BR', commonAttrs: { 'Couch / sofa': { 'Heavy (250lb+)': 1 } } },
+  { name: '2 BR, 3 heavy common items across 2 types (+$225)', size: '2 BR', commonAttrs: { 'Couch / sofa': { 'Heavy (250lb+)': 2 }, 'Dresser': { 'Heavy (250lb+)': 1 } } },
+  { name: '1 BR, common attrs but none heavy (no charge)', size: '1 BR', commonAttrs: { 'Bed': { 'Needs disassembly': 1, 'Upstairs': 1 } } },
+  { name: 'Studio, heavy common + stairs + packing stack', size: 'Studio', commonAttrs: { 'Washer / dryer': { 'Heavy (250lb+)': 2 } }, stairs_p: 'Stairs', flights_p: 1, boxed: 'Not yet' },
   { name: 'other / custom size (un-quotable)', size: 'other' },
 ];
 

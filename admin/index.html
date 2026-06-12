@@ -542,7 +542,7 @@ function renderPricing() {
           ['Stairs', '$50 / flight (per location)'], ['Elevator', '$40 / location'],
           ['Long carry (100+ ft)', '$50'], ['Distance', '$1.25/mi over 15 free'],
           ['Long distance (50+ mi)', '+50% of base'], ['Home staging', '+30% of base'],
-          ['Packing service', '+35% of base'], ['Partial load (Studio/1BR)', '−25% of base'],
+          ['Packing service', '+35% of base'], ['Heavy item flag 250lb+ (common items)', '$75 each'],
           ['Bed frame disassembly', '$50'], ['Shelving disassembly', '$25'],
         ])}
       </div>
@@ -2484,11 +2484,8 @@ function estimateLeadHours(l) {
 }
 function fmtDuration(hrs) { const h = Math.floor(hrs); const m = (hrs - h) * 60; return m ? `${h}h ${m}m` : `${h}h`; }
 function calcLeadQuote(l) {
-  const fullBase = LEAD_BASE[l.items_size];
-  if (!fullBase) return null;
-  // Partial load (Studio / 1 BR only) — 75% of base. Matches intake + create-quote-payment.
-  const isPartial = !!l.partial_load && (l.items_size === 'Studio' || l.items_size === '1 BR');
-  const base = isPartial ? Math.round(fullBase * 0.75) : fullBase;
+  const base = LEAD_BASE[l.items_size];
+  if (!base) return null;
   const special = Array.isArray(l.special_items) ? l.special_items.filter(x => x !== 'Nope — just regular stuff') : [];
   const sp = l.stairs_pickup || '', sd = l.stairs_dropoff || '';
   const hasStairs = lbl => lbl === 'Stairs' || lbl === 'Both';
@@ -2510,11 +2507,15 @@ function calcLeadQuote(l) {
   const PREP_SURCHARGES = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 }; // matches intake + create-quote-payment
   const prepItems = (Array.isArray(l.prep_needed) ? l.prep_needed : []).filter(p => PREP_SURCHARGES[p]).map(p => [p, PREP_SURCHARGES[p]]);
   const prepCents = prepItems.reduce((s,[,c]) => s + c, 0);
-  const subtotal = adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + stagingCents + packingCents + prepCents;
+  // Common items flagged Heavy (250lb+) — $75 per flagged item. Matches intake + create-quote-payment.
+  const cAttrs = (l.common_item_details && typeof l.common_item_details === 'object') ? l.common_item_details : {};
+  const heavyCommonCount = Object.values(cAttrs).reduce((s, a) => s + (Number(a && a['Heavy (250lb+)']) || 0), 0);
+  const heavyCommonCents = heavyCommonCount * 7500;
+  const subtotal = adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + stagingCents + packingCents + prepCents + heavyCommonCents;
   const tax = Math.round(subtotal * 0.0825);
   const total = subtotal + tax;
   const deposit = total; // 100% upfront
-  return { base, isPartial, stairsCents, elevatorCents, elevators, carryCents, heavyCents, stagingCents, packingCents, prepItems, isLongDistance, subtotal, tax, total, deposit, flights, heavyCount: special.length };
+  return { base, stairsCents, elevatorCents, elevators, carryCents, heavyCents, stagingCents, packingCents, prepItems, heavyCommonCount, heavyCommonCents, isLongDistance, subtotal, tax, total, deposit, flights, heavyCount: special.length };
 }
 function fmtMoney(c) { return '$' + (c/100).toLocaleString('en-US', {minimumFractionDigits:0,maximumFractionDigits:0}); }
 function renderLeadPrice(l) {
@@ -2533,11 +2534,12 @@ function renderLeadPrice(l) {
     q.stagingCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Home staging (+30%)</span><span>+${fmtMoney(q.stagingCents)}</span></div>` : '',
     q.packingCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Packing service (+35%)</span><span>+${fmtMoney(q.packingCents)}</span></div>` : '',
     ...(q.prepItems||[]).map(([label,cents]) => `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>${esc(label)}</span><span>+${fmtMoney(cents)}</span></div>`),
+    q.heavyCommonCents ? `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Heavy items 250lb+ (${q.heavyCommonCount} × $75)</span><span>+${fmtMoney(q.heavyCommonCents)}</span></div>` : '',
     `<div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Tax (8.25%)</span><span>+${fmtMoney(q.tax)}</span></div>`,
   ].filter(Boolean).join('');
   return `<div style="background:var(--accent-soft);border:2px solid var(--accent);border-radius:12px;padding:14px 16px;margin:10px 0">
     <div style="font-size:11px;font-weight:700;color:var(--accent-deep);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px">Price estimate</div>
-    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Base (${l.items_size}${q.isPartial?' · partial −25%':''})</span><span>${fmtMoney(q.base)}</span></div>
+    <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--ink2);margin-bottom:3px"><span>Base (${l.items_size})</span><span>${fmtMoney(q.base)}</span></div>
     ${rows}
     <div style="border-top:1.5px solid var(--accent);margin:8px 0 6px"></div>
     <div style="display:flex;justify-content:space-between;align-items:baseline">
@@ -2637,7 +2639,6 @@ function leadCustomerRows(l, includeFlow) {
     ['Special items',   esc(special)],
     ['Boxed up',    (esc(l.items_boxed) || '—') + (l.box_count ? ` · ${l.box_count} boxes` : '')],
     ['Packing service', (l.packing_service != null ? l.packing_service : (l.items_boxed === 'Not yet')) ? '<span style="color:#27ae60;font-weight:700">Yes (+35%)</span>' : (l.items_boxed === 'Not yet' ? '<span style="color:var(--ink3)">Declined</span>' : '—')],
-    ['Partial load', (l.partial_load && (l.items_size === 'Studio' || l.items_size === '1 BR')) ? '<span style="color:#27ae60;font-weight:700">Yes (−25%)</span>' : '—'],
     ['Prep needed', Array.isArray(l.prep_needed) && l.prep_needed.length ? esc(l.prep_needed.join(', ')) : '—'],
     ['Home staging', l.staging ? '<span style="color:#27ae60;font-weight:700">Yes (+30%)</span>' : '—'],
     ['Items list',  esc(l.items_list) || '—'],
