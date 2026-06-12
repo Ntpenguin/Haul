@@ -104,7 +104,7 @@ serve(async (req) => {
       : 'Time to be confirmed — we’ll reach out';
     const duration = gig.estimated_duration_hours ? `~${gig.estimated_duration_hours} hours` : null;
     const row = (label: string, value: string | null) => value
-      ? `<tr><td style="padding:5px 0;color:#82897A;vertical-align:top;">${label}</td><td style="padding:5px 0;text-align:right;font-weight:600;color:#233527;">${value}</td></tr>`
+      ? `<tr><td style="padding:5px 0;color:#84877E;vertical-align:top;">${label}</td><td style="padding:5px 0;text-align:right;font-weight:600;color:#21251F;">${value}</td></tr>`
       : '';
 
     const resp = await fetch('https://api.resend.com/emails', {
@@ -119,8 +119,8 @@ serve(async (req) => {
             <div style="text-align:center;margin-bottom:24px;">
               <span style="font-size:28px;font-weight:800;color:#C9A23C;font-family:'Georgia',serif;">Fast Fix Work</span>
             </div>
-            <h2 style="color:#233527;margin-bottom:4px;">${escHtml(firstName)}, you've been assigned to a job</h2>
-            <p style="color:#4C5847;font-size:15px;line-height:1.6;margin-bottom:16px;">
+            <h2 style="color:#21251F;margin-bottom:4px;">${escHtml(firstName)}, you've been assigned to a job</h2>
+            <p style="color:#4D5149;font-size:15px;line-height:1.6;margin-bottom:16px;">
               You're on the crew for <strong>${escHtml(jobLabel)}</strong>. Details below — open the
               Fast Fix Work app for the full checklist and to message about the job.
             </p>
@@ -133,11 +133,11 @@ serve(async (req) => {
                 ${row('Crew size', gig.crew_size ? escHtml(String(gig.crew_size)) : null)}
               </table>
             </div>
-            <p style="color:#4C5847;font-size:14px;line-height:1.6;margin-bottom:24px;">
+            <p style="color:#4D5149;font-size:14px;line-height:1.6;margin-bottom:24px;">
               Can't make it, or have a question? Call or text
               <a href="tel:5127771628" style="color:#7E6418;font-weight:700;">512-777-1628</a> as soon as possible.
             </p>
-            <p style="color:#82897A;font-size:12px;text-align:center;">
+            <p style="color:#84877E;font-size:12px;text-align:center;">
               Fast Fix Work LLC · Austin, TX<br>
               <a href="mailto:communication@fastfixwork.com" style="color:#7E6418;">communication@fastfixwork.com</a>
             </p>

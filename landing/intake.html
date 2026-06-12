@@ -8,7 +8,7 @@
 <meta name="description" content="Get an instant moving quote in about 2 minutes. Tell us about your move and we'll match you with a vetted local mover." />
 <!-- Content Security Policy: restrict resource loading to trusted origins -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://unpkg.com; style-src 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://joiukvttuamaanrgzfrz.supabase.co https://*.stripe.com https://server.arcgisonline.com; connect-src https://joiukvttuamaanrgzfrz.supabase.co https://nominatim.openstreetmap.org https://api.stripe.com https://router.project-osrm.org; frame-src https://js.stripe.com https://hooks.stripe.com; object-src 'none';" />
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='translate(0,9)'><path d='M16 3 H55 Q61 3 61 9 V37 Q61 43 55 43 H16 L3 23 Z' fill='%23C9A23C' stroke='%23233527' stroke-width='3'/><circle cx='15' cy='23' r='4' fill='%23FAF7EC' stroke='%23233527' stroke-width='2.6'/><text x='39' y='29' text-anchor='middle' font-family='Georgia,serif' font-weight='700' font-size='16' fill='%23233527'>FFX</text></g></svg>" />
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='translate(0,9)'><path d='M16 3 H55 Q61 3 61 9 V37 Q61 43 55 43 H16 L3 23 Z' fill='%23C9A23C' stroke='%2321251F' stroke-width='3'/><circle cx='15' cy='23' r='4' fill='%23FAF7EC' stroke='%2321251F' stroke-width='2.6'/><text x='39' y='29' text-anchor='middle' font-family='Georgia,serif' font-weight='700' font-size='16' fill='%2321251F'>FFX</text></g></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -21,15 +21,15 @@
   --amber-deep:#7E6418;
   --amber-soft:#F3EED7;
   --amber-mid: #E2C96B;
-  --ink:       #233527;
-  --ink2:      #4C5847;
-  --ink3:      #82897A;
-  --ink4:      #B2B5A3;
+  --ink:       #21251F;
+  --ink2:      #4D5149;
+  --ink3:      #84877E;
+  --ink4:      #B2B4AB;
   --bg:        #FAF7EC;
   --card:      #FFFFFF;
   --surface:   #F0EBD9;
-  --line:      rgba(35,53,39,0.08);
-  --line2:     rgba(35,53,39,0.18);
+  --line:      rgba(33,37,31,0.08);
+  --line2:     rgba(33,37,31,0.18);
   --success:   #3F7253;
   --radius:    18px;
   --shadow:    5px 5px 0 var(--ink);
@@ -47,7 +47,7 @@ html, body {
   overscroll-behavior: contain;
 }
 body {
-  background-image: radial-gradient(rgba(35,53,39,0.045) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(33,37,31,0.045) 1px, transparent 1px);
   background-size: 22px 22px;
   /* Remove 300ms tap delay on all elements */
   touch-action: manipulation;
@@ -369,7 +369,7 @@ header {
 .addr-suggestions {
   position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 100;
   background: var(--card); border: 1.5px solid var(--line2); border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(35,53,39,0.12); overflow: hidden;
+  box-shadow: 0 8px 24px rgba(33,37,31,0.12); overflow: hidden;
 }
 .addr-suggestion {
   padding: 11px 14px; font-size: 14px; color: var(--ink); cursor: pointer;
@@ -694,7 +694,7 @@ header {
     padding-bottom: calc(12px + env(safe-area-inset-bottom));
     background: var(--card);
     border-top: 1px solid var(--line);
-    box-shadow: 0 -6px 24px rgba(35,53,39,0.07);
+    box-shadow: 0 -6px 24px rgba(33,37,31,0.07);
     z-index: 50;
   }
 
@@ -2327,9 +2327,9 @@ function showLegalModal(type) {
 `;
 
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(35,53,39,0.5);display:flex;align-items:center;justify-content:center;z-index:200;animation:overlayIn .18s ease';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(33,37,31,0.5);display:flex;align-items:center;justify-content:center;z-index:200;animation:overlayIn .18s ease';
   overlay.innerHTML = `
-    <div style="background:var(--card);border-radius:20px;padding:28px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 16px 48px rgba(35,53,39,0.2);animation:modalIn .28s cubic-bezier(0.16,1,0.3,1);position:relative;font-size:14px;color:var(--ink2);line-height:1.6" onclick="event.stopPropagation()">
+    <div style="background:var(--card);border-radius:20px;padding:28px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 16px 48px rgba(33,37,31,0.2);animation:modalIn .28s cubic-bezier(0.16,1,0.3,1);position:relative;font-size:14px;color:var(--ink2);line-height:1.6" onclick="event.stopPropagation()">
       <button style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:16px;border:none;background:var(--surface);cursor:pointer;font-size:16px;color:var(--ink2)" id="legal-close">&times;</button>
       <h2 style="font-size:20px;font-weight:700;color:var(--ink);margin-bottom:16px">${title}</h2>
       ${body}
@@ -2701,7 +2701,7 @@ async function showPaymentStep(recordId, quote) {
         variables: {
           colorPrimary: '#C9A23C',
           colorBackground: '#FFFFFF',
-          colorText: '#233527',
+          colorText: '#21251F',
           colorDanger: '#c0392b',
           fontFamily: 'Inter, system-ui, sans-serif',
           borderRadius: '10px',
