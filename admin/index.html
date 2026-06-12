@@ -1057,23 +1057,34 @@ function gigCrewSection(g){
   const assigned=(cache.jobCrew||[]).filter(c=>c.gig_id===g.id);
   const roster=activeMovers();
   const assignedIds=new Set(assigned.map(c=>c.worker_id));
-  const opts=roster.filter(w=>!assignedIds.has(w.id)).map(w=>`<option value="${escAttr(w.id)}">${esc(moverName(w.id))}</option>`).join('');
+  const LEVELS=['Easy','Light','Moderate','Heavy','Expert'];
+  // Each option carries everything the admin needs to pick: name, skill level,
+  // pending-approval flag, and a warning if they're already booked at this time.
+  const opts=roster.filter(w=>!assignedIds.has(w.id)).map(w=>{
+    const bits=[moverName(w.id)];
+    if(w.max_difficulty) bits.push(`Lv ${w.max_difficulty} ${LEVELS[w.max_difficulty-1]||''}`.trim());
+    if(w.status&&w.status!=='approved') bits.push(`(${w.status})`);
+    if(workerConflict(w.id,g)) bits.push('⚠ booked at this time');
+    return `<option value="${escAttr(w.id)}">${esc(bits.join(' · '))}</option>`;
+  }).join('');
   const need=g.crew_size||0;
   const chips=assigned.length?assigned.map(c=>{
     const w=(cache.profiles||[]).find(x=>x.id===c.worker_id);
     const con=workerConflict(c.worker_id,g);
-    return `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 11px;background:${con?'#FBE4DF':'var(--surface)'};border:1px solid ${con?'#E0A99A':'var(--line2)'};border-radius:999px;font-size:13px;margin:0 6px 6px 0">${esc(w?(w.full_name||w.email):'(removed)')}${con?' <span title="Double-booked at this time" style="color:#b4452e;font-weight:700">&#9888;</span>':''}<button onclick="removeCrew('${c.id}')" title="Remove" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">&times;</button></span>`;
-  }).join(''):'<span style="color:var(--ink3);font-size:13px">No crew assigned yet.</span>';
-  const countTxt=need?`<span style="font-size:12px;font-weight:600;color:${assigned.length>=need?'var(--success)':'#8B6914'}">${assigned.length}/${need} assigned</span>`:`<span style="font-size:12px;color:var(--ink3)">${assigned.length} assigned</span>`;
+    return `<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 11px;background:${con?'#FBE4DF':'var(--surface)'};border:1px solid ${con?'#E0A99A':'var(--line2)'};border-radius:999px;font-size:13px;margin:0 6px 6px 0">${esc(w?(w.full_name||w.email):'(removed)')}${con?' <span title="Double-booked at this time" style="color:#b4452e;font-weight:700">&#9888;</span>':''}<button onclick="removeCrew('${c.id}')" title="Remove from this job" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">&times;</button></span>`;
+  }).join(''):`<span style="color:var(--ink3);font-size:13px">Nobody on this job yet${need?` — it needs a crew of ${need}`:''}.</span>`;
+  const short=need-assigned.length;
+  const countTxt=need?`<span style="font-size:12px;font-weight:600;color:${short<=0?'var(--success)':'#8B6914'}">${assigned.length} of ${need} assigned${short>0?` · needs ${short} more`:' ✓'}</span>`:`<span style="font-size:12px;color:var(--ink3)">${assigned.length} assigned</span>`;
   return `<div style="margin-top:16px;border-top:2px solid var(--accent);padding-top:12px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <div class="modal-label" style="color:var(--accent-deep);font-weight:700">&#128119; Crew assigned</div>${countTxt}
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+      <div class="modal-label" style="color:var(--accent-deep);font-weight:700">&#128119; Crew &mdash; who's working this job</div>${countTxt}
     </div>
-    <div style="margin-bottom:8px">${chips}</div>
+    <div style="font-size:12px;color:var(--ink3);margin-bottom:10px">Choose a worker and press <b>Assign</b> &mdash; they get an email with the job details right away. Remove someone with the &times; on their tag.</div>
+    <div style="margin-bottom:10px">${chips}</div>
     ${roster.length?`<div style="display:flex;gap:8px">
-      <select id="crew-pick-${g.id}" style="flex:1;padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px"${opts?'':' disabled'}>${opts||'<option value="">All crew already assigned</option>'}</select>
-      <button onclick="assignCrew('${g.id}')" style="padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer">Assign</button>
-    </div>`:`<div style="font-size:12px;color:var(--ink3)">Approve a worker in the <b>Workers</b> tab first.</div>`}
+      <select id="crew-pick-${g.id}" style="flex:1;padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px"${opts?'':' disabled'}>${opts?`<option value="" selected>Choose a worker…</option>`+opts:'<option value="">Everyone is already on this job</option>'}</select>
+      <button onclick="assignCrew('${g.id}')" style="padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">+ Assign</button>
+    </div>`:`<div style="font-size:12px;color:var(--ink3)">No workers available yet &mdash; approve one in the <b>Workers</b> tab first.</div>`}
   </div>`;
 }
 async function assignCrew(gigId){
@@ -1125,9 +1136,9 @@ function renderSchedule(){
         const con=workerConflict(c.worker_id,g);
         return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 5px 2px 9px;border-radius:999px;font-size:12px;margin:0 4px 4px 0;background:${con?'#FBE4DF':'var(--surface)'};border:1px solid ${con?'#E0A99A':'var(--line2)'}">${esc(w?(w.full_name||w.email):'?')}${con?' <span style="color:#b4452e;font-weight:700" title="Double-booked">&#9888;</span>':''}<button onclick="removeCrew('${c.id}')" title="Remove" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:13px;line-height:1;padding:0 1px">&times;</button></span>`;
       }).join(''):'<span style="color:#b4452e;font-size:12px;font-weight:600">&#9888; no crew</span>';
-      const availOpts=roster.filter(w=>!assignedIds.has(w.id)).map(w=>`<option value="${escAttr(w.id)}">${esc(moverName(w.id))}</option>`).join('');
+      const availOpts=roster.filter(w=>!assignedIds.has(w.id)).map(w=>`<option value="${escAttr(w.id)}">${esc(moverName(w.id)+(workerConflict(w.id,g)?' · ⚠ booked':''))}</option>`).join('');
       const assignCtrl=availOpts?`<div style="display:flex;gap:6px;margin-top:2px">
-          <select id="sched-pick-${g.id}" style="flex:1;min-width:100px;padding:5px 7px;border:1.5px solid var(--line2);border-radius:7px;font-size:12px">${availOpts}</select>
+          <select id="sched-pick-${g.id}" style="flex:1;min-width:100px;padding:5px 7px;border:1.5px solid var(--line2);border-radius:7px;font-size:12px"><option value="" selected>Choose…</option>${availOpts}</select>
           <button onclick="assignCrew('${g.id}')" style="padding:5px 11px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">+ Add</button>
         </div>`:(roster.length?'':'<div style="font-size:11px;color:var(--ink3);margin-top:2px">approve crew in Workers tab</div>');
       return `<tr onclick="showGigModal('${g.id}')" style="cursor:pointer">
@@ -2034,7 +2045,7 @@ function showGigModal(id) {
                 ${badge(a.status)}
                 <span style="color:var(--ink3);font-size:12px;flex:1">${truncate(a.message, 40)}</span>
                 ${a.status === 'pending' && g.status !== 'completed' && g.status !== 'cancelled' ? `
-                  <button onclick="assignMover('${g.id}','${a.id}')" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Assign</button>
+                  <button onclick="assignMover('${g.id}','${a.id}')" title="Accept this application — the mover is put on the gig and emailed the job details" style="padding:6px 14px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap">Assign</button>
                 ` : ''}
               </div>
             `).join('')}
