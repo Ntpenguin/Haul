@@ -1,16 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>if(location.protocol==='https:'&&/\.html$/.test(location.pathname))location.replace(location.pathname.replace(/(?:index)?\.html$/,'')+location.search+location.hash)</script>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://joiukvttuamaanrgzfrz.supabase.co; connect-src https://joiukvttuamaanrgzfrz.supabase.co https://nominatim.openstreetmap.org;">
 <title>Business job request — Fast Fix Work</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='translate(0,9)'><path d='M16 3 H55 Q61 3 61 9 V37 Q61 43 55 43 H16 L3 23 Z' fill='%23C9A23C' stroke='%23233527' stroke-width='3'/><circle cx='15' cy='23' r='4' fill='%23FAF7EC' stroke='%23233527' stroke-width='2.6'/><text x='39' y='29' text-anchor='middle' font-family='Georgia,serif' font-weight='700' font-size='16' fill='%23233527'>FFX</text></g></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  :root{--bg:#FAF7F2;--card:#fff;--ink:#1A1714;--ink2:#534C44;--ink3:#8B8379;--ink4:#B8B0A4;
-    --amber:#C98B3F;--amber-deep:#8B5E2B;--amber-soft:#F5EDE0;--amber-mid:#E8C48A;--success:#4A8066;
-    --surface:#F2EEE7;--line:rgba(26,23,20,.08);--line2:rgba(26,23,20,.18)}
+  :root{--bg:#FAF7EC;--card:#fff;--ink:#233527;--ink2:#4C5847;--ink3:#82897A;--ink4:#B2B5A3;
+    --amber:#C9A23C;--amber-deep:#7E6418;--amber-soft:#F3EED7;--amber-mid:#E2C96B;--success:#3F7253;
+    --surface:#F0EBD9;--line:rgba(35,53,39,.08);--line2:rgba(35,53,39,.18)}
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink2);font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.5}
   .wrap{max-width:640px;margin:0 auto;padding:28px 18px 80px}
@@ -48,7 +50,7 @@
 </head>
 <body>
 <div class="wrap" id="wrap">
-  <div class="brand">Fast Fix Work</div>
+  <div class="brand"><svg width="40" height="29" viewBox="0 0 64 46" aria-hidden="true" style="vertical-align:-7px;margin-right:6px"><g transform="rotate(-7 32 23)"><path d="M16 5 H54 Q60 5 60 11 V33 Q60 39 54 39 H16 L4 22 Z" fill="var(--amber)" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/><circle cx="14" cy="22" r="3.4" fill="var(--bg)" stroke="var(--ink)" stroke-width="2"/><text x="38" y="27.5" text-anchor="middle" font-family="'Fraunces',Georgia,serif" font-weight="700" font-size="15" fill="var(--ink)">FFX</text></g></svg>Fast Fix Work</div>
   <h1>Business job request</h1>
   <div class="sub">Tell us about the job — we'll review and reach out to confirm.</div>
 
@@ -198,7 +200,7 @@ $('submit').addEventListener('click',async()=>{
 function showErr(m){const e=$('err');e.textContent=m;e.style.display='block';}
 
 function showOutcome(d){
-  $('wrap').innerHTML=`<div class="brand">Fast Fix Work</div>
+  $('wrap').innerHTML=`<div class="brand"><svg width="40" height="29" viewBox="0 0 64 46" aria-hidden="true" style="vertical-align:-7px;margin-right:6px"><g transform="rotate(-7 32 23)"><path d="M16 5 H54 Q60 5 60 11 V33 Q60 39 54 39 H16 L4 22 Z" fill="var(--amber)" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/><circle cx="14" cy="22" r="3.4" fill="var(--bg)" stroke="var(--ink)" stroke-width="2"/><text x="38" y="27.5" text-anchor="middle" font-family="'Fraunces',Georgia,serif" font-weight="700" font-size="15" fill="var(--ink)">FFX</text></g></svg>Fast Fix Work</div>
     <div class="card outcome"><span class="badge b-pending">Request received ✓</span>
       <div style="font-size:14px;color:var(--ink2);line-height:1.6">
         <p>Thanks! Your request${d&&d.job_number?` <b>#${esc(d.job_number)}</b>`:''} is in.</p>

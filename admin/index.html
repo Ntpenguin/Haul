@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<script>if(location.protocol==='https:'&&/\.html$/.test(location.pathname))location.replace(location.pathname.replace(/(?:index)?\.html$/,'')+location.search+location.hash)</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fast Fix Work — Admin Dashboard</title>
@@ -414,7 +415,7 @@ function renderBusinessJobs() {
   }).join('') : `<tr><td colspan="8" class="empty">No business jobs yet.</td></tr>`;
   return `
     <h2 class="page-title">Business Jobs</h2>
-    <p class="page-sub">${jobs.length} total · ${open.length} open · submitted from fastfixwork.com/business.html
+    <p class="page-sub">${jobs.length} total · ${open.length} open · submitted from fastfixwork.com/business
       <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('bizjobs'))" style="margin-left:8px">Refresh</button></p>
     <div class="table-wrap"><table>
       <thead><tr><th>Job</th><th>Contact</th><th>Size</th><th>Route</th><th>Price</th><th>When</th><th>Status</th><th></th></tr></thead>
@@ -567,7 +568,7 @@ function renderPricing() {
 // ─── Referrals (individuals) ─────────────────
 // Referrer gets $20 cash after the referred move completes (tracked here, paid
 // manually); the referred customer gets a one-time $25 credit at booking.
-const REFERRAL_BASE = 'https://fastfixwork.com/intake.html?ref=';
+const REFERRAL_BASE = 'https://fastfixwork.com/intake?ref=';
 function refLink(code) { return REFERRAL_BASE + encodeURIComponent(code); }
 function qrSrc(code) { return 'https://api.qrserver.com/v1/create-qr-code/?size=150x150&margin=8&data=' + encodeURIComponent(refLink(code)); }
 function refStat(code) {
@@ -1523,7 +1524,7 @@ function showWorkerModal(id) {
         <div class="modal-row"><div class="modal-label">Phone</div><div class="modal-value">${esc(profile.phone) || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Email</div><div class="modal-value">${esc(profile.email) || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Address</div><div class="modal-value">${esc(m.address) || '—'}</div></div>
-        <div class="modal-row"><div class="modal-label">Vehicle</div><div class="modal-value">${esc(m.vehicle_make_model || m.vehicle_type) || '—'}</div></div>
+        <div class="modal-row"><div class="modal-label">Vehicle</div><div class="modal-value">${m.vehicle_type === 'muscle' ? 'No vehicle — muscle only' : esc([String(m.vehicle_type || '').replace(/-/g, ' '), m.vehicle_make_model].filter(Boolean).join(' — ')) || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Experience</div><div class="modal-value">${m.years_experience != null ? m.years_experience + ' years' : '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Skill level</div><div class="modal-value">
           <select onchange="setMoverLevel('${id}', this.value)" style="padding:4px 8px;border-radius:6px;border:1px solid var(--line);font-size:13px">

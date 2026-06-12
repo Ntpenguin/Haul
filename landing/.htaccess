@@ -3,6 +3,34 @@
 # going incognito. Place in public_html/ — Apache .htaccess cascades to all
 # subfolders, so this also covers public_html/admin-panel/.
 
+# ── Extensionless URLs ───────────────────────────────────────────────────────
+# SiteGround's CDN/static layer stamps *.html URLs with Cache-Control:
+# max-age=15552000 (6 months), ignoring the header rules below — but passes
+# extensionless URLs through to Apache untouched. Serving every page at
+# /intake, /business, etc. (and 301-ing the old .html URLs there) means:
+#   1. visitors who long-cached /intake.html get a URL their browser has
+#      never seen → guaranteed fresh copy;
+#   2. the no-cache headers below actually reach the browser from now on.
+# Old links and printed QR codes (/intake.html?ref=CODE) keep working via the
+# 301, which preserves the query string.
+<IfModule mod_rewrite.c>
+  Options -MultiViews
+  RewriteEngine On
+
+  # /index.html (in any folder) → the folder root
+  RewriteCond %{THE_REQUEST} \s/+((?:[^?\s]+/)?)index\.html[?\s]
+  RewriteRule ^ /%1 [R=301,L]
+
+  # /page.html → /page
+  RewriteCond %{THE_REQUEST} \s/+([^?\s]+)\.html[?\s]
+  RewriteRule ^ /%1 [R=301,L]
+
+  # Internally map /page → page.html when that file exists
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME}.html -f
+  RewriteRule ^(.+?)/?$ $1.html [L]
+</IfModule>
+
 <IfModule mod_headers.c>
   # Code files: always revalidate against the server before using a cached copy.
   # Unchanged files come back as a cheap 304 Not Modified (no re-download), so
