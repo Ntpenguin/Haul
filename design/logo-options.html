@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>FFX Logo Options</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700;9..144,900&family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+--amber:#C98B3F;--amber-deep:#8B5E2B;--amber-soft:#F5EDE0;--amber-mid:#E8C48A;
+--ink:#1A1714;--bg:#FAF7F2;
+--ff:'Fraunces','Georgia',serif;--fi:'Inter',system-ui,sans-serif;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:var(--fi);background:#E9E4DB;padding:40px;color:var(--ink)}
+h1{font-family:var(--ff);font-size:1.6rem;margin-bottom:6px}
+.sub{color:#6b6359;font-size:.9rem;margin-bottom:28px}
+.opt{margin-bottom:34px}
+.opt h2{font-family:var(--fi);font-size:.8rem;font-weight:800;text-transform:uppercase;letter-spacing:.08em;margin-bottom:10px;color:var(--amber-deep)}
+.row{display:grid;grid-template-columns:1fr 1fr 150px;gap:14px}
+.swatch{border-radius:14px;padding:26px 30px;display:flex;align-items:center;border:1px solid rgba(26,23,20,.12)}
+.light{background:var(--bg)}
+.dark{background:var(--ink)}
+.tiny{background:#fff;flex-direction:column;justify-content:center;gap:10px}
+.tiny span{font-size:.65rem;color:#8a8178}
+.lockup{display:flex;align-items:center;gap:12px}
+.wm{font-family:var(--ff);font-weight:700;font-size:1.5rem;letter-spacing:-0.01em;line-height:1}
+.wm.on-dark{color:var(--bg)}
+.wm i{color:var(--amber);font-style:normal}
+.wm small{display:block;font-family:var(--fi);font-weight:700;font-size:.56rem;letter-spacing:.22em;text-transform:uppercase;color:var(--amber-deep);margin-top:5px}
+.wm.on-dark small{color:var(--amber-mid)}
+</style>
+</head>
+<body>
+<h1>Fast Fix Work — logo directions</h1>
+<p class="sub">Each shown on the site's cream + ink backgrounds, plus favicon size. Current logo (top) for reference.</p>
+
+<!-- CURRENT -->
+<div class="opt">
+<h2>Current — amber circle “FFX”</h2>
+<div class="row">
+  <div class="swatch light"><div class="lockup">
+    <div style="width:44px;height:44px;background:var(--amber);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;box-shadow:2px 2px 0 var(--ink)">FFX</div>
+    <div class="wm">Fast. <i>Fix.</i> Work.</div>
+  </div></div>
+  <div class="swatch dark"><div class="lockup">
+    <div style="width:44px;height:44px;background:var(--amber);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.8rem;box-shadow:2px 2px 0 #000">FFX</div>
+    <div class="wm on-dark">Fast. <i>Fix.</i> Work.</div>
+  </div></div>
+  <div class="swatch tiny">
+    <div style="width:20px;height:20px;background:var(--amber);border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.36rem">FFX</div>
+    <span>favicon 20px</span>
+  </div>
+</div>
+</div>
+
+<!-- OPTION A -->
+<div class="opt">
+<h2>A — Serif stamp (rounded square, hard shadow, Fraunces FFX)</h2>
+<div class="row">
+  <div class="swatch light"><div class="lockup">
+    <svg width="48" height="48" viewBox="0 0 48 48">
+      <rect x="2" y="2" width="42" height="42" rx="11" fill="var(--ink)"/>
+      <rect x="0" y="0" width="42" height="42" rx="11" fill="#C98B3F" stroke="#1A1714" stroke-width="2"/>
+      <text x="21" y="28.5" text-anchor="middle" font-family="Fraunces" font-weight="900" font-size="17" fill="#1A1714">FX</text>
+    </svg>
+    <div class="wm">Fast Fix Work<small>Austin · Moving &amp; Labor</small></div>
+  </div></div>
+  <div class="swatch dark"><div class="lockup">
+    <svg width="48" height="48" viewBox="0 0 48 48">
+      <rect x="2" y="2" width="42" height="42" rx="11" fill="#000"/>
+      <rect x="0" y="0" width="42" height="42" rx="11" fill="#C98B3F" stroke="#FAF7F2" stroke-width="2"/>
+      <text x="21" y="28.5" text-anchor="middle" font-family="Fraunces" font-weight="900" font-size="17" fill="#1A1714">FX</text>
+    </svg>
+    <div class="wm on-dark">Fast Fix Work<small>Austin · Moving &amp; Labor</small></div>
+  </div></div>
+  <div class="swatch tiny">
+    <svg width="22" height="22" viewBox="0 0 48 48">
+      <rect x="0" y="0" width="44" height="44" rx="11" fill="#C98B3F" stroke="#1A1714" stroke-width="2.5"/>
+      <text x="22" y="29.5" text-anchor="middle" font-family="Fraunces" font-weight="900" font-size="18" fill="#1A1714">FX</text>
+    </svg>
+    <span>favicon 22px</span>
+  </div>
+</div>
+</div>
+
+<!-- OPTION B -->
+<div class="opt">
+<h2>B — Valet tag (matches “valet-style moving” positioning)</h2>
+<div class="row">
+  <div class="swatch light"><div class="lockup">
+    <svg width="64" height="46" viewBox="0 0 64 46">
+      <g transform="rotate(-7 32 23)">
+        <path d="M16 5 H54 Q60 5 60 11 V33 Q60 39 54 39 H16 L4 22 Z" fill="#C98B3F" stroke="#1A1714" stroke-width="2.4" stroke-linejoin="round"/>
+        <circle cx="14" cy="22" r="3.4" fill="#FAF7F2" stroke="#1A1714" stroke-width="2"/>
+        <text x="38" y="28.5" text-anchor="middle" font-family="Fraunces" font-weight="900" font-size="14.5" fill="#1A1714">FFX</text>
+      </g>
+    </svg>
+    <div class="wm">Fast Fix Work<small>Valet-style moving</small></div>
+  </div></div>
+  <div class="swatch dark"><div class="lockup">
+    <svg width="64" height="46" viewBox="0 0 64 46">
+      <g transform="rotate(-7 32 23)">
+        <path d="M16 5 H54 Q60 5 60 11 V33 Q60 39 54 39 H16 L4 22 Z" fill="#C98B3F" stroke="#FAF7F2" stroke-width="2.4" stroke-linejoin="round"/>
+        <circle cx="14" cy="22" r="3.4" fill="#1A1714" stroke="#FAF7F2" stroke-width="2"/>
+        <text x="38" y="28.5" text-anchor="middle" font-family="Fraunces" font-weight="900" font-size="14.5" fill="#1A1714">FFX</text>
+      </g>
+    </svg>
+    <div class="wm on-dark">Fast Fix Work<small>Valet-style moving</small></div>
+  </div></div>
+  <div class="swatch tiny">
+    <svg width="30" height="22" viewBox="0 0 64 46">
+      <path d="M16 5 H54 Q60 5 60 11 V33 Q60 39 54 39 H16 L4 22 Z" fill="#C98B3F" stroke="#1A1714" stroke-width="3"/>
+      <circle cx="14" cy="22" r="4" fill="#FAF7F2" stroke="#1A1714" stroke-width="2.6"/>
+      <text x="38" y="29" text-anchor="middle" font-family="Fraunces" font-weight="900" font-size="16" fill="#1A1714">FFX</text>
+    </svg>
+    <span>favicon</span>
+  </div>
+</div>
+</div>
+
+<!-- OPTION C -->
+<div class="opt">
+<h2>C — Fast-forward roundel (FF = speed; clean + modern)</h2>
+<div class="row">
+  <div class="swatch light"><div class="lockup">
+    <svg width="48" height="48" viewBox="0 0 48 48">
+      <circle cx="24" cy="24" r="22" fill="#1A1714"/>
+      <path d="M12 15 L23 24 L12 33 Z" fill="#C98B3F"/>
+      <path d="M24 15 L35 24 L24 33 Z" fill="#E8C48A"/>
+    </svg>
+    <div class="wm">Fast Fix Work<small>Moving · Managed</small></div>
+  </div></div>
+  <div class="swatch dark"><div class="lockup">
+    <svg width="48" height="48" viewBox="0 0 48 48">
+      <circle cx="24" cy="24" r="22" fill="#FAF7F2"/>
+      <path d="M12 15 L23 24 L12 33 Z" fill="#C98B3F"/>
+      <path d="M24 15 L35 24 L24 33 Z" fill="#8B5E2B"/>
+    </svg>
+    <div class="wm on-dark">Fast Fix Work<small>Moving · Managed</small></div>
+  </div></div>
+  <div class="swatch tiny">
+    <svg width="22" height="22" viewBox="0 0 48 48">
+      <circle cx="24" cy="24" r="22" fill="#1A1714"/>
+      <path d="M12 15 L23 24 L12 33 Z" fill="#C98B3F"/>
+      <path d="M24 15 L35 24 L24 33 Z" fill="#E8C48A"/>
+    </svg>
+    <span>favicon 22px</span>
+  </div>
+</div>
+</div>
+
+<!-- OPTION D -->
+<div class="opt">
+<h2>D — Wordmark-first (Fraunces, amber chevrons, no badge)</h2>
+<div class="row">
+  <div class="swatch light"><div class="lockup">
+    <svg width="30" height="30" viewBox="0 0 30 30">
+      <path d="M4 4 L15 15 L4 26" fill="none" stroke="#C98B3F" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M15 4 L26 15 L15 26" fill="none" stroke="#1A1714" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="wm" style="font-size:1.7rem;font-weight:900">fastfix<i>work</i></div>
+  </div></div>
+  <div class="swatch dark"><div class="lockup">
+    <svg width="30" height="30" viewBox="0 0 30 30">
+      <path d="M4 4 L15 15 L4 26" fill="none" stroke="#C98B3F" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M15 4 L26 15 L15 26" fill="none" stroke="#FAF7F2" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <div class="wm on-dark" style="font-size:1.7rem;font-weight:900">fastfix<i>work</i></div>
+  </div></div>
+  <div class="swatch tiny">
+    <svg width="22" height="22" viewBox="0 0 30 30">
+      <path d="M4 4 L15 15 L4 26" fill="none" stroke="#C98B3F" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M15 4 L26 15 L15 26" fill="none" stroke="#1A1714" stroke-width="5.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    <span>favicon 22px</span>
+  </div>
+</div>
+</div>
+
+</body>
+</html>

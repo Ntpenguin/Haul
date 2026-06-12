@@ -52,3 +52,6 @@ yarn-error.*
 # Ruflo / RuVector tooling artifacts
 ruvector.db
 
+
+# Local screenshot scratch (headless Chrome verification)
+.shots/
