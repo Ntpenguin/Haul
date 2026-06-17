@@ -1,14 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<script>if(location.protocol==='https:'&&/\.html$/.test(location.pathname))location.replace(location.pathname.replace(/(?:index)?\.html$/,'')+location.search+location.hash)</script>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>Get a Moving Quote — Fast Fix Work</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='12' y='12' width='80' height='80' rx='18' fill='%23C98B3F'/><rect x='4' y='4' width='80' height='80' rx='18' fill='%231A1714'/><text x='44' y='48' text-anchor='middle' dominant-baseline='central' font-family='Georgia,serif' font-weight='700' font-size='30' fill='%23FAF7F2'>FFX</text></svg>" />
 <meta name="description" content="Get an instant moving quote in about 2 minutes. Tell us about your move and we'll match you with a vetted local mover." />
 <!-- Content Security Policy: restrict resource loading to trusted origins -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' 'unsafe-eval' https://js.stripe.com https://unpkg.com; style-src 'unsafe-inline' https://fonts.googleapis.com https://unpkg.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://joiukvttuamaanrgzfrz.supabase.co https://*.stripe.com https://server.arcgisonline.com; connect-src https://joiukvttuamaanrgzfrz.supabase.co https://nominatim.openstreetmap.org https://api.stripe.com https://router.project-osrm.org; frame-src https://js.stripe.com https://hooks.stripe.com; object-src 'none';" />
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='translate(0,9)'><path d='M16 3 H55 Q61 3 61 9 V37 Q61 43 55 43 H16 L3 23 Z' fill='%23C9A23C' stroke='%2321251F' stroke-width='3'/><circle cx='15' cy='23' r='4' fill='%23FAF7EC' stroke='%2321251F' stroke-width='2.6'/><text x='39' y='29' text-anchor='middle' font-family='Georgia,serif' font-weight='700' font-size='16' fill='%2321251F'>FFX</text></g></svg>" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -17,20 +16,20 @@
 <script src="https://js.stripe.com/v3/"></script>
 <style>
 :root {
-  --amber:     #C9A23C;
-  --amber-deep:#7E6418;
-  --amber-soft:#F3EED7;
-  --amber-mid: #E2C96B;
-  --ink:       #21251F;
-  --ink2:      #4D5149;
-  --ink3:      #84877E;
-  --ink4:      #B2B4AB;
-  --bg:        #FAF7EC;
+  --amber:     #C98B3F;
+  --amber-deep:#8B5E2B;
+  --amber-soft:#F5EDE0;
+  --amber-mid: #E8C48A;
+  --ink:       #1A1714;
+  --ink2:      #534C44;
+  --ink3:      #8B8379;
+  --ink4:      #B8B0A4;
+  --bg:        #FAF7F2;
   --card:      #FFFFFF;
-  --surface:   #F0EBD9;
-  --line:      rgba(33,37,31,0.08);
-  --line2:     rgba(33,37,31,0.18);
-  --success:   #3F7253;
+  --surface:   #F2EEE7;
+  --line:      rgba(26,23,20,0.08);
+  --line2:     rgba(26,23,20,0.18);
+  --success:   #4A8066;
   --radius:    18px;
   --shadow:    5px 5px 0 var(--ink);
 }
@@ -47,7 +46,7 @@ html, body {
   overscroll-behavior: contain;
 }
 body {
-  background-image: radial-gradient(rgba(33,37,31,0.045) 1px, transparent 1px);
+  background-image: radial-gradient(rgba(26,23,20,0.045) 1px, transparent 1px);
   background-size: 22px 22px;
   /* Remove 300ms tap delay on all elements */
   touch-action: manipulation;
@@ -76,7 +75,14 @@ header {
   gap: 10px;
   text-decoration: none;
 }
-.logo-mark { display: block; flex-shrink: 0; }
+.logo-mark {
+  width: 38px; height: 38px;
+  border-radius: 8px;
+  background: #1A1714;
+  display: flex; align-items: center; justify-content: center;
+  font-family: 'Fraunces','Georgia',serif; font-size: 16px; font-weight: 700; color: #FAF7F2;
+  box-shadow: 3px 3px 0 #C98B3F;
+}
 .logo-text {
   font-weight: 700; font-size: 15px; color: var(--ink);
   line-height: 1.2;
@@ -261,7 +267,7 @@ header {
 .field-input:focus, .field-textarea:focus {
   outline: none;
   border-color: var(--amber);
-  box-shadow: 0 0 0 3px rgba(201,162,60,0.18);
+  box-shadow: 0 0 0 3px rgba(201,139,63,0.18);
   transform: translateY(-1px);
   transition: border-color .15s, box-shadow .15s, transform .15s cubic-bezier(0.16,1,0.3,1);
 }
@@ -369,7 +375,7 @@ header {
 .addr-suggestions {
   position: absolute; top: calc(100% + 4px); left: 0; right: 0; z-index: 100;
   background: var(--card); border: 1.5px solid var(--line2); border-radius: 12px;
-  box-shadow: 0 8px 24px rgba(33,37,31,0.12); overflow: hidden;
+  box-shadow: 0 8px 24px rgba(26,23,20,0.12); overflow: hidden;
 }
 .addr-suggestion {
   padding: 11px 14px; font-size: 14px; color: var(--ink); cursor: pointer;
@@ -473,7 +479,7 @@ header {
   padding: 8px 14px; background: var(--amber-soft);
   display: inline-flex; align-items: center; gap: 6px;
   font-family: 'Inter', sans-serif; min-height: 44px;
-  box-shadow: 0 1px 3px rgba(201,162,60,0.18);
+  box-shadow: 0 1px 3px rgba(201,139,63,0.18);
 }
 .photo-quick:hover { background: #EDD9B8; border-color: var(--amber-deep); }
 .photo-quick.attached { color: #fff; background: var(--amber); border-color: var(--amber-deep); }
@@ -694,7 +700,7 @@ header {
     padding-bottom: calc(12px + env(safe-area-inset-bottom));
     background: var(--card);
     border-top: 1px solid var(--line);
-    box-shadow: 0 -6px 24px rgba(33,37,31,0.07);
+    box-shadow: 0 -6px 24px rgba(26,23,20,0.07);
     z-index: 50;
   }
 
@@ -710,7 +716,7 @@ header {
   <!-- Header -->
   <header>
     <a class="logo" href="/">
-      <svg class="logo-mark" width="46" height="33" viewBox="0 0 64 46" aria-hidden="true"><g transform="rotate(-7 32 23)"><path d="M16 5 H54 Q60 5 60 11 V33 Q60 39 54 39 H16 L4 22 Z" fill="var(--amber)" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/><circle cx="14" cy="22" r="3.4" fill="var(--bg)" stroke="var(--ink)" stroke-width="2"/><text x="38" y="27.5" text-anchor="middle" font-family="'Fraunces',Georgia,serif" font-weight="700" font-size="15" fill="var(--ink)">FFX</text></g></svg>
+      <div class="logo-mark">FFX</div>
       <div class="logo-text">Fast Fix Work<small>Moving &amp; Labor · Austin, TX</small></div>
     </a>
     <a class="header-cta" href="tel:5127771628">
@@ -917,6 +923,7 @@ const S = {
   referralCredit: 0,    // cents (2500 if eligible) resolved via referral_lookup
   referrerName: null,   // for "Referral from <name>"
   refTried: false,      // user manually clicked Apply (show "invalid" note on miss)
+  ackSent: false,       // one-shot guard for the "we got your request" email/SMS
 };
 
 // ── DOM refs ─────────────────────────────────────────────────────────────────
@@ -1153,6 +1160,11 @@ function renderBody(q){
       <label class="field-label" for="fi-contact-email">Email address</label>
       <input class="field-input" id="fi-contact-email" type="email"
         placeholder="you@example.com" value="${esc(c.email||'')}" data-bind="c-email" autocomplete="email" />
+      <button class="chip${c.smsConsent?' checked':''}" data-bind="c-smsconsent"
+        style="margin-top:14px;width:100%;box-sizing:border-box;border-radius:12px;align-items:flex-start;text-align:left;white-space:normal;height:auto;padding:11px 13px;line-height:1.45">
+        <span class="box" style="margin-top:2px"></span>
+        <span style="font-size:12px;color:var(--ink2)">Yes, text me updates about my move request at this number. Msg &amp; data rates may apply, msg frequency varies. Reply STOP to opt out, HELP for help. Consent isn't a condition of purchase.</span>
+      </button>
       <div class="err-msg" id="err-${q.id}" style="display:none"></div>`;
   }
 
@@ -1219,12 +1231,11 @@ function renderBody(q){
       const checked = qty > 0 ? ' checked' : '';
       return `<div class="chip spec-row${checked}"><span style="font-size:17px;margin-right:4px">${o.icon}</span><span class="spec-name">${esc(o.label)}</span><span class="qty-stepper"><button data-bind="spec-qty-dec" data-val="${esc(key)}"${qty===0?' disabled':''}>−</button><span class="qty-val">${qty}</span><button data-bind="spec-qty-inc" data-val="${esc(key)}">+</button></span></div>`;
     }).join('');
-    const smallMoveUI = st.size === 'Small move' ? `
-      <div style="margin-top:6px;padding:10px 12px;background:var(--amber-soft);border:1.5px solid var(--amber);border-radius:10px;font-size:12px;color:var(--ink2);line-height:1.45">A small move is about <b>6–15 items</b> — includes large items plus boxes.</div>` : '';
+    const partialUI = ''; // partial-load discount retired — matches live server pricing
     return `
       <div class="section-label">Move size</div>
       <div class="chips">${sizeChips}</div>
-      ${smallMoveUI}
+      ${partialUI}
       <div class="section-label">Heavy / special items</div>
       <div class="chips col">${specChips}</div>
       <textarea class="field-textarea" style="margin-top:8px"
@@ -1396,13 +1407,10 @@ function renderBody(q){
       {icon:'🪑', label:'Dining set'},    {icon:'🗄️', label:'Dresser'},
       {icon:'🧊', label:'Refrigerator'},  {icon:'🧺', label:'Washer / dryer'},
       {icon:'🪞', label:'Wardrobe / armoire'}, {icon:'📚', label:'Bookshelf'},
-      {icon:'📺', label:'TV stand'}, {icon:'🛏️', label:'Nightstand'}, {icon:'🖥️', label:'Desk'},
     ];
     const cSel = (a || {}).common || {};
     const cAttrs = (a || {}).commonAttrs || {};
     const commonNone = (a || {}).commonNone === true;
-    const stuffSize = S.answers['stuff']?.size || '';
-    const showCommon = !!stuffSize && stuffSize !== 'Single item' && stuffSize !== 'Just a few items';
     const commonAttrOpts = ['Heavy (250lb+)','Needs disassembly','Needs wrapping','Upstairs'];
     const commonChips = commonOpts.map(o => {
       const qty = cSel[o.label] || 0;
@@ -1412,16 +1420,15 @@ function renderBody(q){
       const sel = cAttrs[o.label] || {};
       const attrRows = commonAttrOpts.map(at => {
         const ac = sel[at] || 0;
-        const priceTag = at === 'Heavy (250lb+)' ? ' <span style="color:var(--amber-deep);font-weight:700">+$75 ea</span>' : '';
-        return `<div class="chip attr-chip${ac>0?' checked':''}"><span class="spec-name">${esc(at)}${priceTag}</span><span class="qty-stepper"><button data-bind="common-attr-dec" data-item="${esc(o.label)}" data-val="${esc(at)}"${ac===0?' disabled':''}>−</button><span class="qty-val">${ac}</span><button data-bind="common-attr-inc" data-item="${esc(o.label)}" data-val="${esc(at)}"${ac>=qty?' disabled':''}>+</button></span></div>`;
+        return `<div class="chip attr-chip${ac>0?' checked':''}"><span class="spec-name">${esc(at)}</span><span class="qty-stepper"><button data-bind="common-attr-dec" data-item="${esc(o.label)}" data-val="${esc(at)}"${ac===0?' disabled':''}>−</button><span class="qty-val">${ac}</span><button data-bind="common-attr-inc" data-item="${esc(o.label)}" data-val="${esc(at)}"${ac>=qty?' disabled':''}>+</button></span></div>`;
       }).join('');
       return `${row}<div class="common-attrs">${attrRows}</div>`;
     }).join('');
     return `
-      ${showCommon ? `<div class="section-label">Common items <span style="font-weight:400;color:var(--ink3)">(helps us size the crew)</span></div>
+      <div class="section-label">Common items <span style="font-weight:400;color:var(--ink3)">(helps us size the crew)</span></div>
       <div class="chips col">${commonChips}
         <button class="chip${commonNone ? ' checked' : ''}" data-bind="common-none" style="justify-content:center">None of the above</button>
-      </div>` : ''}
+      </div>
       <div class="section-label">Photos / walkthrough video <span style="font-weight:400;color:var(--ink3)">(optional)</span></div>
       <div class="upload-zone" id="upload-zone-${q.id}">
         <input type="file" id="file-input-${q.id}" accept="image/*,video/*" multiple />
@@ -1546,18 +1553,18 @@ function updateRouteMap() {
         if (!routeMap) return;
         if (data.routes && data.routes.length > 0) {
           var coords = data.routes[0].geometry.coordinates.map(function(c) { return [c[1], c[0]]; });
-          routeMapLine = L.polyline(coords, { color: '#C9A23C', weight: 4, opacity: 0.8 }).addTo(routeMap);
+          routeMapLine = L.polyline(coords, { color: '#C98B3F', weight: 4, opacity: 0.8 }).addTo(routeMap);
           routeMap.fitBounds(routeMapLine.getBounds(), { padding: [40, 40] });
         } else {
           var latlngs = [[pu.lat, pu.lng], [dr.lat, dr.lng]];
-          L.polyline(latlngs, { color: '#C9A23C', weight: 3, opacity: 0.7, dashArray: '8, 8' }).addTo(routeMap);
+          L.polyline(latlngs, { color: '#C98B3F', weight: 3, opacity: 0.7, dashArray: '8, 8' }).addTo(routeMap);
           routeMap.fitBounds(latlngs, { padding: [40, 40] });
         }
       })
       .catch(function() {
         if (!routeMap) return;
         var latlngs = [[pu.lat, pu.lng], [dr.lat, dr.lng]];
-        L.polyline(latlngs, { color: '#C9A23C', weight: 3, opacity: 0.7, dashArray: '8, 8' }).addTo(routeMap);
+        L.polyline(latlngs, { color: '#C98B3F', weight: 3, opacity: 0.7, dashArray: '8, 8' }).addTo(routeMap);
         routeMap.fitBounds(latlngs, { padding: [40, 40] });
       });
   }
@@ -1735,6 +1742,10 @@ function handleBind(q, bind, el){
   else if(bind === 'c-email'){
     S.answers[q.id] = {...(S.answers[q.id]||{}), email: el.value};
   }
+  else if(bind === 'c-smsconsent'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), smsConsent: !(S.answers[q.id]||{}).smsConsent};
+    renderCard(false);
+  }
   // ── Address fields ──
   else if(bind === 'pu-addr'){
     S.answers[q.id] = {...(S.answers[q.id]||{}), pickup: {...(S.answers[q.id]?.pickup||{}), addr: val}};
@@ -1752,8 +1763,13 @@ function handleBind(q, bind, el){
   }
   // ── Stuff fields ──
   else if(bind === 'size'){
-    S.answers[q.id] = {...(S.answers[q.id]||{}), size: val};
+    const next = {...(S.answers[q.id]||{}), size: val};
+    if(!PARTIAL_LOAD_SIZES.has(val)) next.partial = false; // partial only applies to Studio / 1 BR
+    S.answers[q.id] = next;
     S.notSure[q.id] = false; renderCard(false);
+  }
+  else if(bind === 'size-partial'){
+    S.answers[q.id] = {...(S.answers[q.id]||{}), partial: !(S.answers[q.id]||{}).partial}; renderCard(false);
   }
   else if(bind === 'spec-multi'){
     // Only "Nope — just regular stuff" uses this toggle — clears all item quantities
@@ -1964,7 +1980,7 @@ function handleFiles(q, fileList){
     };
     // Show video thumbnail placeholder for video files
     if(f.type.startsWith('video/')){
-      existPrev.push('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><rect width="60" height="60" rx="8" fill="%23F3EED7"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="24">🎥</text></svg>');
+      existPrev.push('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60"><rect width="60" height="60" rx="8" fill="%23F5EDE0"/><text x="50%" y="55%" dominant-baseline="middle" text-anchor="middle" font-size="24">🎥</text></svg>');
       S.photoPreviews[q.id] = existPrev;
       loaded++;
       if(loaded === newFiles.length){ renderCard(false); renderProgress(); renderStepper(); }
@@ -2056,7 +2072,9 @@ function formatAnswer(q){
 
 // ── Instant quote engine (mirrors lib/pricing.ts) ────────────────────────────
 const BASE_PRICES = { 'Single item':9375, 'Just a few items':17500, 'Small move':25000, 'Studio':35000, '1 BR':50000, '2 BR':80000, '3 BR':135000, '4+ BR / full house':160000 };
-const STAIRS_SURCHARGE = 5000;
+const HEAVY_COMMON_FEE = 7500;
+const HEAVY_COMMON_ATTR = 'Heavy (250lb+)';
+const STAIRS_SURCHARGE = 7500;
 const ELEVATOR_SURCHARGE = 4000; // $40 per location that has an elevator
 const LONG_CARRY = 5000;
 const HEAVY_PRICES = { 'Piano':25000, 'Safe / gun safe':15000, 'Pool table':30000, 'Treadmill / Peloton':7500, 'Big TV (65"+)':7500, 'Aquarium':7500, 'Artwork / mirror':7500 };
@@ -2066,11 +2084,12 @@ const DISTANCE_PER_MILE = 125; // $1.25/mile over 15 free miles
 const LONG_DISTANCE_MULTIPLIER = 1.5; // 50% surcharge for long distance moves
 const STAGING_SURCHARGE_PCT = 0.30;   // +30% of base for home staging (crew arranges/styles furniture)
 const PACKING_SURCHARGE_PCT = 0.35;   // +35% of base for full packing service (items not yet boxed)
+// Partial-load tier — about half (or less) of a full Studio / 1 BR. Charges 75%
+// of the base (a 25% discount). Only offered for these sizes. MUST stay in sync
+// with create-quote-payment + admin calcLeadQuote + pricing-parity.test.mjs.
+const PARTIAL_LOAD_MULT = 0.75;
+const PARTIAL_LOAD_SIZES = new Set(['Studio','1 BR']);
 const PREP_SURCHARGES = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 }; // flat disassembly add-ons; other prep options are free
-// Common items flagged "Heavy (250lb+)" — flat fee per flagged item. MUST stay in
-// sync with create-quote-payment + admin calcLeadQuote + pricing-parity.test.mjs.
-const HEAVY_COMMON_FEE = 7500;
-const HEAVY_COMMON_ATTR = 'Heavy (250lb+)';
 
 function haversineDistance(lat1, lng1, lat2, lng2) {
   const R = 3959; // Earth radius in miles
@@ -2089,7 +2108,7 @@ function calcDistance() {
 
 function calcQuote(){
   const size   = S.answers['stuff']?.size;
-  const base   = BASE_PRICES[size];
+  const base = BASE_PRICES[size];
   if(!base) return null; // can't quote without size
 
   const service  = S.answers['service'] || '';
@@ -2113,6 +2132,11 @@ function calcQuote(){
   const specialEntries = Object.entries(special).filter(([k]) => k !== 'Nope — just regular stuff');
   const heavyCents   = specialEntries.reduce((s,[k,qty]) => s + (HEAVY_PRICES[k] || 7500) * qty, 0);
 
+  // Heavy common items (250lb+) — $75 each. Mirrors create-quote-payment (June-12 server).
+  const cAttrs = (S.answers['photos']?.commonAttrs) || {};
+  const heavyCommonCount = Object.values(cAttrs).reduce((s, attrs) => s + (Number(attrs?.[HEAVY_COMMON_ATTR]) || 0), 0);
+  const heavyCommonCents = heavyCommonCount * HEAVY_COMMON_FEE;
+
   // Distance surcharge — $1.25/mile over 15 free miles
   const miles = calcDistance();
   const distanceCents = (miles && miles > DISTANCE_FREE_MILES) ? (miles - DISTANCE_FREE_MILES) * DISTANCE_PER_MILE : 0;
@@ -2135,11 +2159,6 @@ function calcQuote(){
   const prepSel   = Array.isArray(S.answers['extras']?.prep) ? S.answers['extras'].prep : [];
   const prepItems = prepSel.filter(p => PREP_SURCHARGES[p]).map(p => [p, PREP_SURCHARGES[p]]);
   const prepCents = prepItems.reduce((s,[,c]) => s + c, 0);
-
-  // Common items flagged Heavy (250lb+) — $75 per flagged item
-  const cAttrs = (S.answers['photos']?.commonAttrs) || {};
-  const heavyCommonCount = Object.values(cAttrs).reduce((s, attrs) => s + (Number(attrs?.[HEAVY_COMMON_ATTR]) || 0), 0);
-  const heavyCommonCents = heavyCommonCount * HEAVY_COMMON_FEE;
 
   const subtotal = Math.round(adjustedBase + stairsCents + elevatorCents + carryCents + heavyCents + distanceCents + stagingCents + packingCents + prepCents + heavyCommonCents);
   const tax      = Math.round(subtotal * TAX);
@@ -2172,8 +2191,8 @@ function renderQuoteBlock(){
     q.stagingCents ? `<div class="q-row"><span>Home staging (+30%)</span><span>+${fmtMoney(q.stagingCents)}</span></div>` : '',
     q.packingCents ? `<div class="q-row"><span>Packing service (+35%)</span><span>+${fmtMoney(q.packingCents)}</span></div>` : '',
     (q.prepItems||[]).map(([label,cents]) => `<div class="q-row"><span>${esc(label)}</span><span>+${fmtMoney(cents)}</span></div>`).join(''),
-    q.heavyCommonCents ? `<div class="q-row"><span>Heavy items 250lb+ (${q.heavyCommonCount} × $75)</span><span>+${fmtMoney(q.heavyCommonCents)}</span></div>` : '',
     q.heavyCents   ? `<div class="q-row"><span>Special items (${q.heavyCount})</span><span>+${fmtMoney(q.heavyCents)}</span></div>${Object.entries(S.answers['stuff']?.special||{}).filter(([k])=>k!=='Nope — just regular stuff').filter(([,v])=>v>1).map(([k,v])=>`<div class="q-row" style="font-size:12px;color:var(--ink3);padding-left:10px"><span>${esc(k)} ×${v}</span><span>${fmtMoney((HEAVY_PRICES[k]||7500)*v)}</span></div>`).join('')}` : '',
+    q.heavyCommonCents ? `<div class="q-row"><span>Heavy items 250lb+ (${q.heavyCommonCount} × $75)</span><span>+${fmtMoney(q.heavyCommonCents)}</span></div>` : '',
     `<div class="q-row"><span>Tax (8.25%)</span><span>+${fmtMoney(q.tax)}</span></div>`,
     q.referralCredit ? `<div class="q-row" style="color:var(--success);font-weight:700"><span>Referral from ${esc(S.referrerName || 'a friend')}</span><span>-${fmtMoney(q.referralCredit)}</span></div>` : '',
   ].filter(Boolean).join('');
@@ -2319,9 +2338,9 @@ function showLegalModal(type) {
 `;
 
   const overlay = document.createElement('div');
-  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(33,37,31,0.5);display:flex;align-items:center;justify-content:center;z-index:200;animation:overlayIn .18s ease';
+  overlay.style.cssText = 'position:fixed;inset:0;background:rgba(26,23,20,0.5);display:flex;align-items:center;justify-content:center;z-index:200;animation:overlayIn .18s ease';
   overlay.innerHTML = `
-    <div style="background:var(--card);border-radius:20px;padding:28px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 16px 48px rgba(33,37,31,0.2);animation:modalIn .28s cubic-bezier(0.16,1,0.3,1);position:relative;font-size:14px;color:var(--ink2);line-height:1.6" onclick="event.stopPropagation()">
+    <div style="background:var(--card);border-radius:20px;padding:28px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 16px 48px rgba(26,23,20,0.2);animation:modalIn .28s cubic-bezier(0.16,1,0.3,1);position:relative;font-size:14px;color:var(--ink2);line-height:1.6" onclick="event.stopPropagation()">
       <button style="position:absolute;top:16px;right:16px;width:32px;height:32px;border-radius:16px;border:none;background:var(--surface);cursor:pointer;font-size:16px;color:var(--ink2)" id="legal-close">&times;</button>
       <h2 style="font-size:20px;font-weight:700;color:var(--ink);margin-bottom:16px">${title}</h2>
       ${body}
@@ -2400,7 +2419,7 @@ function buildPayload(){
   const VALID_STAIRS   = new Set(['Ground floor','Stairs','Elevator','Both','Ground floor — easy in/out','Stairs only','Both stairs and elevator']);
   const VALID_PARKING  = new Set(['Driveway / right at the door','Street parking — short walk','Long walk (100+ ft)','Loading dock / bay','Permit might be needed','Not sure — call me']);
   const VALID_SPECIAL  = new Set(['Piano','Safe / gun safe','Pool table','Treadmill / Peloton','Big TV (65"+)','Artwork / mirror','Aquarium','Nope — just regular stuff','Not sure']);
-  const VALID_COMMON   = new Set(['Couch / sofa','Bed','Dining set','Dresser','Refrigerator','Washer / dryer','Wardrobe / armoire','Bookshelf','TV stand','Nightstand','Desk']);
+  const VALID_COMMON   = new Set(['Couch / sofa','Bed','Dining set','Dresser','Refrigerator','Washer / dryer','Wardrobe / armoire','Bookshelf']);
   const VALID_COMMON_ATTRS = new Set(['Heavy (250lb+)','Needs disassembly','Needs wrapping','Upstairs']);
   const VALID_BOXED    = new Set(['Yes — all boxed','Yes — all boxed and labeled',"Some are, some aren't",'Not yet']);
   const VALID_PREP     = new Set(['Wrap / pad furniture','Disassemble bed frame(s)','Take apart shelving','Unmount TV','Pack the kitchen','None — ready to go']);
@@ -2453,6 +2472,7 @@ function buildPayload(){
     dropoff_address:    clamp(stripHtml(addresses.dropoff?.addr), 300) || null,
     dropoff_place_type: clamp(stripHtml(addresses.dropoff?.place), 60) || null,
     items_size:         sanitizeEnum(stuff.size, VALID_SIZES),
+    partial_load:       !!stuff.partial && (stuff.size === 'Studio' || stuff.size === '1 BR'),
     items_list:         clamp(stripHtml(stuff.list), 1000) || null,
     stairs_pickup:      sanitizeEnum(access.stairs_pickup, VALID_STAIRS),
     stairs_dropoff:     sanitizeEnum(access.stairs_dropoff, VALID_STAIRS),
@@ -2471,6 +2491,7 @@ function buildPayload(){
     photo_urls:         [],
     estimated_price_cents: calcQuote()?.total || null,
     referral_code:      S.referralCode || null,
+    sms_consent:        !!contact.smsConsent,
     answers: S.answers,
     notes:   S.notes,
   };
@@ -2558,7 +2579,25 @@ async function autosaveProgress(){
     payload.progress_step = stepTitle;
     payload.photo_urls = []; // photos upload only on final submit
     await saveLead(payload);
+    maybeSendIntakeAck(); // "we got your request" email + SMS — once the lead exists
   } catch(e){ /* best-effort — never block the user */ }
+}
+
+// Fire the "we got your request" confirmation (email + opt-in SMS) once the
+// customer has entered their contact info. Guarded client-side so it fires once
+// per session; the edge function ALSO dedupes server-side (intake_ack_sent_at),
+// so a duplicate call from a fast step-advance is harmless.
+async function maybeSendIntakeAck(){
+  if(S.ackSent || !S.quoteRecordId) return;
+  S.ackSent = true;
+  try {
+    await fetch(`${SB_URL}/functions/v1/notify-intake-received`, {
+      method: 'POST',
+      headers: { 'Authorization':`Bearer ${SB_KEY}`, 'apikey':SB_KEY, 'Content-Type':'application/json' },
+      body: JSON.stringify({ quote_request_id: S.quoteRecordId }),
+      keepalive: true,
+    });
+  } catch(e){ /* server is authoritative + idempotent — non-fatal */ }
 }
 
 async function handleSubmit(){
@@ -2690,9 +2729,9 @@ async function showPaymentStep(recordId, quote) {
       appearance: {
         theme: 'stripe',
         variables: {
-          colorPrimary: '#C9A23C',
+          colorPrimary: '#C98B3F',
           colorBackground: '#FFFFFF',
-          colorText: '#21251F',
+          colorText: '#1A1714',
           colorDanger: '#c0392b',
           fontFamily: 'Inter, system-ui, sans-serif',
           borderRadius: '10px',
@@ -2779,7 +2818,10 @@ backBtn.addEventListener('click', goBack);
   const clientSecret = params.get('payment_intent_client_secret');
   if (clientSecret && stripePromise) {
     const { paymentIntent } = await stripePromise.retrievePaymentIntent(clientSecret);
-    if (paymentIntent && paymentIntent.status === 'succeeded') {
+    // 'succeeded' = card / instant. 'processing' = an installment/BNPL method
+    // (Affirm, Klarna, Afterpay) was approved and is settling — the webhook
+    // finalizes the booking either way, so confirm rather than leave them hanging.
+    if (paymentIntent && (paymentIntent.status === 'succeeded' || paymentIntent.status === 'processing')) {
       showConfirmation(true);
       window.history.replaceState({}, '', window.location.pathname);
       return;

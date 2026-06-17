@@ -19,7 +19,7 @@
 <meta name="twitter:title" content="Valet-Style Moving in Austin, Managed Start to Finish | Fast Fix Work">
 <meta name="twitter:description" content="Valet-style moving in Austin. Book online, get flat-rate pricing, and a personal move manager start to finish.">
 <meta name="twitter:image" content="https://fastfixwork.com/og-image.jpg">
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='translate(0,9)'><path d='M16 3 H55 Q61 3 61 9 V37 Q61 43 55 43 H16 L3 23 Z' fill='%23C9A23C' stroke='%2321251F' stroke-width='3'/><circle cx='15' cy='23' r='4' fill='%23FAF7EC' stroke='%2321251F' stroke-width='2.6'/><text x='39' y='29' text-anchor='middle' font-family='Georgia,serif' font-weight='700' font-size='16' fill='%2321251F'>FFX</text></g></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='12' y='12' width='80' height='80' rx='18' fill='%23C98B3F'/><rect x='4' y='4' width='80' height='80' rx='18' fill='%231A1714'/><text x='44' y='48' text-anchor='middle' dominant-baseline='central' font-family='Georgia,serif' font-weight='700' font-size='30' fill='%23FAF7F2'>FFX</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700;9..144,800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -59,7 +59,7 @@ h1,h2,h3{font-family:var(--ff);line-height:1.1;letter-spacing:-0.02em}
 .hdr.sc{padding:8px 0;box-shadow:0 2px 12px rgba(33,37,31,0.06)}
 .hdr-i{display:flex;align-items:center;justify-content:space-between;gap:16px}
 .logo{display:flex;align-items:center;gap:8px}
-.logo-b{display:block;flex-shrink:0}
+.logo-b{width:40px;height:40px;background:#1A1714;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:var(--ff);font-weight:700;font-size:1rem;color:#FAF7F2;box-shadow:3px 3px 0 #C98B3F;flex-shrink:0}
 .logo-t{font-family:var(--ff);font-size:1.15rem;font-weight:700;color:var(--ink)}
 .logo-t i{color:var(--amber);font-style:normal}
 .nav-d{display:none;align-items:center;gap:36px}
@@ -251,6 +251,18 @@ h1,h2,h3{font-family:var(--ff);line-height:1.1;letter-spacing:-0.02em}
 .tm.ph{border-style:dashed}
 .tm.ph blockquote{color:var(--ink3);font-style:italic}
 
+/* === TRUSTED BY (logo wall) === */
+.trust{padding:52px 0;background:var(--surface);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.trust-l{text-align:center;font-size:0.75rem;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--ink3);margin-bottom:26px}
+.trust-g{display:flex;flex-wrap:wrap;justify-content:center;gap:14px;max-width:980px;margin:0 auto}
+.tlogo{flex:1 1 140px;max-width:188px;min-height:62px;display:flex;align-items:center;justify-content:center;padding:10px 16px;border-radius:12px;background:var(--card);border:1.5px solid var(--line2);text-align:center;transition:transform 0.26s,border-color 0.26s,box-shadow 0.26s}
+.tlogo:hover{transform:translateY(-3px);border-color:var(--amber);box-shadow:var(--shadow)}
+.tlogo span{font-family:var(--ff);font-weight:700;font-size:0.95rem;letter-spacing:-0.01em;line-height:1.18;color:var(--ink2);transition:color 0.26s}
+.tlogo:hover span{color:var(--ink)}
+.tlogo img{max-height:34px;width:auto;opacity:0.78;filter:grayscale(1);transition:opacity 0.26s,filter 0.26s}
+.tlogo:hover img{opacity:1;filter:grayscale(0)}
+.tlogo:has(img) span{display:none}/* show the real logo, hide the wordmark fallback */
+
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:0.01ms!important;transition-duration:0.01ms!important;scroll-behavior:auto!important}}
 @media(min-width:640px){
 .how-g{grid-template-columns:repeat(3,1fr)}
@@ -275,7 +287,7 @@ h1,h2,h3{font-family:var(--ff);line-height:1.1;letter-spacing:-0.02em}
 
 <header class="hdr" id="top">
 <div class="c hdr-i">
-<a href="#top" class="logo" aria-label="Fast Fix Work home"><svg class="logo-b" width="46" height="33" viewBox="0 0 64 46" aria-hidden="true"><g transform="rotate(-7 32 23)"><path d="M16 5 H54 Q60 5 60 11 V33 Q60 39 54 39 H16 L4 22 Z" fill="var(--amber)" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/><circle cx="14" cy="22" r="3.4" fill="var(--bg)" stroke="var(--ink)" stroke-width="2"/><text x="38" y="27.5" text-anchor="middle" font-family="'Fraunces',Georgia,serif" font-weight="700" font-size="15" fill="var(--ink)">FFX</text></g></svg><div class="logo-t">Fast. <i>Fix.</i> Work.</div></a>
+<a href="#top" class="logo" aria-label="Fast Fix Work home"><div class="logo-b">FFX</div><div class="logo-t">Fast. <i>Fix.</i> Work.</div></a>
 <nav class="nav-d" aria-label="Main navigation">
 <a href="#how">How it works</a><a href="#services">Services</a><a href="#reviews">Reviews</a><a href="#about">About</a><a href="#faq">FAQ</a><a href="#contact">Contact</a>
 </nav>
@@ -316,6 +328,27 @@ h1,h2,h3{font-family:var(--ff);line-height:1.1;letter-spacing:-0.02em}
 </div>
 </div>
 </div>
+</div>
+</div>
+</section>
+
+<!-- CLIENTS WE'VE MOVED FOR. Each tile shows a styled wordmark by default.
+     To swap in a real logo: drop the file in landing/logos/ then UNCOMMENT the
+     <img> on that tile (one edit — the wordmark auto-hides via the CSS :has() rule).
+     Only do this for clients who've okayed it. SVG preferred; transparent PNG is fine. -->
+<section class="trust sr" aria-label="Clients we have moved for">
+<div class="c">
+<p class="trust-l">Clients we&rsquo;ve moved for</p>
+<div class="trust-g">
+<div class="tlogo"><span>U-Haul</span><!--<img src="logos/uhaul.svg" alt="U-Haul" loading="lazy">--></div>
+<div class="tlogo"><span>Moving Helper</span><!--<img src="logos/moving-helper.svg" alt="Moving Helper" loading="lazy">--></div>
+<div class="tlogo"><span>Haus Realty</span><!--<img src="logos/haus-realty.svg" alt="Haus Realty" loading="lazy">--></div>
+<div class="tlogo"><span>Get Fido</span><!--<img src="logos/get-fido.svg" alt="Get Fido" loading="lazy">--></div>
+<div class="tlogo"><span>Freebirds World Burrito</span><!--<img src="logos/freebirds.svg" alt="Freebirds World Burrito" loading="lazy">--></div>
+<div class="tlogo"><span>Ownwell</span><!--<img src="logos/ownwell.svg" alt="Ownwell" loading="lazy">--></div>
+<div class="tlogo"><span>Blueground</span><!--<img src="logos/blueground.svg" alt="Blueground" loading="lazy">--></div>
+<div class="tlogo"><span>Fresh Start Furniture</span><!--<img src="logos/fresh-start-furniture.svg" alt="Fresh Start Furniture" loading="lazy">--></div>
+<div class="tlogo"><span>World Interiors</span><!--<img src="logos/world-interiors.svg" alt="World Interiors" loading="lazy">--></div>
 </div>
 </div>
 </section>
@@ -476,7 +509,7 @@ h1,h2,h3{font-family:var(--ff);line-height:1.1;letter-spacing:-0.02em}
 <footer class="ftr">
 <div class="c">
 <div class="ftr-g">
-<div class="ftr-c"><div class="logo" style="margin-bottom:14px"><svg class="logo-b" width="38" height="27" viewBox="0 0 64 46" aria-hidden="true"><g transform="rotate(-7 32 23)"><path d="M16 5 H54 Q60 5 60 11 V33 Q60 39 54 39 H16 L4 22 Z" fill="var(--amber)" stroke="#FAF7EC" stroke-width="2.4" stroke-linejoin="round"/><circle cx="14" cy="22" r="3.4" fill="var(--ink)" stroke="#FAF7EC" stroke-width="2"/><text x="38" y="27.5" text-anchor="middle" font-family="'Fraunces',Georgia,serif" font-weight="700" font-size="15" fill="var(--ink)">FFX</text></g></svg><div class="logo-t" style="font-size:1rem;color:rgba(240,239,226,0.9)">Fast. <i>Fix.</i> Work.</div></div><p>Austin's valet-style moving service. Moving, delivery, packing, junk removal, cleaning, and setup — managed start to finish.</p></div>
+<div class="ftr-c"><div class="logo" style="margin-bottom:14px"><div class="logo-b" style="width:34px;height:34px;font-size:0.9rem;background:#FAF7F2;color:#1A1714;box-shadow:3px 3px 0 #C98B3F">FFX</div><div class="logo-t" style="font-size:1rem;color:rgba(240,239,226,0.9)">Fast. <i>Fix.</i> Work.</div></div><p>Austin's valet-style moving service. Moving, delivery, packing, junk removal, cleaning, and setup — managed start to finish.</p></div>
 <div class="ftr-c"><h4>Pages</h4><a href="#how">How it works</a><a href="#services">Services</a><a href="#reviews">Reviews</a><a href="#about">About</a><a href="#faq">FAQ</a><a href="/worker-signup">Become a mover</a></div>
 <div class="ftr-c"><h4>Contact</h4><a href="tel:+15127771628">512-777-1628</a><a href="mailto:communication@fastfixwork.com">communication@fastfixwork.com</a><p>Austin, TX</p></div>
 </div>

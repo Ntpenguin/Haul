@@ -11,7 +11,7 @@
 
 // ── Constants (identical in both implementations) ────────────────────────────
 const BASE_PRICES = { 'Single item': 9375, 'Just a few items': 17500, 'Small move': 25000, 'Studio': 35000, '1 BR': 50000, '2 BR': 80000, '3 BR': 135000, '4+ BR / full house': 160000 };
-const STAIRS_SURCHARGE = 5000, ELEVATOR_SURCHARGE = 4000, LONG_CARRY = 5000, TAX = 0.0825;
+const STAIRS_SURCHARGE = 7500, ELEVATOR_SURCHARGE = 4000, LONG_CARRY = 5000, TAX = 0.0825;
 const HEAVY_PRICES = { 'Piano': 25000, 'Safe / gun safe': 15000, 'Pool table': 30000, 'Treadmill / Peloton': 7500, 'Big TV (65"+)': 7500, 'Aquarium': 7500, 'Artwork / mirror': 7500 };
 const PREP_SURCHARGES = { 'Disassemble bed frame(s)': 5000, 'Take apart shelving': 2500 };
 const DISTANCE_FREE_MILES = 15, DISTANCE_PER_MILE = 125, LONG_DISTANCE_MULTIPLIER = 1.5, LONG_DISTANCE_THRESHOLD = 50;

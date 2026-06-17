@@ -75,7 +75,7 @@ pdf.multi_cell(0, 4.5, "Crew size and truck size are collected for crew planning
 # Surcharges
 section(pdf, "Surcharges (added to base)")
 kv_table(pdf, [
-    ("Stairs", "$50 per flight (each location)"),
+    ("Stairs", "$75 per flight (each location)"),
     ("Elevator", "$40 per location with an elevator"),
     ("Long carry (100+ ft from door)", "$50"),
     ("Distance", "$1.25 / mile over 15 free miles"),
@@ -122,11 +122,11 @@ pdf.set_draw_color(*AMBER)
 ex_y = pdf.get_y()
 rows = [
     ("Base move (2 BR)", "$800.00"),
-    ("Stairs (3 flights x $50)", "$150.00"),
+    ("Stairs (3 flights x $75)", "$225.00"),
     ("Elevator (1 location)", "$40.00"),
     ("Piano", "$250.00"),
-    ("Subtotal", "$1,240.00"),
-    ("Tax (8.25%)", "$102.30"),
+    ("Subtotal", "$1,315.00"),
+    ("Tax (8.25%)", "$108.49"),
 ]
 pdf.set_font("Helvetica", "", 10)
 for k, v in rows:
@@ -139,7 +139,7 @@ for k, v in rows:
 pdf.set_font("Helvetica", "B", 11)
 pdf.set_text_color(*AMBER_DEEP)
 pdf.cell(130, 8, "   TOTAL", border=0)
-pdf.cell(56, 8, "$1,342.30   ", border=0, align="R", new_x="LMARGIN", new_y="NEXT")
+pdf.cell(56, 8, "$1,423.49   ", border=0, align="R", new_x="LMARGIN", new_y="NEXT")
 
 out = r"C:\Users\USER\Downloads\fast-fix-work-pricing.pdf"
 pdf.output(out)

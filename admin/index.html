@@ -5,6 +5,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fast Fix Work — Admin Dashboard</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='12' y='12' width='80' height='80' rx='18' fill='%23C98B3F'/><rect x='4' y='4' width='80' height='80' rx='18' fill='%231A1714'/><text x='44' y='48' text-anchor='middle' dominant-baseline='central' font-family='Georgia,serif' font-weight='700' font-size='30' fill='%23FAF7F2'>FFX</text></svg>">
 <!-- CSP: allow supabase, jsdelivr CDN, google calendar links; block everything else -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://joiukvttuamaanrgzfrz.supabase.co https://api.qrserver.com; connect-src https://joiukvttuamaanrgzfrz.supabase.co wss://joiukvttuamaanrgzfrz.supabase.co; frame-src 'none'; object-src 'none';" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
@@ -539,7 +540,7 @@ function renderPricing() {
           ['2 Bedroom', '$800'], ['3 Bedroom', '$1,350'], ['4+ BR / full house', '$1,600'],
         ])}
         ${card('Surcharges', [
-          ['Stairs', '$50 / flight (per location)'], ['Elevator', '$40 / location'],
+          ['Stairs', '$75 / flight (per location)'], ['Elevator', '$40 / location'],
           ['Long carry (100+ ft)', '$50'], ['Distance', '$1.25/mi over 15 free'],
           ['Long distance (50+ mi)', '+50% of base'], ['Home staging', '+30% of base'],
           ['Packing service', '+35% of base'], ['Heavy item flag 250lb+ (common items)', '$75 each'],
@@ -554,8 +555,8 @@ function renderPricing() {
           ['Artwork / mirror', '$75'], ['Other heavy item', '$75'],
         ])}
         ${card('Example — 2BR, 3 flights, elevator @ drop, piano', [
-          ['Base (2 BR)', '$800.00'], ['Stairs (3 × $50)', '$150.00'], ['Elevator', '$40.00'],
-          ['Piano', '$250.00'], ['Tax (8.25%)', '$102.30'], ['TOTAL', '$1,342.30'],
+          ['Base (2 BR)', '$800.00'], ['Stairs (3 × $75)', '$225.00'], ['Elevator', '$40.00'],
+          ['Piano', '$250.00'], ['Tax (8.25%)', '$108.49'], ['TOTAL', '$1,423.49'],
         ])}
         ${card('Terms', [
           ['Refund', '80% if 48+ hrs out'], ['Within 48 hrs', 'Non-refundable'],
@@ -734,8 +735,8 @@ body{font-family:'Archivo',sans-serif;background:var(--cream);color:var(--ink);-
 .header::after{content:"";position:absolute;left:0;right:0;bottom:0;height:5px;
    background:linear-gradient(90deg,var(--gold-soft),#fff5e2,var(--gold-soft));opacity:.6;}
 .brandwrap{display:flex;align-items:center;gap:17px;}
-.mono{width:60px;height:60px;border-radius:15px;background:var(--cream);display:flex;align-items:center;justify-content:center;box-shadow:0 6px 16px rgba(80,45,0,.28);}
-.mono span{font-family:'Archivo Black';font-size:22px;letter-spacing:.5px;color:var(--gold-deep);}
+.mono{width:60px;height:60px;border-radius:14px;background:#1A1714;display:flex;align-items:center;justify-content:center;box-shadow:4px 4px 0 #C98B3F;}
+.mono span{font-family:'Archivo Black';font-size:24px;letter-spacing:.5px;color:#FAF7F2;}
 .wordmark{font-family:'Archivo';font-weight:700;font-size:30px;color:#fff;line-height:1;}
 .wordmark i{font-style:italic;font-weight:700;color:#FFE7BD;}
 .tagline{margin-top:9px;font-size:9.5px;letter-spacing:2.3px;font-weight:600;color:rgba(255,255,255,.85);text-transform:uppercase;white-space:nowrap;}
@@ -2493,7 +2494,7 @@ function calcLeadQuote(l) {
   const flightsFrom = hasStairs(sp) ? Math.max(1, l.flights_pickup || 1) : 0;
   const flightsTo   = hasStairs(sd) ? Math.max(1, l.flights_dropoff || 1) : 0;
   const flights    = flightsFrom + flightsTo;
-  const stairsCents = flights * 5000; // $50/flight — matches intake STAIRS_SURCHARGE
+  const stairsCents = flights * 7500; // $75/flight — matches intake STAIRS_SURCHARGE
   const elevators   = (hasElevator(sp) ? 1 : 0) + (hasElevator(sd) ? 1 : 0);
   const elevatorCents = elevators * 4000; // $40/location — matches intake ELEVATOR_SURCHARGE
   const carryCents  = (l.parking || '').includes('100+') ? 5000 : 0;

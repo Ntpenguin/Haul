@@ -4,7 +4,7 @@
 // Sources:
 // - Austin movers: $90–$180/hr for 2-mover crew + truck
 // - Studio: $300–$450, 1BR: $400–$650, 2BR: $700–$900, 3BR: $1,100–$1,650
-// - Stairs surcharge: $50/flight (matches intake form + admin)
+// - Stairs surcharge: $75/flight (matches intake form + admin)
 // - Elevator surcharge: $40 per location with an elevator (matches intake + admin)
 // - Heavy items: $50–$150 each depending on item
 //
@@ -101,7 +101,7 @@ const TRUCK_MULTIPLIERS: Record<string, number> = {
 };
 
 // Austin industry standard surcharges
-const STAIRS_SURCHARGE_CENTS_PER_FLIGHT = 5000;   // $50/flight (matches intake/admin)
+const STAIRS_SURCHARGE_CENTS_PER_FLIGHT = 7500;   // $75/flight (matches intake/admin)
 const ELEVATOR_SURCHARGE_CENTS = 4000;             // $40 per location that has an elevator
 const LONG_CARRY_SURCHARGE_CENTS = 5000;           // $50 for long carry (100+ ft)
 const HEAVY_ITEM_SURCHARGE_CENTS = 7500;           // $75 per heavy/specialty item (default)

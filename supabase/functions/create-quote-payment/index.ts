@@ -32,7 +32,7 @@ const BASE_PRICES: Record<string, number> = {
   'Single item': 9375, 'Just a few items': 17500, 'Small move': 25000, 'Studio': 35000, '1 BR': 50000,
   '2 BR': 80000, '3 BR': 135000, '4+ BR / full house': 160000,
 };
-const STAIRS_SURCHARGE = 5000;
+const STAIRS_SURCHARGE = 7500;
 const ELEVATOR_SURCHARGE = 4000; // $40 per location that has an elevator
 const LONG_CARRY = 5000;
 const HEAVY_PRICES: Record<string, number> = {
@@ -259,6 +259,10 @@ serve(async (req) => {
     const paymentIntent = await stripe.paymentIntents.create({
       amount: charge_cents,
       currency: 'usd',
+      // Surface every method enabled in the Stripe Dashboard for this amount,
+      // including installment/BNPL options (Affirm, Klarna, Afterpay). Card is
+      // unaffected; redirect-based methods use the existing return_url flow.
+      automatic_payment_methods: { enabled: true },
       metadata: {
         quote_request_id,
         type: 'quote_full_payment',
