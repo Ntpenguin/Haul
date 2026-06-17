@@ -58,8 +58,9 @@
   <div class="disclaimer"><b style="color:var(--amber-deep)">How it works:</b> Send us the details below and our team will review your request and get back to you to confirm pricing, crew, and a time that works.</div>
 
   <div class="card">
-    <div class="row">
-      <div><label class="fl">Contact name</label><input id="f-name" placeholder="Jordan at Acme Co."></div>
+    <div><label class="fl">Company name</label><input id="f-company" placeholder="Acme Property Group"></div>
+    <div class="row mt">
+      <div><label class="fl">Contact name</label><input id="f-name" placeholder="Jordan Smith"></div>
       <div><label class="fl">Phone</label><input id="f-phone" type="tel" placeholder="(512) 000-0000"></div>
     </div>
     <div class="mt"><label class="fl">Email (for confirmation)</label><input id="f-email" type="email" placeholder="you@company.com"></div>
@@ -183,7 +184,7 @@ $('submit').addEventListener('click',async()=>{
   if(!S.size)return showErr('Please pick a job size.');
   if(!S.stops.some(s=>s.addr&&s.addr.trim()))return showErr('Please add at least one address.');
   const btn=$('submit');btn.disabled=true;btn.textContent='Submitting…';
-  const payload={customer_name:name,customer_phone:phone,customer_email:$('f-email').value.trim(),job_size:S.size,
+  const payload={company_name:$('f-company').value.trim()||null,customer_name:name,customer_phone:phone,customer_email:$('f-email').value.trim(),job_size:S.size,
     stops:S.stops.filter(s=>s.addr&&s.addr.trim()).map(s=>({addr:s.addr,apt:(s.apt||'').trim()||null,lat:s.lat,lng:s.lng})),
     stairs:$('f-stairs').checked,elevator:$('f-elevator').checked,long_walk:$('f-longwalk').checked,
     access_notes:$('f-codes').value.trim()||null,

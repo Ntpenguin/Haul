@@ -48,6 +48,7 @@ serve(async (req) => {
     // ── Validate / normalize input ──────────────────────────────────────────
     const name = String(body.customer_name || '').trim().slice(0, 120);
     const phone = String(body.customer_phone || '').trim().slice(0, 20);
+    const companyName = String(body.company_name || '').trim().slice(0, 160) || null;
     const jobSize = VALID_SIZES.has(body.job_size) ? body.job_size : null;
     const stops = (Array.isArray(body.stops) ? body.stops.slice(0, 4) : [])
       .filter((s: any) => s && s.addr)
@@ -67,6 +68,7 @@ serve(async (req) => {
 
     // ── Store the request (record-only — no price, no decision) ─────────────
     const { data: row, error: insErr } = await svc.from('business_jobs').insert({
+      company_name: companyName,
       customer_name: name, customer_phone: phone, customer_email: body.customer_email || null,
       photo_urls: Array.isArray(body.photo_urls) ? body.photo_urls.slice(0, 12) : [],
       stops, job_size: jobSize, stairs, elevator, long_walk: longWalk,
@@ -101,6 +103,7 @@ serve(async (req) => {
             <div style="background:#FAF7F2;border:1.5px solid #E8E0D4;border-radius:12px;padding:18px 20px;margin-bottom:20px;">
               <div style="font-size:13px;color:#C98B3F;font-weight:700;margin-bottom:10px;">Job #${row.job_number}</div>
               <table style="width:100%;font-size:14px;color:#333;border-collapse:collapse;">
+                ${companyName ? `<tr><td style="padding:4px 0;color:#888;">Company</td><td style="padding:4px 0;text-align:right;font-weight:600;">${escHtml(companyName)}</td></tr>` : ''}
                 <tr><td style="padding:4px 0;color:#888;">Job size</td><td style="padding:4px 0;text-align:right;font-weight:600;">${escHtml(jobSize)}</td></tr>
                 <tr><td style="padding:4px 0;color:#888;vertical-align:top;">Route</td><td style="padding:4px 0;text-align:right;font-weight:600;">${routeHtml}</td></tr>
                 <tr><td style="padding:4px 0;color:#888;">Preferred</td><td style="padding:4px 0;text-align:right;font-weight:600;">${escHtml(when)}</td></tr>

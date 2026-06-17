@@ -411,7 +411,7 @@ function renderBusinessJobs() {
     return `
     <tr onclick="showBusinessJobModal('${j.id}')" style="cursor:pointer">
       <td>#${j.job_number || '—'}</td>
-      <td>${esc(j.customer_name || '—')}<div style="font-size:11px;color:var(--ink3)">${esc(j.customer_phone || '')}</div></td>
+      <td>${j.company_name ? `<div style="font-weight:600">${esc(j.company_name)}</div>` : ''}${esc(j.customer_name || '—')}<div style="font-size:11px;color:var(--ink3)">${esc(j.customer_phone || '')}</div></td>
       <td>${esc(j.job_size || '—')}</td>
       <td>${stops.length} stop${stops.length === 1 ? '' : 's'}<div style="font-size:11px;color:var(--ink3)">${j.distance_miles != null ? j.distance_miles + ' mi' : ''}${j.estimated_duration_hours != null ? ' · ~' + j.estimated_duration_hours + 'h' : ''}</div></td>
       <td>${j.counter_price_cents ? dollars(j.counter_price_cents) : '—'}</td>
@@ -450,6 +450,7 @@ function showBusinessJobModal(id) {
         <h2>Business Job #${j.job_number || ''}</h2>
         ${j.decision ? `<div class="modal-row"><div class="modal-label">Decision</div><div class="modal-value">${bizBadge(j.decision)} ${esc(j.decision_reason || '')}</div></div>` : ''}
         <div class="modal-row"><div class="modal-label">Status</div><div class="modal-value">${badge(j.status)}</div></div>
+        ${j.company_name ? `<div class="modal-row"><div class="modal-label">Company</div><div class="modal-value">${esc(j.company_name)}</div></div>` : ''}
         <div class="modal-row"><div class="modal-label">Contact</div><div class="modal-value">${esc(j.customer_name || '—')}${j.customer_phone ? ' · ' + esc(j.customer_phone) : ''}${j.customer_email ? ' · ' + esc(j.customer_email) : ''}</div></div>
         <div class="modal-row"><div class="modal-label">Job size</div><div class="modal-value">${esc(j.job_size) || '—'}</div></div>
         <div class="modal-row"><div class="modal-label">Route (${stops.length})</div><div class="modal-value">${stops.length ? stops.map((s, i) => `${i + 1}. ${esc(s.addr || '—')}${s.apt ? ' (Apt ' + esc(s.apt) + ')' : ''}`).join('<br>') : '—'}</div></div>
