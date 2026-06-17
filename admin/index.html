@@ -1214,44 +1214,85 @@ async function removeCrew(id){
   await loadAll();
   if(currentPage==='schedule') showPage('schedule'); else if(gigId) showGigModal(gigId);
 }
-// Day-by-day dispatch view: scheduled gigs grouped by date with assigned crew
-// and double-booking warnings.
-function renderSchedule(){
-  const gigs=(cache.gigs||[]).filter(g=>!g.deleted_at && g.status!=='draft' && g.status!=='cancelled' && g.scheduled_for)
-    .sort((a,b)=>new Date(a.scheduled_for)-new Date(b.scheduled_for));
-  const byDay={};
-  gigs.forEach(g=>{const key=new Date(g.scheduled_for).toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});(byDay[key]=byDay[key]||[]).push(g);});
+// The crew chips + "+ Add" picker for a gig — shared by gig rows and booked
+// business-job rows in the dispatch view.
+function crewCell(g){
   const roster=activeMovers();
-  const days=Object.entries(byDay).map(([day,gs])=>{
-    const rows=gs.map(g=>{
-      const t=new Date(g.scheduled_for).toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
-      const assigned=(cache.jobCrew||[]).filter(c=>c.gig_id===g.id);
-      const assignedIds=new Set(assigned.map(c=>c.worker_id));
-      const need=g.crew_size||0;
-      const short=need&&assigned.length<need;
-      const chips=assigned.length?assigned.map(c=>{
-        const w=(cache.profiles||[]).find(x=>x.id===c.worker_id);
-        const con=workerConflict(c.worker_id,g);
-        return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 5px 2px 9px;border-radius:999px;font-size:12px;margin:0 4px 4px 0;background:${con?'#FBE4DF':'var(--surface)'};border:1px solid ${con?'#E0A99A':'var(--line2)'}">${esc(w?(w.full_name||w.email):'?')}${con?' <span style="color:#b4452e;font-weight:700" title="Double-booked">&#9888;</span>':''}<button onclick="removeCrew('${c.id}')" title="Remove" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:13px;line-height:1;padding:0 1px">&times;</button></span>`;
-      }).join(''):'<span style="color:#b4452e;font-size:12px;font-weight:600">&#9888; no crew</span>';
-      const availOpts=roster.filter(w=>!assignedIds.has(w.id)).map(w=>`<option value="${escAttr(w.id)}">${esc(moverName(w.id)+(workerConflict(w.id,g)?' · ⚠ booked':''))}</option>`).join('');
-      const assignCtrl=availOpts?`<div style="display:flex;gap:6px;margin-top:2px">
-          <select id="sched-pick-${g.id}" style="flex:1;min-width:100px;padding:5px 7px;border:1.5px solid var(--line2);border-radius:7px;font-size:12px"><option value="" selected>Choose…</option>${availOpts}</select>
-          <button onclick="assignCrew('${g.id}')" style="padding:5px 11px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">+ Add</button>
-        </div>`:(roster.length?'':'<div style="font-size:11px;color:var(--ink3);margin-top:2px">approve crew in Workers tab</div>');
-      return `<tr onclick="showGigModal('${g.id}')" style="cursor:pointer">
-        <td style="white-space:nowrap;font-weight:700;vertical-align:top">${t}</td>
-        <td style="vertical-align:top">${esc(g.home_size||g.gig_title||'job')}<div style="font-size:12px;color:var(--ink3)">${g.difficulty?('Diff '+g.difficulty+'/5 · '):''}${g.estimated_duration_hours?('~'+g.estimated_duration_hours+'h · '):''}${need?(need+' crew needed'):'crew n/a'}${short?` <span style="color:#8B6914;font-weight:700">(short ${need-assigned.length})</span>`:''}</div></td>
-        <td onclick="event.stopPropagation()" style="vertical-align:top;min-width:220px">${chips}${assignCtrl}</td>
+  const assigned=(cache.jobCrew||[]).filter(c=>c.gig_id===g.id);
+  const assignedIds=new Set(assigned.map(c=>c.worker_id));
+  const chips=assigned.length?assigned.map(c=>{
+    const w=(cache.profiles||[]).find(x=>x.id===c.worker_id);
+    const con=workerConflict(c.worker_id,g);
+    return `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 5px 2px 9px;border-radius:999px;font-size:12px;margin:0 4px 4px 0;background:${con?'#FBE4DF':'var(--surface)'};border:1px solid ${con?'#E0A99A':'var(--line2)'}">${esc(w?(w.full_name||w.email):'?')}${con?' <span style="color:#b4452e;font-weight:700" title="Double-booked">&#9888;</span>':''}<button onclick="removeCrew('${c.id}')" title="Remove" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:13px;line-height:1;padding:0 1px">&times;</button></span>`;
+  }).join(''):'<span style="color:#b4452e;font-size:12px;font-weight:600">&#9888; no crew</span>';
+  const availOpts=roster.filter(w=>!assignedIds.has(w.id)).map(w=>`<option value="${escAttr(w.id)}">${esc(moverName(w.id)+(workerConflict(w.id,g)?' · ⚠ booked':''))}</option>`).join('');
+  const assignCtrl=availOpts?`<div style="display:flex;gap:6px;margin-top:2px">
+      <select id="sched-pick-${g.id}" style="flex:1;min-width:100px;padding:5px 7px;border:1.5px solid var(--line2);border-radius:7px;font-size:12px"><option value="" selected>Choose…</option>${availOpts}</select>
+      <button onclick="assignCrew('${g.id}')" style="padding:5px 11px;background:var(--accent);color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer">+ Add</button>
+    </div>`:(roster.length?'':'<div style="font-size:11px;color:var(--ink3);margin-top:2px">approve crew in Workers tab</div>');
+  return {chips, assignCtrl, assigned};
+}
+
+// A business job's date for the dispatch view, derived from its requested_date
+// (+ a start hour parsed from the requested_time window, if any).
+function bizWhen(j){
+  if(!j.requested_date || !/^\d{4}-\d{2}-\d{2}$/.test(j.requested_date)) return null;
+  let hour=8, min=0;
+  const m=(j.requested_time||'').match(/(\d{1,2}):(\d{2})\s*(AM|PM)?/i);
+  if(m){hour=(+m[1]%12)+(((m[3]||'').toUpperCase()==='PM')?12:0); min=+m[2];}
+  const [Y,M,D]=j.requested_date.split('-').map(Number);
+  return new Date(Y, M-1, D, hour, min);
+}
+
+// Day-by-day dispatch view: scheduled gigs + dated business jobs grouped by date
+// with assigned crew and double-booking warnings.
+function renderSchedule(){
+  const gigs=(cache.gigs||[]).filter(g=>!g.deleted_at && g.status!=='draft' && g.status!=='cancelled' && g.scheduled_for);
+  const shownGigIds=new Set(gigs.map(g=>g.id));
+  // Business jobs that have a requested date and aren't dead — booked ones whose
+  // gig already shows above are skipped to avoid duplicates.
+  const bizJobs=(cache.businessJobs||[]).filter(j=>j.status!=='declined'&&j.status!=='completed'&&bizWhen(j)&&!(j.gig_id&&shownGigIds.has(j.gig_id)));
+  const entries=[
+    ...gigs.map(g=>({type:'gig', g, when:new Date(g.scheduled_for)})),
+    ...bizJobs.map(j=>({type:'biz', j, when:bizWhen(j)})),
+  ].sort((a,b)=>a.when-b.when);
+
+  const byDay={};
+  entries.forEach(e=>{const key=e.when.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'});(byDay[key]=byDay[key]||[]).push(e);});
+  const days=Object.entries(byDay).map(([day,es])=>{
+    const rows=es.map(e=>{
+      if(e.type==='gig'){
+        const g=e.g;
+        const t=e.when.toLocaleTimeString('en-US',{hour:'numeric',minute:'2-digit'});
+        const {chips, assignCtrl, assigned}=crewCell(g);
+        const need=g.crew_size||0;
+        const short=need&&assigned.length<need;
+        return `<tr onclick="showGigModal('${g.id}')" style="cursor:pointer">
+          <td style="white-space:nowrap;font-weight:700;vertical-align:top">${t}</td>
+          <td style="vertical-align:top">${esc(g.home_size||g.gig_title||'job')}<div style="font-size:12px;color:var(--ink3)">${g.difficulty?('Diff '+g.difficulty+'/5 · '):''}${g.estimated_duration_hours?('~'+g.estimated_duration_hours+'h · '):''}${need?(need+' crew needed'):'crew n/a'}${short?` <span style="color:#8B6914;font-weight:700">(short ${need-assigned.length})</span>`:''}</div></td>
+          <td onclick="event.stopPropagation()" style="vertical-align:top;min-width:220px">${chips}${assignCtrl}</td>
+        </tr>`;
+      }
+      // Business job row
+      const j=e.j;
+      const stops=Array.isArray(j.stops)?j.stops:[];
+      const route=stops.length?esc((stops[0].addr||'').split(',')[0])+(stops.length>1?` → ${esc((stops[stops.length-1].addr||'').split(',')[0])}`:''):'';
+      const linkedGig=j.gig_id?(cache.gigs||[]).find(x=>x.id===j.gig_id):null;
+      const crewHtml=linkedGig?(()=>{const c=crewCell(linkedGig);return c.chips+c.assignCtrl;})():'<span style="font-size:11px;color:var(--ink3)">Book to dispatch crew →</span>';
+      return `<tr onclick="showBusinessJobModal('${j.id}')" style="cursor:pointer;background:#FBF7EF">
+        <td style="white-space:nowrap;font-weight:700;vertical-align:top">${esc(j.requested_time||'TBD')}</td>
+        <td style="vertical-align:top"><span style="display:inline-block;background:var(--accent-soft);color:var(--accent-deep);font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px;margin-right:5px">BUSINESS #${esc(j.job_number||'')}</span>${esc(j.company_name||j.customer_name||'business job')}<div style="font-size:12px;color:var(--ink3)">${esc(j.job_size||'')}${route?' · '+route:''} · ${badge(j.status)}</div></td>
+        <td onclick="event.stopPropagation()" style="vertical-align:top;min-width:220px">${crewHtml}</td>
       </tr>`;
     }).join('');
     return `<div style="margin-bottom:18px"><div style="font-size:14px;font-weight:800;margin-bottom:8px">${esc(day)}</div>
       <div class="table-wrap"><table><thead><tr><th>Time</th><th>Job</th><th>Crew</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
   }).join('');
+  const total=entries.length;
   return `<h2 class="page-title">Schedule &amp; dispatch</h2>
-    <p class="page-sub">${gigs.length} scheduled job${gigs.length===1?'':'s'} · assign crew from each job (click a row). <span style="color:#b4452e">&#9888;</span> = a worker double-booked across overlapping jobs.</p>
+    <p class="page-sub">${total} scheduled job${total===1?'':'s'} (${gigs.length} gig${gigs.length===1?'':'s'} · ${bizJobs.length} business) · assign crew from each job (click a row). <span style="color:#b4452e">&#9888;</span> = a worker double-booked across overlapping jobs. <span style="background:var(--accent-soft);color:var(--accent-deep);font-size:10px;font-weight:800;padding:1px 6px;border-radius:5px">BUSINESS</span> rows come from the Business Jobs tab.</p>
     <button class="btn-sm refresh-btn" onclick="loadAll().then(()=>showPage('schedule'))" style="margin-bottom:14px">Refresh</button>
-    ${gigs.length?days:'<p class="empty">No scheduled jobs yet.</p>'}`;
+    ${total?days:'<p class="empty">No scheduled jobs yet.</p>'}`;
 }
 
 // ─── Helpers ─────────────────────────────────

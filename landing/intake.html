@@ -1478,10 +1478,9 @@ function initAddrField(fieldId, onSelect) {
           el.addEventListener('mousedown', (e) => {
             e.preventDefault();
             const r = results[i];
-            const a = r.address || {};
-            const main = [a.house_number, a.road].filter(Boolean).join(' ') || r.display_name.split(',')[0];
-            const sub = [a.city || a.town || a.village, a.state, a.postcode].filter(Boolean).join(', ');
-            const full = [main, sub].filter(Boolean).join(', ');
+            // Populate the full Nominatim address (matches landing/business.html's
+            // autocomplete). lat/lng still drive distance pricing + the route map.
+            const full = r.display_name;
             input.value = full;
             onSelect(full, parseFloat(r.lat), parseFloat(r.lon));
             hideSuggestions();
