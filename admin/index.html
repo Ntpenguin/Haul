@@ -1134,11 +1134,20 @@ function jobPlanningSection(g, lead, biz){
 }
 
 // ─── Crew assignment + scheduling conflicts (job_crew, migration 055) ────────
+function bizJobForGig(gigId){ return (cache.businessJobs||[]).find(j=>j.gig_id===gigId); }
+// A gig's [start,end] for conflict detection. Booked business jobs create gigs
+// with NO scheduled_for, so fall back to the linked business job's requested
+// date/time window (bizWhen) + its estimated duration — that way a worker
+// double-booked onto a business job's time slot gets flagged too.
 function gigSpan(g){
-  if(!g || !g.scheduled_for) return null;
-  const start=new Date(g.scheduled_for).getTime();
+  if(!g) return null;
+  const linked=bizJobForGig(g.id);
+  let start;
+  if(g.scheduled_for) start=new Date(g.scheduled_for).getTime();
+  else { const w=linked?bizWhen(linked):null; if(!w) return null; start=w.getTime(); }
   if(isNaN(start)) return null;
-  return [start, start + (g.estimated_duration_hours||2)*3600000];
+  const hrs=g.estimated_duration_hours||(linked&&linked.estimated_duration_hours)||2;
+  return [start, start + hrs*3600000];
 }
 function workerConflict(workerId, gig){
   const span=gigSpan(gig); if(!span) return false;
