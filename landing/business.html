@@ -57,6 +57,41 @@
 
   <div class="disclaimer"><b style="color:var(--amber-deep)">How it works:</b> Send us the details below and our team will review your request and get back to you to confirm pricing, crew, and a time that works.</div>
 
+  <div class="card" id="auth-card">
+    <div id="auth-out">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+        <div style="font-size:13.5px;color:var(--ink2)"><b style="color:var(--ink)">Book faster with a business account.</b> Sign in to auto-fill your info every time.</div>
+        <button class="addbtn" id="auth-toggle" style="width:auto;padding:9px 16px;white-space:nowrap">Sign in / Sign up</button>
+      </div>
+      <div id="auth-form" style="display:none;margin-top:14px;border-top:1px solid var(--line);padding-top:14px">
+        <div class="chips" id="auth-tabs" style="margin-bottom:12px">
+          <button class="chip on" data-mode="signin">Sign in</button>
+          <button class="chip" data-mode="signup">Create account</button>
+        </div>
+        <div id="signin-fields">
+          <div><label class="fl">Email</label><input id="si-email" type="email" autocomplete="email"></div>
+          <div class="mt"><label class="fl">Password</label><input id="si-pass" type="password" autocomplete="current-password"></div>
+          <button class="submit" id="si-btn">Sign in</button>
+        </div>
+        <div id="signup-fields" style="display:none">
+          <div><label class="fl">Company name</label><input id="su-company" placeholder="Acme Property Group"></div>
+          <div class="row mt">
+            <div><label class="fl">Contact name</label><input id="su-name" placeholder="Jordan Smith"></div>
+            <div><label class="fl">Phone</label><input id="su-phone" type="tel" placeholder="(512) 000-0000"></div>
+          </div>
+          <div class="mt"><label class="fl">Email</label><input id="su-email" type="email" autocomplete="email"></div>
+          <div class="mt"><label class="fl">Password</label><input id="su-pass" type="password" placeholder="8+ chars: upper, lower, number, symbol"></div>
+          <button class="submit" id="su-btn">Create account</button>
+        </div>
+        <div class="err" id="auth-err" style="display:none"></div>
+      </div>
+    </div>
+    <div id="auth-in" style="display:none;justify-content:space-between;align-items:center;gap:10px">
+      <div style="font-size:13.5px;color:var(--ink2)">Signed in as <b id="auth-who" style="color:var(--ink)"></b> · your info is filled in below.</div>
+      <button class="addbtn" id="auth-signout" style="width:auto;padding:9px 16px;white-space:nowrap">Sign out</button>
+    </div>
+  </div>
+
   <div class="card">
     <div><label class="fl">Company name</label><input id="f-company" placeholder="Acme Property Group"></div>
     <div class="row mt">
@@ -196,6 +231,7 @@ $('submit').addEventListener('click',async()=>{
       body:JSON.stringify(payload)});
     const d=await r.json();
     if(!r.ok)throw new Error(d.error||'Submission failed');
+    saveBizDefaults();
     showOutcome(d);
   }catch(e){btn.disabled=false;btn.textContent='Submit job request';showErr(e.message||'Something went wrong — call 512-777-1628.');}
 });
@@ -211,6 +247,121 @@ function showOutcome(d){
     </div>`;
   window.scrollTo(0,0);
 }
+
+// ── Business accounts: sign in / sign up + prefill + save-back ────────────────
+// Auth via Supabase GoTrue REST (the page CSP forbids external scripts, so no
+// supabase-js). Session persisted in localStorage; a logged-in business prefills
+// the form from its `businesses` row and writes the latest defaults back on submit.
+const AUTH={token:null,refresh:null,uid:null,bizId:null};
+const LS_KEY='ffw_biz_session';
+
+function setSession(d){
+  if(!d||!d.access_token)return;
+  AUTH.token=d.access_token;AUTH.refresh=d.refresh_token||AUTH.refresh;
+  AUTH.uid=(d.user&&d.user.id)||AUTH.uid;
+  try{localStorage.setItem(LS_KEY,JSON.stringify({token:AUTH.token,refresh:AUTH.refresh,uid:AUTH.uid}));}catch(_){}
+}
+function clearSession(){AUTH.token=AUTH.refresh=AUTH.uid=AUTH.bizId=null;try{localStorage.removeItem(LS_KEY);}catch(_){}}
+
+async function refreshSession(){
+  if(!AUTH.refresh)return false;
+  try{const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=refresh_token`,{method:'POST',
+      headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({refresh_token:AUTH.refresh})});
+    const d=await r.json();if(!r.ok)return false;setSession(d);return true;}catch(_){return false;}
+}
+async function bizApi(path,opts={}){
+  const go=()=>fetch(`${SB_URL}/rest/v1/${path}`,{...opts,headers:{'apikey':SB_KEY,'Authorization':`Bearer ${AUTH.token}`,'Content-Type':'application/json',...(opts.headers||{})}});
+  let r=await go();
+  if(r.status===401&&await refreshSession())r=await go();
+  return r;
+}
+
+async function signIn(email,password){
+  const r=await fetch(`${SB_URL}/auth/v1/token?grant_type=password`,{method:'POST',
+    headers:{'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+  const d=await r.json();
+  if(!r.ok)throw new Error(d.error_description||d.msg||d.error||'Could not sign in.');
+  setSession(d);await loadBusiness();
+}
+
+async function loadBusiness(){
+  if(!AUTH.uid){renderAuth();return;}
+  try{
+    const r=await bizApi(`businesses?auth_user_id=eq.${AUTH.uid}&select=*`);
+    if(r.status===401){clearSession();renderAuth();return;}
+    const rows=await r.json();const b=Array.isArray(rows)?rows[0]:null;
+    if(b){AUTH.bizId=b.id;prefill(b);}
+  }catch(_){}
+  renderAuth();
+}
+
+function prefill(b){
+  if(b.name)$('f-company').value=b.name;
+  if(b.contact_name)$('f-name').value=b.contact_name;
+  if(b.contact_phone)$('f-phone').value=b.contact_phone;
+  if(b.contact_email)$('f-email').value=b.contact_email;
+  if(b.default_address){S.stops[0]={addr:b.default_address,apt:'',lat:null,lng:null};renderStops();}
+  if(b.default_access_notes)$('f-codes').value=b.default_access_notes;
+  $('f-stairs').checked=!!b.default_stairs;
+  $('f-elevator').checked=!!b.default_elevator;
+  $('f-longwalk').checked=!!b.default_long_walk;
+}
+
+// Save the details a business repeats every job back onto their profile (fire-and-forget).
+function saveBizDefaults(){
+  if(!AUTH.bizId)return;
+  const firstStop=(S.stops.find(s=>s.addr&&s.addr.trim())||{}).addr||null;
+  const patch={name:$('f-company').value.trim()||null,contact_name:$('f-name').value.trim()||null,
+    contact_phone:$('f-phone').value.trim()||null,contact_email:$('f-email').value.trim()||null,
+    default_address:firstStop,default_access_notes:$('f-codes').value.trim()||null,
+    default_stairs:$('f-stairs').checked,default_elevator:$('f-elevator').checked,default_long_walk:$('f-longwalk').checked};
+  bizApi(`businesses?id=eq.${AUTH.bizId}`,{method:'PATCH',headers:{'Prefer':'return=minimal'},body:JSON.stringify(patch)}).catch(()=>{});
+}
+
+function renderAuth(){
+  const inSesh=!!(AUTH.token&&AUTH.bizId);
+  $('auth-out').style.display=inSesh?'none':'';
+  $('auth-in').style.display=inSesh?'flex':'none';
+  if(inSesh)$('auth-who').textContent=$('f-company').value||'your account';
+}
+function authErr(m){const e=$('auth-err');e.textContent=m;e.style.display=m?'block':'none';}
+
+// Wiring
+$('auth-toggle').addEventListener('click',()=>{const f=$('auth-form');f.style.display=f.style.display==='none'?'block':'none';});
+$('auth-tabs').addEventListener('click',e=>{const b=e.target.closest('[data-mode]');if(!b)return;
+  [...$('auth-tabs').children].forEach(c=>c.classList.toggle('on',c===b));
+  const su=b.dataset.mode==='signup';$('signup-fields').style.display=su?'block':'none';$('signin-fields').style.display=su?'none':'block';authErr('');});
+
+$('si-btn').addEventListener('click',async()=>{
+  authErr('');const email=$('si-email').value.trim(),pass=$('si-pass').value;
+  if(!email||!pass)return authErr('Enter your email and password.');
+  const btn=$('si-btn');btn.disabled=true;btn.textContent='Signing in…';
+  try{await signIn(email,pass);$('auth-form').style.display='none';}
+  catch(e){authErr(e.message||'Could not sign in.');}
+  finally{btn.disabled=false;btn.textContent='Sign in';}
+});
+
+$('su-btn').addEventListener('click',async()=>{
+  authErr('');
+  const payload={company_name:$('su-company').value.trim(),contact_name:$('su-name').value.trim(),
+    phone:$('su-phone').value.trim(),email:$('su-email').value.trim(),password:$('su-pass').value};
+  if(!payload.company_name||!payload.contact_name)return authErr('Enter your company and contact name.');
+  if(!payload.email||!payload.password)return authErr('Enter an email and password.');
+  const btn=$('su-btn');btn.disabled=true;btn.textContent='Creating…';
+  try{
+    const r=await fetch(`${SB_URL}/functions/v1/register-business`,{method:'POST',
+      headers:{'Authorization':`Bearer ${SB_KEY}`,'apikey':SB_KEY,'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const d=await r.json();if(!r.ok)throw new Error(d.error||'Could not create the account.');
+    await signIn(payload.email,payload.password);$('auth-form').style.display='none';
+  }catch(e){authErr(e.message||'Could not create the account.');}
+  finally{btn.disabled=false;btn.textContent='Create account';}
+});
+
+$('auth-signout').addEventListener('click',()=>{clearSession();renderAuth();});
+
+// Restore a saved session on load
+(function(){try{const s=JSON.parse(localStorage.getItem(LS_KEY)||'null');
+  if(s&&s.token){AUTH.token=s.token;AUTH.refresh=s.refresh;AUTH.uid=s.uid;loadBusiness();}}catch(_){}})();
 
 renderStops();
 </script>
