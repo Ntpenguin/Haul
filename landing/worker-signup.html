@@ -6,7 +6,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'unsafe-inline'; style-src 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: blob: https://joiukvttuamaanrgzfrz.supabase.co; connect-src https://joiukvttuamaanrgzfrz.supabase.co;">
 <title>Become a mover — Fast Fix Work</title>
-<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'><g transform='translate(0,9)'><path d='M16 3 H55 Q61 3 61 9 V37 Q61 43 55 43 H16 L3 23 Z' fill='%23C9A23C' stroke='%2321251F' stroke-width='3'/><circle cx='15' cy='23' r='4' fill='%23FAF7EC' stroke='%2321251F' stroke-width='2.6'/><text x='39' y='29' text-anchor='middle' font-family='Georgia,serif' font-weight='700' font-size='16' fill='%2321251F'>FFX</text></g></svg>">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='12' y='12' width='80' height='80' rx='18' fill='%23C98B3F'/><rect x='4' y='4' width='80' height='80' rx='18' fill='%231A1714'/><text x='44' y='48' text-anchor='middle' dominant-baseline='central' font-family='Georgia,serif' font-weight='700' font-size='30' fill='%23FAF7F2'>FFX</text></svg>">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
@@ -16,7 +16,8 @@
   *{box-sizing:border-box}
   body{margin:0;background:var(--bg);color:var(--ink2);font-family:Inter,system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;line-height:1.5}
   .wrap{max-width:640px;margin:0 auto;padding:28px 18px 80px}
-  .brand{font-family:'Fraunces',Georgia,serif;color:var(--amber);font-weight:700;font-size:24px;text-align:center;margin-bottom:6px}
+  .brand{font-family:'Fraunces',Georgia,serif;color:var(--amber);font-weight:700;font-size:24px;text-align:center;margin-bottom:6px;display:flex;flex-direction:column;align-items:center;gap:10px}
+  .brand-badge{width:56px;height:56px;border-radius:12px;background:#1A1714;color:#FAF7F2;display:flex;align-items:center;justify-content:center;font-family:'Fraunces',Georgia,serif;font-weight:700;font-size:23px;box-shadow:4px 4px 0 #C98B3F}
   h1{font-family:'Fraunces',Georgia,serif;color:var(--ink);font-size:26px;letter-spacing:-.5px;margin:0 0 4px;text-align:center}
   .sub{text-align:center;color:var(--ink3);font-size:14px;margin-bottom:22px}
   .card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;margin-bottom:14px}
@@ -61,7 +62,7 @@
 </head>
 <body>
 <div class="wrap" id="wrap">
-  <div class="brand"><svg width="40" height="29" viewBox="0 0 64 46" aria-hidden="true" style="vertical-align:-7px;margin-right:6px"><g transform="rotate(-7 32 23)"><path d="M16 5 H54 Q60 5 60 11 V33 Q60 39 54 39 H16 L4 22 Z" fill="var(--amber)" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/><circle cx="14" cy="22" r="3.4" fill="var(--bg)" stroke="var(--ink)" stroke-width="2"/><text x="38" y="27.5" text-anchor="middle" font-family="'Fraunces',Georgia,serif" font-weight="700" font-size="15" fill="var(--ink)">FFX</text></g></svg>Fast Fix Work</div>
+  <div class="brand"><span class="brand-badge">FFX</span><span>Fast Fix Work</span></div>
   <h1>Become a mover</h1>
   <div class="sub">Earn on your own schedule. Takes about 3 minutes.</div>
 
@@ -294,7 +295,7 @@ $('submit').addEventListener('click',async()=>{
 
 function showDone(){
   $('wrap').innerHTML=`
-    <div class="brand"><svg width="40" height="29" viewBox="0 0 64 46" aria-hidden="true" style="vertical-align:-7px;margin-right:6px"><g transform="rotate(-7 32 23)"><path d="M16 5 H54 Q60 5 60 11 V33 Q60 39 54 39 H16 L4 22 Z" fill="var(--amber)" stroke="var(--ink)" stroke-width="2.4" stroke-linejoin="round"/><circle cx="14" cy="22" r="3.4" fill="var(--bg)" stroke="var(--ink)" stroke-width="2"/><text x="38" y="27.5" text-anchor="middle" font-family="'Fraunces',Georgia,serif" font-weight="700" font-size="15" fill="var(--ink)">FFX</text></g></svg>Fast Fix Work</div>
+    <div class="brand"><span class="brand-badge">FFX</span><span>Fast Fix Work</span></div>
     <div class="outcome">
       <div class="ico">✓</div>
       <h1>Application submitted!</h1>

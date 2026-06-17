@@ -7,6 +7,7 @@
 import { serve } from 'https://deno.land/std@0.177.0/http/server.ts';
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import Stripe from 'https://esm.sh/stripe@14.14.0?target=deno';
+import { sendSms } from '../_shared/twilio.ts';
 
 const stripe = new Stripe(Deno.env.get('STRIPE_SECRET_KEY')!, {
   apiVersion: '2024-04-10',
@@ -119,7 +120,7 @@ serve(async (req) => {
       // leads become gigs / appear on the calendar). Keep the lead row forever.
       const { data: quote } = await supabase
         .from('quote_requests')
-        .select('id, gig_id, name, email, phone, lead_number, preferred_date, preferred_time, pickup_address, dropoff_address, service_type, items_size, items_list, deposit_cents, estimated_price_cents, stairs_pickup, stairs_dropoff, flights_pickup, flights_dropoff, staging, packing_service, other_notes, special_items, answers, referral_code, referral_credit_cents')
+        .select('id, gig_id, name, email, phone, lead_number, preferred_date, preferred_time, pickup_address, dropoff_address, service_type, items_size, items_list, deposit_cents, estimated_price_cents, stairs_pickup, stairs_dropoff, flights_pickup, flights_dropoff, staging, packing_service, other_notes, special_items, answers, referral_code, referral_credit_cents, sms_consent')
         .eq('stripe_payment_intent_id', intent.id)
         .single();
 
@@ -269,6 +270,19 @@ serve(async (req) => {
           });
           console.log(`Confirmation email sent to ${quote.email}`);
         }
+      }
+
+      // Booking-confirmed text (send #2) — only if the customer opted in on the
+      // intake form. Fail-soft: never blocks the webhook.
+      if (quote?.sms_consent && quote?.phone) {
+        const firstName = quote.name?.split(' ')[0] || 'there';
+        const refNum = quote.lead_number ? `#${quote.lead_number}` : '';
+        const smsRes = await sendSms(
+          quote.phone,
+          `Fast Fix Work: ${firstName}, your move${refNum ? ' ' + refNum : ''} is booked and paid in full. ` +
+          `We'll confirm the details soon. Call/text 512-777-1628. Reply STOP to opt out.`,
+        );
+        console.log(`Booking-confirmed SMS for ${quoteId}: ${smsRes.ok}${smsRes.error ? ' err=' + smsRes.error : ''}`);
       }
       console.log(`Quote payment succeeded for ${quoteId}`);
     } else if (gigId) {
