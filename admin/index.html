@@ -254,6 +254,7 @@
       <a onclick="showPage('pricing')"><span class="nav-icon">&#36;</span> Pricing</a>
       <a onclick="showPage('crew')"><span class="nav-icon">&#9874;</span> Crew &amp; pay</a>
       <a onclick="showPage('schedule')"><span class="nav-icon">&#128197;</span> Schedule</a>
+      <a onclick="showPage('teams')"><span class="nav-icon">&#128101;</span> Teams</a>
     </div>
     <div class="main" id="main-content"></div>
   </div>
@@ -326,7 +327,7 @@ async function initApp() {
 
 // ─── Data Loading ────────────────────────────
 async function loadAll() {
-  const [profiles, moverProfiles, gigs, applications, photos, leads, blockedSlots, businesses, fleetVehicles, referralCodes, referrals, businessJobs, workers, workerPayouts, jobCrew] = await Promise.all([
+  const [profiles, moverProfiles, gigs, applications, photos, leads, blockedSlots, businesses, fleetVehicles, referralCodes, referrals, businessJobs, workers, workerPayouts, jobCrew, teams, teamMembers] = await Promise.all([
     sb.from('profiles').select('*').order('created_at', { ascending: false }),
     sb.from('mover_profiles').select('*').order('created_at', { ascending: false }),
     sb.from('gigs').select('*').order('created_at', { ascending: false }),
@@ -342,6 +343,8 @@ async function loadAll() {
     sb.from('workers').select('*').order('created_at', { ascending: false }),
     sb.from('worker_payouts').select('*').order('created_at', { ascending: false }),
     sb.from('job_crew').select('*').order('created_at', { ascending: false }),
+    sb.from('teams').select('*').order('created_at', { ascending: false }),
+    sb.from('team_members').select('*'),
   ]);
   cache.profiles = profiles.data || [];
   cache.moverProfiles = moverProfiles.data || [];
@@ -358,6 +361,8 @@ async function loadAll() {
   cache.workers = workers.data || [];
   cache.workerPayouts = workerPayouts.data || [];
   cache.jobCrew = jobCrew.data || [];
+  cache.teams = teams.data || [];
+  cache.teamMembers = teamMembers.data || [];
 }
 
 // ─── Navigation ──────────────────────────────
@@ -366,7 +371,7 @@ function showPage(page) {
   currentPage = page;
   document.querySelectorAll('.sidebar a').forEach(a => a.classList.remove('active'));
   const links = document.querySelectorAll('.sidebar a');
-  const pages = ['overview','users','movers','businesses','gigs','applications','photos','leads','calendar','referrals','bizjobs','pricing','crew','schedule'];
+  const pages = ['overview','users','movers','businesses','gigs','applications','photos','leads','calendar','referrals','bizjobs','pricing','crew','schedule','teams'];
   const idx = pages.indexOf(page);
   if (idx >= 0 && links[idx]) links[idx].classList.add('active');
 
@@ -386,6 +391,7 @@ function showPage(page) {
     case 'pricing': main.innerHTML = renderPricing(); break;
     case 'crew': main.innerHTML = renderCrew(); break;
     case 'schedule': main.innerHTML = renderSchedule(); break;
+    case 'teams': main.innerHTML = renderTeams(); break;
   }
 }
 
@@ -985,6 +991,92 @@ async function deleteWorkerPayout(id){
   await loadAll(); showPage('crew');
 }
 
+// ─── Teams: reusable named crews (migration 059) ───
+// A team is a saved group of workers you assign to a gig in one click
+// (assignTeam bulk-adds them to job_crew + emails each via notify-worker-assigned).
+// Workers can be in multiple teams. Admin-only (RLS via is_admin).
+function teamMembersOf(teamId){ return (cache.teamMembers||[]).filter(tm=>tm.team_id===teamId); }
+function renderTeams(){
+  const teams = (cache.teams||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  const movers = activeMovers();
+  const fld='padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px';
+  const accentBtn='padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer';
+  const cards = teams.length ? teams.map(t=>{
+    const mems = teamMembersOf(t.id);
+    const memIds = new Set(mems.map(m=>m.worker_id));
+    const addOpts = movers.filter(m=>!memIds.has(m.id)).map(m=>`<option value="${escAttr(m.id)}">${esc(moverName(m.id))}</option>`).join('');
+    const chips = mems.length ? mems.map(m=>`<span style="display:inline-flex;align-items:center;gap:6px;padding:4px 6px 4px 11px;background:var(--surface);border:1px solid var(--line2);border-radius:999px;font-size:13px;margin:0 6px 6px 0">${esc(moverName(m.worker_id))}<button onclick="removeTeamMember('${t.id}','${m.worker_id}')" title="Remove from team" style="background:none;border:none;color:var(--ink3);cursor:pointer;font-size:15px;line-height:1;padding:0 2px">&times;</button></span>`).join('') : `<span style="color:var(--ink3);font-size:13px">No members yet.</span>`;
+    return `<div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:12px">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap">
+        <div style="font-size:16px;font-weight:800;color:var(--ink)">${esc(t.name)} <span style="font-size:12px;font-weight:600;color:var(--ink3)">${mems.length} member${mems.length===1?'':'s'}</span></div>
+        <button onclick="deleteTeam('${t.id}')" style="padding:4px 10px;background:var(--surface);border:1px solid var(--line2);border-radius:6px;font-size:12px;cursor:pointer">Delete team</button>
+      </div>
+      <div style="margin:12px 0">${chips}</div>
+      ${addOpts?`<div style="display:flex;gap:8px">
+        <select id="tm-add-${t.id}" style="${fld};flex:1"><option value="" selected>Add a worker&hellip;</option>${addOpts}</select>
+        <button onclick="addTeamMember('${t.id}')" style="${accentBtn}">+ Add</button>
+      </div>`:`<div style="font-size:12px;color:var(--ink3)">Everyone is already on this team.</div>`}
+    </div>`;
+  }).join('') : `<p class="empty">No teams yet. Create one below, add workers, then assign the whole team to a job from the gig's Crew section.</p>`;
+  return `
+    <h2 class="page-title">Teams</h2>
+    <p class="page-sub">${teams.length} team${teams.length===1?'':'s'}. A team is a reusable crew &mdash; build it once, then assign everyone to a job in one click from the gig modal (each member gets the assignment email).</p>
+    <div style="background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;margin-bottom:18px;max-width:460px">
+      <div style="font-size:12px;font-weight:700;color:var(--accent-deep);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Create a team</div>
+      <div style="display:flex;gap:8px">
+        <input id="team-name" type="text" placeholder="e.g. Crew A / North Austin" style="${fld};flex:1">
+        <button onclick="createTeam()" style="${accentBtn}">Create</button>
+      </div>
+    </div>
+    <div>${cards}</div>
+  `;
+}
+async function createTeam(){
+  const el=document.getElementById('team-name'); const name=(el&&el.value||'').trim();
+  if(!name){alert('Enter a team name.');return;}
+  const {error}=await sb.from('teams').insert({name});
+  if(error){alert('Could not create team: '+error.message);return;}
+  await loadAll(); showPage('teams');
+}
+async function deleteTeam(id){
+  if(!confirm('Delete this team? Workers already assigned to jobs stay assigned — this only removes the saved group.'))return;
+  const {error}=await sb.from('teams').delete().eq('id',id);
+  if(error){alert('Could not delete: '+error.message);return;}
+  await loadAll(); showPage('teams');
+}
+async function addTeamMember(teamId){
+  const sel=document.getElementById('tm-add-'+teamId); const worker_id=sel&&sel.value;
+  if(!worker_id){alert('Pick a worker.');return;}
+  const {error}=await sb.from('team_members').insert({team_id:teamId, worker_id});
+  if(error){alert(/duplicate|unique|primary key/i.test(error.message)?'That worker is already on this team.':'Could not add: '+error.message);return;}
+  await loadAll(); showPage('teams');
+}
+async function removeTeamMember(teamId, workerId){
+  const {error}=await sb.from('team_members').delete().eq('team_id',teamId).eq('worker_id',workerId);
+  if(error){alert('Could not remove: '+error.message);return;}
+  await loadAll(); showPage('teams');
+}
+// Assign every member of a team to a gig's crew (skips anyone already on it),
+// emailing each newly-added worker. Conflicts show as ⚠ on the crew chips after.
+async function assignTeam(gigId){
+  const sel=document.getElementById('team-pick-'+gigId); const teamId=sel&&sel.value;
+  if(!teamId){alert('Pick a team.');return;}
+  const mems=teamMembersOf(teamId);
+  if(!mems.length){alert('That team has no members yet.');return;}
+  const already=new Set((cache.jobCrew||[]).filter(c=>c.gig_id===gigId).map(c=>c.worker_id));
+  const toAdd=mems.map(m=>m.worker_id).filter(id=>!already.has(id));
+  if(!toAdd.length){alert('Everyone on that team is already on this job.');return;}
+  let added=0; const failed=[];
+  for(const worker_id of toAdd){
+    const {error}=await sb.from('job_crew').insert({gig_id:gigId, worker_id});
+    if(error){ if(!/duplicate|unique/i.test(error.message)) failed.push(moverName(worker_id)); continue; }
+    added++; await notifyWorkerAssigned(gigId, worker_id);
+  }
+  await loadAll();
+  if(failed.length) alert('Assigned '+added+' worker(s). Could not assign: '+failed.join(', '));
+  if(currentPage==='schedule') showPage('schedule'); else showGigModal(gigId);
+}
+
 // ─── Job planning (read-only): prep/handling summary + a derived gear list ───
 // Pulls from the gig + its linked consumer lead (common_item_details/prep_needed)
 // or business job (special_items). No DB writes — just surfaces what's collected.
@@ -1086,6 +1178,10 @@ function gigCrewSection(g){
       <select id="crew-pick-${g.id}" style="flex:1;padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px"${opts?'':' disabled'}>${opts?`<option value="" selected>Choose a worker…</option>`+opts:'<option value="">Everyone is already on this job</option>'}</select>
       <button onclick="assignCrew('${g.id}')" style="padding:9px 16px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">+ Assign</button>
     </div>`:`<div style="font-size:12px;color:var(--ink3)">No workers available yet &mdash; approve one in the <b>Workers</b> tab first.</div>`}
+    ${(cache.teams||[]).length?`<div style="display:flex;gap:8px;margin-top:8px">
+      <select id="team-pick-${g.id}" style="flex:1;padding:8px 10px;border:1.5px solid var(--line2);border-radius:8px;font-size:14px"><option value="" selected>Assign a whole team&hellip;</option>${(cache.teams||[]).slice().sort((a,b)=>(a.name||'').localeCompare(b.name||'')).map(t=>`<option value="${escAttr(t.id)}">${esc(t.name)} (${teamMembersOf(t.id).length})</option>`).join('')}</select>
+      <button onclick="assignTeam('${g.id}')" style="padding:9px 16px;background:var(--accent-deep);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap">+ Team</button>
+    </div>`:''}
   </div>`;
 }
 async function assignCrew(gigId){
