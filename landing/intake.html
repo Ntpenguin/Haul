@@ -2686,6 +2686,7 @@ async function showPaymentStep(recordId, quote) {
         <div class="ds-note">80% refundable if cancelled 48+ hours before your move; non-refundable within 48 hours.</div>
         <div class="ds-note" style="font-style:italic">* Estimate subject to change based on actual move conditions. Call or text <a href="tel:5127771628" style="color:var(--amber-deep);font-weight:600">512-777-1628</a> if anything about your move changes.</div>
       </div>
+      <div id="payment-messaging" style="margin:4px 0 12px"></div>
       <div id="payment-element"></div>
       <div class="pay-error" id="pay-error"></div>
       <div class="cfoot" style="margin-top:10px">
@@ -2739,6 +2740,21 @@ async function showPaymentStep(recordId, quote) {
     });
     const paymentElement = elements.create('payment');
     paymentElement.mount('#payment-element');
+
+    // Monthly / "pay over time" messaging (Affirm · Klarna · Afterpay). Shows the
+    // installment promo on the checkout screen; the methods themselves appear in
+    // the Payment Element above once enabled in the Stripe Dashboard. Guarded so a
+    // messaging hiccup never blocks the pay button. Amount must match the charge.
+    try {
+      const msgEls = stripePromise.elements();
+      const pmm = msgEls.create('paymentMethodMessaging', {
+        amount: quote.finalTotal,
+        currency: 'USD',
+        countryCode: 'US',
+        paymentMethods: ['affirm', 'klarna', 'afterpay_clearpay'],
+      });
+      pmm.mount('#payment-messaging');
+    } catch (e) { console.warn('payment messaging unavailable', e); }
 
     paymentElement.on('ready', () => { payBtn.disabled = false; });
     paymentElement.on('change', (event) => {
